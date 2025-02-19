@@ -10,6 +10,7 @@ mod common;
 extern crate criterion;
 
 use criterion::Criterion;
+use posidonius::constants::{TWO_PI, DAY};
 
 fn create_universe() -> posidonius::Universe {
     let (_time_step, time_limit, initial_time, _historic_snapshot_period, _recovery_snapshot_period) = common::simulation_properties();
@@ -86,11 +87,18 @@ fn create_kaula_universe() -> posidonius::Universe {
     //////////////////////////////////////////////////////////////////////////////////
     // Load star data
     let star_file = "./input/love_numbers/Aurelie_Stellar/alpha0.51600_P1p2_Ek1p5em6.txt";
-    let star_tidal_model_params = common::load_kaula_parameters(star_file).unwrap();
+    let stellar_tide = true;
+    let spectrum_stellar_spin_period = 1.2 * DAY;
+    let spectrum_spin_rate = TWO_PI / spectrum_stellar_spin_period;
+    let star_tidal_model_params = common::load_kaula_parameters(star_file, stellar_tide, spectrum_spin_rate).unwrap();
     let star_tides = posidonius::Tides::new(posidonius::TidesEffect::CentralBody(posidonius::TidalModel::Kaula(star_tidal_model_params)));
     // Load planet data
     let planet_file = "./input/love_numbers/TRAPPIST-1_Earth-like/Results_Trappist1_b_Fe_90_Si_02_670K_freq_Imk2_posidonius.txt";
-    let planet_tidal_model_params = common::load_kaula_parameters(planet_file).unwrap();
+    // If we are simulating stellar tide, then we need the value of the spectrum spin rate,
+    // which was an input value of stellar spin rate from the computation of the spectrum.
+    let stellar_tide = false;
+    let spectrum_spin_rate = 0.0;
+    let planet_tidal_model_params = common::load_kaula_parameters(planet_file, stellar_tide, spectrum_spin_rate).unwrap();
     let planet_tides = posidonius::Tides::new(posidonius::TidesEffect::OrbitingBody(posidonius::TidalModel::Kaula(planet_tidal_model_params)));
     //
     if let Some((star, planets)) = particles.split_first_mut() {
