@@ -1,7 +1,7 @@
-use serde::{Serialize, Deserialize};
-use super::super::constants::{R_SUN};
-use super::super::{Particle};
-use super::super::{Axes};
+use super::super::constants::R_SUN;
+use super::super::Axes;
+use super::super::Particle;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub struct WindParticleInputParameters {
@@ -51,7 +51,11 @@ impl Wind {
                     rotation_saturation_2: rotation_saturation.powi(2),
                 },
                 output: WindParticleOutputParameters {
-                    dangular_momentum_dt: Axes{x: 0., y: 0., z: 0.},
+                    dangular_momentum_dt: Axes {
+                        x: 0.,
+                        y: 0.,
+                        z: 0.,
+                    },
                 },
             },
         }
@@ -77,14 +81,38 @@ pub fn calculate_wind_factor(particles: &mut [Particle]) {
             // dangular_momentum_dt)
             if threshold >= particle.wind.parameters.input.rotation_saturation {
                 // Fast rotator
-                particle.wind.parameters.output.dangular_momentum_dt.x = -1. * particle.wind.parameters.input.k_factor * particle.spin.x * particle.wind.parameters.internal.rotation_saturation_2 * (particle.radius/R_SUN * 1./particle.mass).sqrt();
-                particle.wind.parameters.output.dangular_momentum_dt.y = -1. * particle.wind.parameters.input.k_factor * particle.spin.y * particle.wind.parameters.internal.rotation_saturation_2 * (particle.radius/R_SUN * 1./particle.mass).sqrt();
-                particle.wind.parameters.output.dangular_momentum_dt.z = -1. * particle.wind.parameters.input.k_factor * particle.spin.z * particle.wind.parameters.internal.rotation_saturation_2 * (particle.radius/R_SUN * 1./particle.mass).sqrt();
+                particle.wind.parameters.output.dangular_momentum_dt.x = -1.
+                    * particle.wind.parameters.input.k_factor
+                    * particle.spin.x
+                    * particle.wind.parameters.internal.rotation_saturation_2
+                    * (particle.radius / R_SUN * 1. / particle.mass).sqrt();
+                particle.wind.parameters.output.dangular_momentum_dt.y = -1.
+                    * particle.wind.parameters.input.k_factor
+                    * particle.spin.y
+                    * particle.wind.parameters.internal.rotation_saturation_2
+                    * (particle.radius / R_SUN * 1. / particle.mass).sqrt();
+                particle.wind.parameters.output.dangular_momentum_dt.z = -1.
+                    * particle.wind.parameters.input.k_factor
+                    * particle.spin.z
+                    * particle.wind.parameters.internal.rotation_saturation_2
+                    * (particle.radius / R_SUN * 1. / particle.mass).sqrt();
             } else {
                 // Slow rotators
-                particle.wind.parameters.output.dangular_momentum_dt.x = -1. * particle.wind.parameters.input.k_factor * particle.spin.x * particle.norm_spin_vector_2 * (particle.radius/R_SUN * 1./particle.mass).sqrt();
-                particle.wind.parameters.output.dangular_momentum_dt.y = -1. * particle.wind.parameters.input.k_factor * particle.spin.y * particle.norm_spin_vector_2 * (particle.radius/R_SUN * 1./particle.mass).sqrt();
-                particle.wind.parameters.output.dangular_momentum_dt.z = -1. * particle.wind.parameters.input.k_factor * particle.spin.z * particle.norm_spin_vector_2 * (particle.radius/R_SUN * 1./particle.mass).sqrt();
+                particle.wind.parameters.output.dangular_momentum_dt.x = -1.
+                    * particle.wind.parameters.input.k_factor
+                    * particle.spin.x
+                    * particle.norm_spin_vector_2
+                    * (particle.radius / R_SUN * 1. / particle.mass).sqrt();
+                particle.wind.parameters.output.dangular_momentum_dt.y = -1.
+                    * particle.wind.parameters.input.k_factor
+                    * particle.spin.y
+                    * particle.norm_spin_vector_2
+                    * (particle.radius / R_SUN * 1. / particle.mass).sqrt();
+                particle.wind.parameters.output.dangular_momentum_dt.z = -1.
+                    * particle.wind.parameters.input.k_factor
+                    * particle.spin.z
+                    * particle.norm_spin_vector_2
+                    * (particle.radius / R_SUN * 1. / particle.mass).sqrt();
             }
         };
     }

@@ -1,17 +1,17 @@
-use serde::{Serialize, Deserialize};
-use super::super::{Particle, TidesEffect, TidalModel};
-use super::super::constants::{SUN_DYN_FREQ_2};
-use super::super::tools::{linear_interpolation};
-use super::super::{csv};
-use super::super::constants::{R_SUN, M2AU};
+use super::super::constants::SUN_DYN_FREQ_2;
+use super::super::constants::{M2AU, R_SUN};
+use super::super::csv;
+use super::super::tools::linear_interpolation;
+use super::super::{Particle, TidalModel, TidesEffect};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub enum EvolutionType {
     GalletBolmont2017(f64), // SolarLike EvolvingDissipation Evolving dissipation
     BolmontMathis2016(f64), // SolarLike EvolvingDissipation Evolving dissipation
-    Baraffe2015(f64), // NEW
-    Leconte2011(f64), // BrownDwarf
-    Baraffe1998(f64), // M-Dwarf (mass = 0.10) or SolarLike ConstantDissipation (mass = 1.0)
+    Baraffe2015(f64),       // NEW
+    Leconte2011(f64),       // BrownDwarf
+    Baraffe1998(f64),       // M-Dwarf (mass = 0.10) or SolarLike ConstantDissipation (mass = 1.0)
     LeconteChabrier2013(bool), // Jupiter with/without dissipation of dynamical tides
     NonEvolving,
 }
@@ -33,29 +33,28 @@ pub struct Evolver {
 impl Clone for Evolver {
     fn clone(&self) -> Self {
         Evolver {
-            evolution:EvolutionType::NonEvolving,
-            time:vec![],
-            radius:vec![],
-            radius_of_gyration_2:vec![],
-            love_number:vec![],
-            inverse_tidal_q_factor:vec![],
+            evolution: EvolutionType::NonEvolving,
+            time: vec![],
+            radius: vec![],
+            radius_of_gyration_2: vec![],
+            love_number: vec![],
+            inverse_tidal_q_factor: vec![],
             left_index: 0,
         }
-
     }
 }
 
 impl Evolver {
     //pub fn new_dummy() -> Evolver {
-        //Evolver{
-            //evolution: EvolutionType::NonEvolving,
-            //time: Vec::new(),
-            //radius: Vec::new(),
-            //radius_of_gyration_2: Vec::new(),
-            //love_number: Vec::new(),
-            //inverse_tidal_q_factor: Vec::new(),
-            //left_index: 0,
-        //}
+    //Evolver{
+    //evolution: EvolutionType::NonEvolving,
+    //time: Vec::new(),
+    //radius: Vec::new(),
+    //radius_of_gyration_2: Vec::new(),
+    //love_number: Vec::new(),
+    //inverse_tidal_q_factor: Vec::new(),
+    //left_index: 0,
+    //}
     //}
     pub fn new(evolution: EvolutionType, initial_time: f64, time_limit: f64) -> Evolver {
         let mut time: Vec<f64> = Vec::new();
@@ -89,7 +88,7 @@ impl Evolver {
                 } else {
                     panic!("The evolution type Gallet_Bolmont_2017 does not support a mass of {} Msun!", mass);
                 }
-            },
+            }
             EvolutionType::Baraffe2015(mass) => {
                 if mass <= 0.0101 && mass >= 0.0099 {
                     String::from("input/Baraffe_2015/0010_Msun.dat")
@@ -150,9 +149,12 @@ impl Evolver {
                 } else if (mass - 1.40).abs() < 1e-7 {
                     String::from("input/Baraffe_2015/1400_Msun.dat")
                 } else {
-                    panic!("The evolution type Baraffe2015 does not support a mass of {} Msun!", mass);
+                    panic!(
+                        "The evolution type Baraffe2015 does not support a mass of {} Msun!",
+                        mass
+                    );
                 }
-            },
+            }
             EvolutionType::Leconte2011(mass) => {
                 if mass <= 0.0101 && mass >= 0.0099 {
                     String::from("input/Leconte_2011/mass_10.0000.dat")
@@ -179,18 +181,24 @@ impl Evolver {
                 } else if mass <= 0.0801 && mass >= 0.0799 {
                     String::from("input/Leconte_2011/mass_80.0000.dat")
                 } else {
-                    panic!("The evolution type Leconte2011 does not support a mass of {} Msun!", mass);
+                    panic!(
+                        "The evolution type Leconte2011 does not support a mass of {} Msun!",
+                        mass
+                    );
                 }
-            },
+            }
             EvolutionType::Baraffe1998(mass) => {
                 if (mass - 0.10).abs() <= 1.0e-7 {
                     String::from("input/Baraffe_1998/01Msun.dat")
                 } else if (mass - 1.0).abs() <= 1.0e-7 {
                     String::from("input/Baraffe_1998/SRad_Spli_M-1_0000.dat")
                 } else {
-                    panic!("The evolution type Baraffe1998 does not support a mass of {} Msun!", mass);
+                    panic!(
+                        "The evolution type Baraffe1998 does not support a mass of {} Msun!",
+                        mass
+                    );
                 }
-            },
+            }
 
             EvolutionType::BolmontMathis2016(mass) => {
                 if mass <= 0.401 && mass >= 0.399 {
@@ -218,41 +226,39 @@ impl Evolver {
                 } else if mass <= 1.501 && mass >= 1.499 {
                     String::from("input/Bolmont_Mathis_2016/L15Z02r.dat")
                 } else {
-                    panic!("The evolution type BolmontMathis2016 does not support a mass of {} Msun!", mass);
+                    panic!(
+                        "The evolution type BolmontMathis2016 does not support a mass of {} Msun!",
+                        mass
+                    );
                 }
-            },
+            }
             EvolutionType::LeconteChabrier2013(_) => {
                 String::from("input/Leconte_Chabrier_2013/Jupiter.dat")
-            },
-            EvolutionType::NonEvolving => {
-                String::from("input/empty.dat")
             }
+            EvolutionType::NonEvolving => String::from("input/empty.dat"),
         };
         //println!("Filename {}", filename);
-        
-        let mut rdr = csv::ReaderBuilder::new().has_headers(false).delimiter(b' ').flexible(true).from_path(&filename).unwrap();
+
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .delimiter(b' ')
+            .flexible(true)
+            .from_path(&filename)
+            .unwrap();
         for (i, row) in rdr.records().map(|r| r.unwrap()).enumerate() {
             let raw_time = row[0].parse::<f64>().unwrap_or(-1.);
             if i == 0 && raw_time < 0. {
                 // First line, probably column headers
-                continue
+                continue;
             }
             let raw_radius = match evolution {
-                EvolutionType::Baraffe2015(_) => {
-                    row[2].parse::<f64>().unwrap()
-                },
-                EvolutionType::GalletBolmont2017(_) => {
-                    row[3].parse::<f64>().unwrap()
-                },
-                _ => {
-                    row[1].parse::<f64>().unwrap()
-                }
+                EvolutionType::Baraffe2015(_) => row[2].parse::<f64>().unwrap(),
+                EvolutionType::GalletBolmont2017(_) => row[3].parse::<f64>().unwrap(),
+                _ => row[1].parse::<f64>().unwrap(),
             };
             // All types have time and radius
             let (current_time, current_radius) = match evolution {
-                EvolutionType::Leconte2011(_) => {
-                    (raw_time, raw_radius * R_SUN)
-                },
+                EvolutionType::Leconte2011(_) => (raw_time, raw_radius * R_SUN),
                 EvolutionType::Baraffe1998(mass) => {
                     if (mass - 0.10).abs() <= 1.0e-7 {
                         (raw_time * 365.25 - initial_time, raw_radius * R_SUN)
@@ -261,62 +267,55 @@ impl Evolver {
                     } else {
                         (0., 0.)
                     }
-                },
+                }
                 EvolutionType::Baraffe2015(_) => {
                     (raw_time * 365.25 - initial_time, raw_radius * R_SUN)
-                },
+                }
                 EvolutionType::BolmontMathis2016(_) => {
                     (raw_time * 365.25 - initial_time, raw_radius * R_SUN)
-                },
-                EvolutionType::GalletBolmont2017(_) => {
-                    (10_f64.powf(raw_time) * 365.25 - initial_time, raw_radius * R_SUN)
-                },
+                }
+                EvolutionType::GalletBolmont2017(_) => (
+                    10_f64.powf(raw_time) * 365.25 - initial_time,
+                    raw_radius * R_SUN,
+                ),
                 EvolutionType::LeconteChabrier2013(_) => {
                     (raw_time * 365.25 - initial_time, raw_radius * M2AU)
-                },
-                _ => {
-                    (0., 0.)
                 }
+                _ => (0., 0.),
             };
             // Fields that only some types have...
             let current_radius_of_gyration_2 = match evolution {
                 EvolutionType::LeconteChabrier2013(_) => {
                     let raw_radius_of_gyration_2 = row[3].parse::<f64>().unwrap();
                     raw_radius_of_gyration_2
-                },
+                }
                 EvolutionType::Baraffe2015(_) => {
                     let raw_radius_of_gyration_2 = row[3].parse::<f64>().unwrap();
                     raw_radius_of_gyration_2
-                },
-                _ => {
-                    0.
                 }
+                _ => 0.,
             };
             let current_love_number = match evolution {
                 EvolutionType::LeconteChabrier2013(_) => {
                     let raw_love_number = row[2].parse::<f64>().unwrap();
                     raw_love_number
-                },
-                _ => {
-                    0.
                 }
+                _ => 0.,
             };
             let current_inverse_tidal_q_factor = match evolution {
                 EvolutionType::BolmontMathis2016(_) => {
                     let raw_inverse_tidal_q_factor = row[2].parse::<f64>().unwrap();
                     raw_inverse_tidal_q_factor
-                },
+                }
                 EvolutionType::GalletBolmont2017(_) => {
                     let raw_inverse_tidal_q_factor = row[10].parse::<f64>().unwrap();
-                    1./10_f64.powf(raw_inverse_tidal_q_factor)
-                },
+                    1. / 10_f64.powf(raw_inverse_tidal_q_factor)
+                }
                 EvolutionType::LeconteChabrier2013(true) => {
                     let raw_inverse_tidal_q_factor = row[5].parse::<f64>().unwrap();
                     raw_inverse_tidal_q_factor
-                },
-                _ => {
-                    0.
                 }
+                _ => 0.,
             };
 
             // Only save values needed for the evolution model to save memory
@@ -326,27 +325,27 @@ impl Evolver {
                     time.push(current_time);
                     radius.push(current_radius);
                     inverse_tidal_q_factor.push(current_inverse_tidal_q_factor);
-                },
+                }
                 EvolutionType::Baraffe2015(_) => {
                     time.push(current_time);
                     radius.push(current_radius);
                     radius_of_gyration_2.push(current_radius_of_gyration_2);
-                },
+                }
                 EvolutionType::Leconte2011(_) => {
                     time.push(current_time);
                     radius.push(current_radius);
                     // Read radius of gyration from an auxiliary file later on
                     //radius_of_gyration_2.push(current_radius_of_gyration_2);
-                },
+                }
                 EvolutionType::Baraffe1998(_) => {
                     time.push(current_time);
                     radius.push(current_radius);
-                },
+                }
                 EvolutionType::BolmontMathis2016(_) => {
                     time.push(current_time);
                     radius.push(current_radius);
                     inverse_tidal_q_factor.push(current_inverse_tidal_q_factor);
-                },
+                }
                 EvolutionType::LeconteChabrier2013(dissipation_of_dynamical_tides) => {
                     time.push(current_time);
                     radius.push(current_radius);
@@ -355,12 +354,11 @@ impl Evolver {
                     if dissipation_of_dynamical_tides {
                         inverse_tidal_q_factor.push(current_inverse_tidal_q_factor);
                     }
-                },
-                EvolutionType::NonEvolving => {
                 }
+                EvolutionType::NonEvolving => {}
             };
         }
-        
+
         // Leconte2011 have a separate file for radius of gyration with a different time sampling:
         if let EvolutionType::Leconte2011(mass) = evolution {
             // Read separate file
@@ -393,10 +391,18 @@ impl Evolver {
                 } else if mass <= 0.0801 && mass >= 0.0799 {
                     12
                 } else {
-                    panic!("The evolution type Leconte2011 does not support a mass of {} Msun!", mass);
+                    panic!(
+                        "The evolution type Leconte2011 does not support a mass of {} Msun!",
+                        mass
+                    );
                 }
             };
-            let mut rdr = csv::ReaderBuilder::new().has_headers(false).delimiter(b' ').flexible(true).from_path("input/Leconte_2011/rg2BD.dat").unwrap();
+            let mut rdr = csv::ReaderBuilder::new()
+                .has_headers(false)
+                .delimiter(b' ')
+                .flexible(true)
+                .from_path("input/Leconte_2011/rg2BD.dat")
+                .unwrap();
             for row in rdr.records().map(|r| r.unwrap()) {
                 let raw_time = row[0].parse::<f64>().unwrap();
                 let raw_radius_of_gyration_2 = row[aux_column].parse::<f64>().unwrap();
@@ -413,12 +419,16 @@ impl Evolver {
                 time.drain(upper_limit..);
                 radius.drain(upper_limit..);
             }
-            
+
             // Interpolate the radius of gyration to match the same time sampling shared by other parameters (e.g., radius)
             let precision = 7;
             for current_time in time.iter() {
-                let (current_radius_of_gyration_2, _) = linear_interpolation(*current_time, &aux_time, &aux_radius_of_gyration_2);
-                radius_of_gyration_2.push(math::round::half_up(current_radius_of_gyration_2, precision));
+                let (current_radius_of_gyration_2, _) =
+                    linear_interpolation(*current_time, &aux_time, &aux_radius_of_gyration_2);
+                radius_of_gyration_2.push(math::round::half_up(
+                    current_radius_of_gyration_2,
+                    precision,
+                ));
                 //println!("Rg2 {} {}", current_time, current_radius_of_gyration_2);
             }
 
@@ -429,17 +439,18 @@ impl Evolver {
         if time.len() > 0 && time[0] > 0. {
             panic!("Your initial time ({} days) is smaller than the minimum allowed age of the star ({} days)", initial_time, time[0]+initial_time);
         }
-        if time.len() > 0 && time[time.len()-1] < time_limit {
+        if time.len() > 0 && time[time.len() - 1] < time_limit {
             panic!("Your time limit ({} days) is greater than the maximum allowed age of the star ({} days)", time_limit, time[time.len()-1]);
         }
 
-        Evolver { evolution:evolution, 
-                time:time,
-                radius:radius,
-                radius_of_gyration_2:radius_of_gyration_2,
-                love_number:love_number,
-                inverse_tidal_q_factor:inverse_tidal_q_factor,
-                left_index:0,
+        Evolver {
+            evolution: evolution,
+            time: time,
+            radius: radius,
+            radius_of_gyration_2: radius_of_gyration_2,
+            love_number: love_number,
+            inverse_tidal_q_factor: inverse_tidal_q_factor,
+            left_index: 0,
         }
     }
 
@@ -457,19 +468,39 @@ impl Evolver {
 
     pub fn radius(&mut self, current_time: f64, current_radius: f64) -> f64 {
         let (new_radius, left_index) = match self.evolution {
-            EvolutionType::NonEvolving => { (current_radius, 0) },
-            _ => { linear_interpolation(current_time, &self.time[self.idx()..], &self.radius[self.idx()..]) }
+            EvolutionType::NonEvolving => (current_radius, 0),
+            _ => linear_interpolation(
+                current_time,
+                &self.time[self.idx()..],
+                &self.radius[self.idx()..],
+            ),
         };
         self.left_index += left_index;
         return new_radius;
     }
 
-    pub fn radius_of_gyration_2(&mut self, current_time: f64, current_radius_of_gyration_2: f64) -> f64 {
+    pub fn radius_of_gyration_2(
+        &mut self,
+        current_time: f64,
+        current_radius_of_gyration_2: f64,
+    ) -> f64 {
         let (new_radius_of_gyration_2, left_index) = match self.evolution {
-            EvolutionType::Baraffe2015(_) => { linear_interpolation(current_time, &self.time[self.idx()..], &self.radius_of_gyration_2[self.idx()..]) },
-            EvolutionType::Leconte2011(_) => { linear_interpolation(current_time, &self.time[self.idx()..], &self.radius_of_gyration_2[self.idx()..]) },
-            EvolutionType::LeconteChabrier2013(_) => { linear_interpolation(current_time, &self.time[self.idx()..], &self.radius_of_gyration_2[self.idx()..]) },
-            _ => { (current_radius_of_gyration_2, 0) }
+            EvolutionType::Baraffe2015(_) => linear_interpolation(
+                current_time,
+                &self.time[self.idx()..],
+                &self.radius_of_gyration_2[self.idx()..],
+            ),
+            EvolutionType::Leconte2011(_) => linear_interpolation(
+                current_time,
+                &self.time[self.idx()..],
+                &self.radius_of_gyration_2[self.idx()..],
+            ),
+            EvolutionType::LeconteChabrier2013(_) => linear_interpolation(
+                current_time,
+                &self.time[self.idx()..],
+                &self.radius_of_gyration_2[self.idx()..],
+            ),
+            _ => (current_radius_of_gyration_2, 0),
         };
         self.left_index += left_index;
         return new_radius_of_gyration_2;
@@ -477,20 +508,28 @@ impl Evolver {
 
     pub fn love_number(&mut self, current_time: f64, current_love_number: f64) -> f64 {
         let (new_love_number, left_index) = match self.evolution {
-            EvolutionType::LeconteChabrier2013(_) => { linear_interpolation(current_time, &self.time[self.idx()..], &self.love_number[self.idx()..]) },
-            _ => { (current_love_number, 0) }
+            EvolutionType::LeconteChabrier2013(_) => linear_interpolation(
+                current_time,
+                &self.time[self.idx()..],
+                &self.love_number[self.idx()..],
+            ),
+            _ => (current_love_number, 0),
         };
         self.left_index += left_index;
         return new_love_number;
     }
 
-    pub fn inverse_tidal_q_factor(&mut self, current_time: f64, current_inverse_tidal_q_factor: f64) -> f64 {
+    pub fn inverse_tidal_q_factor(
+        &mut self,
+        current_time: f64,
+        current_inverse_tidal_q_factor: f64,
+    ) -> f64 {
         // The planet excite/induce waves in the convective region of the star
         // and the Q factor is a quality factor that describes that loss of energy.
         //
-        // The inverse_tidal_q_factor was derived from analytical formulas using 
-        // parameters from stellar models. This factor is used to derive the 
-        // dissipation factor of the star, which depends on the excitation 
+        // The inverse_tidal_q_factor was derived from analytical formulas using
+        // parameters from stellar models. This factor is used to derive the
+        // dissipation factor of the star, which depends on the excitation
         // frequency of the planet (the frequency at what we would see the planet
         // if we were sitting at the surface of the star).
         //
@@ -503,9 +542,13 @@ impl Evolver {
         // Excentric orbits needs more than one frequency to be described and it will be
         // included in future versions of this code.
         let (new_inverse_tidal_q_factor, left_index) = match self.evolution {
-            EvolutionType::BolmontMathis2016(_) | EvolutionType::GalletBolmont2017(_) | EvolutionType::LeconteChabrier2013(true) => {
-                linear_interpolation(current_time, &self.time[self.idx()..], &self.inverse_tidal_q_factor[self.idx()..])
-            },
+            EvolutionType::BolmontMathis2016(_)
+            | EvolutionType::GalletBolmont2017(_)
+            | EvolutionType::LeconteChabrier2013(true) => linear_interpolation(
+                current_time,
+                &self.time[self.idx()..],
+                &self.inverse_tidal_q_factor[self.idx()..],
+            ),
             _ => (current_inverse_tidal_q_factor, 0),
         };
         self.left_index += left_index;
@@ -513,7 +556,11 @@ impl Evolver {
     }
 }
 
-pub fn calculate_particles_non_spin_dependent_evolving_quantities(current_time: f64, particles: &mut [Particle], particles_evolvers: &mut Vec<Evolver>) {
+pub fn calculate_particles_non_spin_dependent_evolving_quantities(
+    current_time: f64,
+    particles: &mut [Particle],
+    particles_evolvers: &mut Vec<Evolver>,
+) {
     for (particle, evolver) in particles.iter_mut().zip(particles_evolvers.iter_mut()) {
         ////////////////////////////////////////////////////////////////////
         // Radius and radius of gyration 2
@@ -521,11 +568,15 @@ pub fn calculate_particles_non_spin_dependent_evolving_quantities(current_time: 
         // If particle radius/radius_of_gyration_2 evolves
         // - Compute the moment of inertia
         let new_radius = evolver.radius(current_time, particle.radius);
-        let new_radius_of_gyration_2 = evolver.radius_of_gyration_2(current_time, particle.radius_of_gyration_2);
-        if new_radius != particle.radius || new_radius_of_gyration_2 != particle.radius_of_gyration_2 {
+        let new_radius_of_gyration_2 =
+            evolver.radius_of_gyration_2(current_time, particle.radius_of_gyration_2);
+        if new_radius != particle.radius
+            || new_radius_of_gyration_2 != particle.radius_of_gyration_2
+        {
             particle.radius = new_radius;
             particle.radius_of_gyration_2 = new_radius_of_gyration_2;
-            particle.moment_of_inertia = particle.mass * particle.radius_of_gyration_2 * particle.radius.powi(2);
+            particle.moment_of_inertia =
+                particle.mass * particle.radius_of_gyration_2 * particle.radius.powi(2);
         }
 
         ////////////////////////////////////////////////////////////////////
@@ -536,32 +587,36 @@ pub fn calculate_particles_non_spin_dependent_evolving_quantities(current_time: 
                 if let TidalModel::ConstantTimeLag(mut params) = tidal_model {
                     params.love_number = evolver.love_number(current_time, params.love_number);
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         };
 
         //println!("[{}] Evolve Radius {:e} Gyration {:e} Love {:e}", current_time, particle.radius, particle.radius_of_gyration_2, particle.love_number);
     }
-
 }
 
-pub fn calculate_particles_spin_dependent_evolving_quantities(current_time: f64, particles: &mut [Particle], particles_evolvers: &mut Vec<Evolver>) {
+pub fn calculate_particles_spin_dependent_evolving_quantities(
+    current_time: f64,
+    particles: &mut [Particle],
+    particles_evolvers: &mut Vec<Evolver>,
+) {
     for (particle, evolver) in particles.iter_mut().zip(particles_evolvers.iter_mut()) {
         ////////////////////////////////////////////////////////////////////
         // Lag angle
         ////////////////////////////////////////////////////////////////////
         particle.tides.parameters.internal.lag_angle = match evolver.evolution {
-            EvolutionType::BolmontMathis2016(_) | EvolutionType::GalletBolmont2017(_) | EvolutionType::LeconteChabrier2013(true) => {
-                    let inverse_tidal_q_factor = evolver.inverse_tidal_q_factor(current_time, 0.);
-                    let epsilon_squared = particle.norm_spin_vector_2/SUN_DYN_FREQ_2;
-                    // Normal formula = 3.d0*epsilon_squared*Q_str_inv/(4.d0*k2s)
-                    // but as for sigma it is necessary to divide by k2s, we do not divide here
-                    let lag_angle = 3.0*epsilon_squared*inverse_tidal_q_factor/4.0;
-                    lag_angle
-                },
+            EvolutionType::BolmontMathis2016(_)
+            | EvolutionType::GalletBolmont2017(_)
+            | EvolutionType::LeconteChabrier2013(true) => {
+                let inverse_tidal_q_factor = evolver.inverse_tidal_q_factor(current_time, 0.);
+                let epsilon_squared = particle.norm_spin_vector_2 / SUN_DYN_FREQ_2;
+                // Normal formula = 3.d0*epsilon_squared*Q_str_inv/(4.d0*k2s)
+                // but as for sigma it is necessary to divide by k2s, we do not divide here
+                let lag_angle = 3.0 * epsilon_squared * inverse_tidal_q_factor / 4.0;
+                lag_angle
+            }
             _ => 0.,
         };
         //println!("[{}] Evolve Lag {:e}", current_time, particle.lag_angle);
     }
-
 }

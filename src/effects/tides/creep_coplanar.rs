@@ -1,19 +1,23 @@
 // Implemented by Gabriel Oliveira Gomes
 // Described in Gomes et al (2021): https://ui.adsabs.harvard.edu/abs/2021A%26A...651A..23G/abstract
-use serde::{Serialize, Deserialize};
 use super::super::super::constants::{K2, PI};
 use super::super::super::tools;
-use super::super::super::{Particle};
-use super::super::super::{Axes};
-use super::common::TidesEffect;
+use super::super::super::Axes;
+use super::super::super::Particle;
 use super::common::TidalModel;
+use super::common::TidesEffect;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CreepCoplanarParameters {
     pub uniform_viscosity_coefficient: f64,
 }
 
-pub fn calculate_torque_due_to_tides(tidal_host_particle: &Particle, particle: &Particle, central_body:bool) -> Axes {
+pub fn calculate_torque_due_to_tides(
+    tidal_host_particle: &Particle,
+    particle: &Particle,
+    central_body: bool,
+) -> Axes {
     let torque_due_to_tides_x: f64 = 0.;
     let torque_due_to_tides_y: f64 = 0.;
     //let torque_due_to_tides_z: f64 = 0.0;
@@ -30,30 +34,40 @@ pub fn calculate_torque_due_to_tides(tidal_host_particle: &Particle, particle: &
             // See more discussions in https://arxiv.org/abs/2105.02336
             let consider_tides = true;
             let consider_rotational_flattening = false;
-            let tidal_host_shape = calculate_creep_coplanar_shape(&tidal_host_particle, &particle, consider_tides, consider_rotational_flattening, central_body);
+            let tidal_host_shape = calculate_creep_coplanar_shape(
+                &tidal_host_particle,
+                &particle,
+                consider_tides,
+                consider_rotational_flattening,
+                central_body,
+            );
             3.0 / 5.0
-            * K2
-            * tidal_host_particle.mass
-            * particle.mass
-            * tidal_host_particle.radius
-            * tidal_host_particle.radius
-            * tidal_host_shape.y
-            / particle.tides.parameters.internal.distance.powi(3)
-        },
+                * K2
+                * tidal_host_particle.mass
+                * particle.mass
+                * tidal_host_particle.radius
+                * tidal_host_particle.radius
+                * tidal_host_shape.y
+                / particle.tides.parameters.internal.distance.powi(3)
+        }
         false => {
             // Planet shape is host dependent and it was already computed
             3.0 / 5.0
-            * K2
-            * particle.mass
-            * tidal_host_particle.mass
-            * particle.radius
-            * particle.radius
-            * particle.tides.parameters.internal.shape.y
-            / particle.tides.parameters.internal.distance.powi(3)
+                * K2
+                * particle.mass
+                * tidal_host_particle.mass
+                * particle.radius
+                * particle.radius
+                * particle.tides.parameters.internal.shape.y
+                / particle.tides.parameters.internal.distance.powi(3)
         }
     };
-    
-    Axes{x: torque_due_to_tides_x, y: torque_due_to_tides_y, z: torque_due_to_tides_z}
+
+    Axes {
+        x: torque_due_to_tides_x,
+        y: torque_due_to_tides_y,
+        z: torque_due_to_tides_z,
+    }
 }
 
 pub fn calculate_tidal_force(tidal_host_particle: &Particle, particle: &Particle) -> Axes {
@@ -61,7 +75,8 @@ pub fn calculate_tidal_force(tidal_host_particle: &Particle, particle: &Particle
     // Factorize common terms;
 
     // Expression for ONLY tides
-    let total_tidal_force_x = particle.tides.coordinates.position.x / particle.tides.parameters.internal.distance
+    let total_tidal_force_x = particle.tides.coordinates.position.x
+        / particle.tides.parameters.internal.distance
         * (-0.9
             * K2
             * particle.mass
@@ -89,7 +104,8 @@ pub fn calculate_tidal_force(tidal_host_particle: &Particle, particle: &Particle
             * particle.tides.parameters.internal.shape.y);
 
     // Expression for ONLY tides
-    let total_tidal_force_y = particle.tides.coordinates.position.y / particle.tides.parameters.internal.distance
+    let total_tidal_force_y = particle.tides.coordinates.position.y
+        / particle.tides.parameters.internal.distance
         * (-0.9
             * K2
             * particle.mass
@@ -116,13 +132,21 @@ pub fn calculate_tidal_force(tidal_host_particle: &Particle, particle: &Particle
             / (5.0 * distance_4 * particle.tides.parameters.internal.distance)
             * particle.tides.parameters.internal.shape.y);
 
-    Axes{x: total_tidal_force_x, y: total_tidal_force_y, z: 0.}
+    Axes {
+        x: total_tidal_force_x,
+        y: total_tidal_force_y,
+        z: 0.,
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Creep coplanar tools
 ////////////////////////////////////////////////////////////////////////////////
-pub fn calculate_creep_coplanar_shapes(tidal_host_particle: &mut Particle, particles: &mut [Particle], more_particles: &mut [Particle]) {
+pub fn calculate_creep_coplanar_shapes(
+    tidal_host_particle: &mut Particle,
+    particles: &mut [Particle],
+    more_particles: &mut [Particle],
+) {
     // It does not compute the host shape since it is planet dependent
     // and it will be computed later when it is needed
     for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
@@ -133,21 +157,33 @@ pub fn calculate_creep_coplanar_shapes(tidal_host_particle: &mut Particle, parti
                 } else {
                     0.
                 }
-            },
+            }
             _ => 0.,
         };
         if particle_uniform_viscosity_coefficient == 0. {
-            continue
+            continue;
         }
         let consider_tides = true;
         let consider_rotational_flattening = false;
         let central_body = false;
-        let shape = calculate_creep_coplanar_shape(&tidal_host_particle, &particle, consider_tides, consider_rotational_flattening, central_body);
+        let shape = calculate_creep_coplanar_shape(
+            &tidal_host_particle,
+            &particle,
+            consider_tides,
+            consider_rotational_flattening,
+            central_body,
+        );
         particle.tides.parameters.internal.shape = shape;
     }
 }
 
-pub fn calculate_creep_coplanar_shape(tidal_host_particle: &Particle, particle: &Particle, consider_tides: bool, consider_rotational_flattening: bool, central_body: bool) -> Axes {
+pub fn calculate_creep_coplanar_shape(
+    tidal_host_particle: &Particle,
+    particle: &Particle,
+    consider_tides: bool,
+    consider_rotational_flattening: bool,
+    central_body: bool,
+) -> Axes {
     let gm = tidal_host_particle.mass_g + particle.mass_g;
     let (
         semimajor_axis,
@@ -176,7 +212,7 @@ pub fn calculate_creep_coplanar_shape(tidal_host_particle: &Particle, particle: 
                     } else {
                         0.
                     }
-                },
+                }
                 _ => 0.,
             };
             calculate_particle_shape(
@@ -192,18 +228,19 @@ pub fn calculate_creep_coplanar_shape(tidal_host_particle: &Particle, particle: 
                 consider_tides,
                 consider_rotational_flattening,
             )
-        },
+        }
         true => {
-            let tidal_host_particle_uniform_viscosity_coefficient = match &tidal_host_particle.tides.effect {
-                TidesEffect::CentralBody(tidal_model) => {
-                    if let TidalModel::CreepCoplanar(params) = tidal_model {
-                        params.uniform_viscosity_coefficient
-                    } else {
-                        0.
+            let tidal_host_particle_uniform_viscosity_coefficient =
+                match &tidal_host_particle.tides.effect {
+                    TidesEffect::CentralBody(tidal_model) => {
+                        if let TidalModel::CreepCoplanar(params) = tidal_model {
+                            params.uniform_viscosity_coefficient
+                        } else {
+                            0.
+                        }
                     }
-                },
-                _ => 0.,
-            };
+                    _ => 0.,
+                };
             calculate_particle_shape(
                 semimajor_axis,
                 eccentricity,
@@ -239,10 +276,10 @@ pub fn calculate_particle_shape(
     let epsilon_z_bar: f64;
     let mean_motion: f64;
     let relaxation_factor: f64;
-    let (
-        x_component_of_the_equatorial_prolateness,
-        y_component_of_the_equatorial_prolateness,
-    ): (f64, f64);
+    let (x_component_of_the_equatorial_prolateness, y_component_of_the_equatorial_prolateness): (
+        f64,
+        f64,
+    );
     let alpha: f64;
     let mean_motion_to_relaxation_factor_ratio: f64;
     let (
@@ -274,19 +311,21 @@ pub fn calculate_particle_shape(
         epsilon_rho_bar = 0.;
     }
     if consider_rotational_flattening {
-        epsilon_z_bar = 5.0 * primary_spin * primary_spin * radius.powi(3) / (4.0 * K2 * primary_mass);
+        epsilon_z_bar =
+            5.0 * primary_spin * primary_spin * radius.powi(3) / (4.0 * K2 * primary_mass);
     } else {
         epsilon_z_bar = 0.;
     }
     companion_mass_to_sum_of_masses_ratio = companion_mass / (primary_mass + companion_mass);
 
-         // This part is important, adjust properly!
+    // This part is important, adjust properly!
 
     if relaxation_factor < mean_motion {
         pseudo_synchronization_frequency = 0.9 * mean_motion; // 1.0 * mean_motion + 6.0 * eccentricity * eccentricity * mean_motion;
     } else {
         pseudo_synchronization_frequency =
-            1.0 * mean_motion + 7.0 * eccentricity * eccentricity * mean_motion; // 1.0 * mean_motion + 8.0 * eccentricity * eccentricity * mean_motion;
+            1.0 * mean_motion + 7.0 * eccentricity * eccentricity * mean_motion;
+        // 1.0 * mean_motion + 8.0 * eccentricity * eccentricity * mean_motion;
     }
 
     if primary_spin < pseudo_synchronization_frequency {
@@ -406,24 +445,23 @@ pub fn calculate_particle_shape(
 
             // common block (relaxation_factor * cayley[1][k] / (relaxation_factor.powi(2) + (2.0*primary_spin-(9.0-dk)*mean_motion).powi(2)))
 
-             sum_x_component_of_the_equatorial_prolateness += relaxation_factor * cayley[1][k]
+            sum_x_component_of_the_equatorial_prolateness += relaxation_factor * cayley[1][k]
                 / (relaxation_factor.powi(2)
                     + (2.0 * primary_spin - (9.0 - dk) * mean_motion).powi(2))
                 * (relaxation_factor * (equatorial_angles).cos()
                     - (2.0 * primary_spin - (9.0 - dk) * mean_motion) * (equatorial_angles).sin());
-             sum_y_component_of_the_equatorial_prolateness += relaxation_factor * cayley[1][k]
+            sum_y_component_of_the_equatorial_prolateness += relaxation_factor * cayley[1][k]
                 / (relaxation_factor.powi(2)
                     + (2.0 * primary_spin - (9.0 - dk) * mean_motion).powi(2))
                 * (relaxation_factor * (equatorial_angles).sin()
                     + (2.0 * primary_spin - (9.0 - dk) * mean_motion) * (equatorial_angles).cos());
-             sum_epsilon_z += cayley[0][k]
+            sum_epsilon_z += cayley[0][k]
                 / ((dk - 7.0).powi(2) * mean_motion.powi(2) + relaxation_factor.powi(2))
                 * ((dk - 7.0).powi(2) * mean_motion.powi(2) * (polar_angles).sin()
                     + relaxation_factor.powi(2) * (polar_angles).cos());
             //sum_x_component_of_the_equatorial_prolateness += 0.0;
             //sum_y_component_of_the_equatorial_prolateness += 0.0;
             //sum_epsilon_z += 0.0;
-             
 
             // println!("{} {} {}", mean_anomaly * 180.0 / PI , relaxation_factor * cayley[1][k as usize] / (relaxation_factor.powi(2) + (2.0*primary_spin-(9.0-dk)*mean_motion).powi(2)) * (relaxation_factor * (equatorial_angles).cos() - (2.0*primary_spin-(9.0-dk)*mean_motion) * (equatorial_angles).sin()) , relaxation_factor * cayley[1][k as usize] / (relaxation_factor.powi(2) + (2.0*primary_spin-(9.0-dk)*mean_motion).powi(2)) * (relaxation_factor * (equatorial_angles).sin() + (2.0*primary_spin-(9.0-dk)*mean_motion) * (equatorial_angles).cos()));
 
