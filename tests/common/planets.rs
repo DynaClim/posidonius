@@ -1,4 +1,4 @@
-extern crate posidonius;
+use posidonius;
 
 // NewFeatures: new functions added: basic_planetary_configuration_for_stellar_kaula,
 // basic_planetary_configuration_for_planetary_kaula, super_earth_like, trappist1_h_like
@@ -13,7 +13,7 @@ pub fn basic_planetary_configuration_for_stellar_kaula(
     let planet1_eccentricity = 0.000001;
     let planet1_obliquity: f64 = 0. * posidonius::constants::DEG2RAD;
     let planet1 = super_earth_like(
-        &star,
+        star,
         planet1_mass,
         planet1_evolution,
         planet1_semimajor_axis,
@@ -21,7 +21,7 @@ pub fn basic_planetary_configuration_for_stellar_kaula(
         planet1_obliquity,
     );
 
-    return vec![planet1];
+    vec![planet1]
 }
 
 #[allow(dead_code)]
@@ -35,7 +35,7 @@ pub fn basic_planetary_configuration_for_planetary_kaula(
     let planet1_eccentricity = 0.1;
     let planet1_obliquity: f64 = 0. * posidonius::constants::DEG2RAD;
     let planet1 = trappist1_h_like(
-        &star,
+        star,
         planet1_mass,
         planet1_evolution,
         planet1_semimajor_axis,
@@ -43,7 +43,7 @@ pub fn basic_planetary_configuration_for_planetary_kaula(
         planet1_obliquity,
     );
 
-    return vec![planet1];
+    vec![planet1]
 }
 
 #[allow(dead_code)]
@@ -55,7 +55,7 @@ pub fn basic_configuration(star: &posidonius::Particle) -> Vec<posidonius::Parti
     let planet1_eccentricity = 0.1;
     let planet1_obliquity: f64 = 11.459156 * posidonius::constants::DEG2RAD; // 0.2 rad
     let planet1 = earth_like(
-        &star,
+        star,
         planet1_mass,
         planet1_evolution,
         planet1_semimajor_axis,
@@ -70,7 +70,7 @@ pub fn basic_configuration(star: &posidonius::Particle) -> Vec<posidonius::Parti
     let planet2_eccentricity = 0.1;
     let planet2_obliquity: f64 = 45.0 * posidonius::constants::DEG2RAD;
     let planet2 = jupiter_like(
-        &star,
+        star,
         planet2_mass,
         planet2_evolution,
         planet2_semimajor_axis,
@@ -85,7 +85,7 @@ pub fn basic_configuration(star: &posidonius::Particle) -> Vec<posidonius::Parti
     let planet3_eccentricity = 0.1; // this helps testing Kaula special case for small obliquities & eccentricity different than zero
     let planet3_obliquity: f64 = 0.0 * posidonius::constants::DEG2RAD; // 0.0 rad => this helps testing Kaula special case for small obliquities
     let planet3 = jupiter_like(
-        &star,
+        star,
         planet3_mass,
         planet3_evolution,
         planet3_semimajor_axis,
@@ -100,14 +100,14 @@ pub fn basic_configuration(star: &posidonius::Particle) -> Vec<posidonius::Parti
     let planet4_eccentricity = 0.0; // this helps testing Kaula special case for small obliquities & eccentricity exactly zero
     let planet4_obliquity: f64 = 0.0 * posidonius::constants::DEG2RAD; // 0.0 rad => this helps testing Kaula special case for small obliquities
     let planet4 = jupiter_like(
-        &star,
+        star,
         planet4_mass,
         planet4_evolution,
         planet4_semimajor_axis,
         planet4_eccentricity,
         planet4_obliquity,
     );
-    return vec![planet1, planet2, planet3, planet4];
+    vec![planet1, planet2, planet3, planet4]
 }
 
 #[allow(dead_code)]
@@ -141,13 +141,13 @@ pub fn super_earth_like(
     let mut p: f64 = 0. * posidonius::constants::DEG2RAD; // argument of pericentre (degrees)
     let n: f64 = 0. * posidonius::constants::DEG2RAD; // longitude of the ascending node (degrees)
     let l: f64 = 0. * posidonius::constants::DEG2RAD; // mean anomaly (degrees)
-    p = p + n; // Convert to longitude of perihelion !!
+    p += n; // Convert to longitude of perihelion !!
     let q = a * (1.0 - e); // perihelion distance
     let gm: f64 = posidonius::constants::G * (planet_mass + star.mass);
     let (x, y, z, vx, vy, vz) =
         posidonius::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
 
-    let planet_position = posidonius::Axes { x: x, y: y, z: z };
+    let planet_position = posidonius::Axes { x, y, z };
     let planet_velocity = posidonius::Axes {
         x: vx,
         y: vy,
@@ -234,7 +234,7 @@ pub fn trappist1_h_like(
     let planet_radius = 4810105.0000000000 / posidonius::constants::AU; // Assume same average density with Earth's
 
     ////// Radius of gyration
-    let gyration_radius_2: f64 = 0.33916953912205672;
+    let gyration_radius_2: f64 = 0.339_169_539_122_056_7;
     let planet_radius_of_gyration: f64 = (gyration_radius_2).sqrt();
 
     ////////// Specify initial position and velocity for a stable orbit
@@ -245,13 +245,13 @@ pub fn trappist1_h_like(
     let mut p: f64 = 0. * posidonius::constants::DEG2RAD; // argument of pericentre (degrees)
     let n: f64 = 185. * posidonius::constants::DEG2RAD; // longitude of the ascending node (degrees)
     let l: f64 = 290.85550 * posidonius::constants::DEG2RAD; // mean anomaly (degrees)
-    p = p + n; // Convert to longitude of perihelion !!
+    p += n; // Convert to longitude of perihelion !!
     let q = a * (1.0 - e); // perihelion distance
     let gm: f64 = posidonius::constants::G * (planet_mass + star.mass);
     let (x, y, z, vx, vy, vz) =
         posidonius::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
 
-    let planet_position = posidonius::Axes { x: x, y: y, z: z };
+    let planet_position = posidonius::Axes { x, y, z };
     let planet_velocity = posidonius::Axes {
         x: vx,
         y: vy,
@@ -362,7 +362,7 @@ pub fn earth_like(
     let mut p: f64 = 0. * posidonius::constants::DEG2RAD; // argument of pericentre (degrees)
     let n: f64 = 0. * posidonius::constants::DEG2RAD; // longitude of the ascending node (degrees)
     let l: f64 = 0. * posidonius::constants::DEG2RAD; // mean anomaly (degrees)
-    p = p + n; // Convert to longitude of perihelion !!
+    p += n; // Convert to longitude of perihelion !!
     let q = a * (1.0 - e); // perihelion distance
     let gm: f64 = posidonius::constants::G * (planet_mass + star.mass);
     let (x, y, z, vx, vy, vz) =
@@ -377,7 +377,7 @@ pub fn earth_like(
     //let vy: f64 = core::num::Float::sqrt(gm/x); // Stable orbit
     //let vz: f64 = 0.;
 
-    let planet_position = posidonius::Axes { x: x, y: y, z: z };
+    let planet_position = posidonius::Axes { x, y, z };
     let planet_velocity = posidonius::Axes {
         x: vx,
         y: vy,
@@ -495,7 +495,7 @@ pub fn jupiter_like(
     let mut p: f64 = 0. * posidonius::constants::DEG2RAD; // argument of pericentre (degrees)
     let n: f64 = 0. * posidonius::constants::DEG2RAD; // longitude of the ascending node (degrees)
     let l: f64 = 0. * posidonius::constants::DEG2RAD; // mean anomaly (degrees)
-    p = p + n; // Convert to longitude of perihelion !!
+    p += n; // Convert to longitude of perihelion !!
     let q = a * (1.0 - e); // perihelion distance
     let gm: f64 = posidonius::constants::G * (planet_mass + star.mass);
     let (x, y, z, vx, vy, vz) =
@@ -510,7 +510,7 @@ pub fn jupiter_like(
     //let vy: f64 = core::num::Float::sqrt(gm/x); // Stable orbit
     //let vz: f64 = 0.;
 
-    let planet_position = posidonius::Axes { x: x, y: y, z: z };
+    let planet_position = posidonius::Axes { x, y, z };
     let planet_velocity = posidonius::Axes {
         x: vx,
         y: vy,

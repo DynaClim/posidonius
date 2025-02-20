@@ -1,4 +1,3 @@
-extern crate time;
 use super::super::constants::K2;
 use super::super::{Disk, EvolutionType, GeneralRelativity, RotationalFlattening, Tides, Wind};
 use super::super::{
@@ -76,9 +75,9 @@ impl Particle {
         let moment_of_inertia = mass * radius_of_gyration_2 * radius.powi(2);
         Particle {
             id: 0, // Unique internal identifier, to be set by the universe
-            mass: mass,
+            mass,
             mass_g: mass * K2,
-            radius: radius,
+            radius,
             inertial_position: Axes {
                 x: 0.,
                 y: 0.,
@@ -105,7 +104,7 @@ impl Particle {
             heliocentric_radial_velocity: 0.,
             heliocentric_norm_velocity_vector: 0.,
             heliocentric_norm_velocity_vector_2: 0.,
-            spin: spin,
+            spin,
             norm_spin_vector_2: (spin.x.powi(2)) + (spin.y.powi(2)) + (spin.z.powi(2)),
             angular_momentum: Axes {
                 x: moment_of_inertia * spin.x,
@@ -117,15 +116,15 @@ impl Particle {
                 y: 0.,
                 z: 0.,
             },
-            radius_of_gyration_2: radius_of_gyration_2,
-            moment_of_inertia: moment_of_inertia,
+            radius_of_gyration_2,
+            moment_of_inertia,
             reference: Reference::MostMassiveParticle,
-            tides: tides,
-            rotational_flattening: rotational_flattening,
-            general_relativity: general_relativity,
-            wind: wind,
-            disk: disk,
-            evolution: evolution,
+            tides,
+            rotational_flattening,
+            general_relativity,
+            wind,
+            disk,
+            evolution,
         }
     }
 
@@ -212,42 +211,37 @@ impl Particle {
     pub fn check_uniform_viscosity_coefficient(&mut self) {
         // If creep coplanar tides and rotational flattening are set, both need to have the same
         // uniform viscosity coefficient parameter
-        let disabled_tides = match self.tides.effect {
-            TidesEffect::Disabled => true,
-            _ => false,
-        };
-        let disabled_rotational_flattening = match self.rotational_flattening.effect {
-            RotationalFlatteningEffect::Disabled => true,
-            _ => false,
-        };
+        let disabled_tides = matches!(self.tides.effect, TidesEffect::Disabled);
+        let disabled_rotational_flattening = matches!(
+            self.rotational_flattening.effect,
+            RotationalFlatteningEffect::Disabled
+        );
         if !disabled_tides && !disabled_rotational_flattening {
-            let (creep_coplanar_tides, particle_uniform_viscosity_coefficient_for_tides) =
-                match &self.tides.effect {
-                    TidesEffect::CentralBody(tidal_model)
-                    | TidesEffect::OrbitingBody(tidal_model) => {
-                        if let TidalModel::CreepCoplanar(params) = tidal_model {
-                            (true, params.uniform_viscosity_coefficient)
-                        } else {
-                            (false, 0.)
-                        }
-                    }
-                    _ => (false, 0.),
-                };
+            let (creep_coplanar_tides, particle_uniform_viscosity_coefficient_for_tides) = {
+                if let TidesEffect::CentralBody(TidalModel::CreepCoplanar(params))
+                | TidesEffect::OrbitingBody(TidalModel::CreepCoplanar(params)) =
+                    &self.tides.effect
+                {
+                    (true, params.uniform_viscosity_coefficient)
+                } else {
+                    (false, 0.)
+                }
+            };
             let (
                 creep_coplanar_rotational_flattening,
                 particle_uniform_viscosity_coefficient_for_rotational_flattenning,
-            ) = match self.rotational_flattening.effect {
-                RotationalFlatteningEffect::CentralBody(rotational_flattening_model)
-                | RotationalFlatteningEffect::OrbitingBody(rotational_flattening_model) => {
-                    if let RotationalFlatteningModel::CreepCoplanar(params) =
-                        rotational_flattening_model
-                    {
-                        (true, params.uniform_viscosity_coefficient)
-                    } else {
-                        (false, 0.)
-                    }
+            ) = {
+                if let RotationalFlatteningEffect::CentralBody(
+                    RotationalFlatteningModel::CreepCoplanar(params),
+                )
+                | RotationalFlatteningEffect::OrbitingBody(
+                    RotationalFlatteningModel::CreepCoplanar(params),
+                ) = &self.rotational_flattening.effect
+                {
+                    (true, params.uniform_viscosity_coefficient)
+                } else {
+                    (false, 0.)
                 }
-                _ => (false, 0.),
             };
             if (creep_coplanar_tides && !creep_coplanar_rotational_flattening)
                 || (!creep_coplanar_tides && creep_coplanar_rotational_flattening)
@@ -258,9 +252,7 @@ impl Particle {
                     (particle_uniform_viscosity_coefficient_for_tides
                         - particle_uniform_viscosity_coefficient_for_rotational_flattenning)
                         .abs();
-                if diff_uniform_viscosity_coefficient > 1.0e-16 {
-                    panic!("[ERROR {} UTC] When using Creep Coplanar Tidal and rotational flattening effects, the uniform viscosity coefficient must be identical {:.16}.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap(), diff_uniform_viscosity_coefficient);
-                }
+                assert!(diff_uniform_viscosity_coefficient <= 1.0e-16, "[ERROR {} UTC] When using Creep Coplanar Tidal and rotational flattening effects, the uniform viscosity coefficient must be identical {:.16}.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap(), diff_uniform_viscosity_coefficient);
             }
         }
     }
@@ -287,11 +279,11 @@ fn evolution_warnings(evolution: EvolutionType) {
     match evolution {
         EvolutionType::GalletBolmont2017(_) => {
             println!("[WARNING {} UTC] Bodies with GalletBolmont2017 evolution will ignore initial radius and dissipation factor.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
-            println!("[WARNING {} UTC] GalletBolmont2017 prescription theoretically only works for circular orbits and non inclined orbits, use carefully.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap())
+            println!("[WARNING {} UTC] GalletBolmont2017 prescription theoretically only works for circular orbits and non inclined orbits, use carefully.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
         },
         EvolutionType::BolmontMathis2016(_) => {
             println!("[WARNING {} UTC] Bodies with Baraffe2015 evolution will ignore initial radius and radius of gyration.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
-            println!("[WARNING {} UTC] BolmontMathis2016 prescription theoretically only works for circular orbits and non inclined orbits, use carefully. ", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap())
+            println!("[WARNING {} UTC] BolmontMathis2016 prescription theoretically only works for circular orbits and non inclined orbits, use carefully. ", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
         },
         EvolutionType::Baraffe2015(_) => println!("[WARNING {} UTC]  ", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap()),
         EvolutionType::Leconte2011(_) => println!("[WARNING {} UTC] Bodies with Leconte2011 evolution will ignore initial radius and radius of gyration.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap()),

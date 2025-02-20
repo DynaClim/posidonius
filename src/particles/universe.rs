@@ -1,4 +1,3 @@
-extern crate time;
 use super::super::constants::{G, MAX_DISTANCE_2, MAX_PARTICLES};
 use super::super::effects::{
     disk, evolution, general_relativity, rotational_flattening, tides, wind,
@@ -12,6 +11,7 @@ use super::Particle;
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 use std::collections::HashMap;
+use time;
 use time::{format_description, OffsetDateTime};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -100,7 +100,7 @@ impl Universe {
                         {
                             particle.general_relativity.parameters.internal.factor =
                                 local_copy_star_mass_g * particle.mass_g
-                                    / (local_copy_star_mass_g + particle.mass_g).powi(2)
+                                    / (local_copy_star_mass_g + particle.mass_g).powi(2);
                         }
                     }
                 }
@@ -111,7 +111,7 @@ impl Universe {
         // positions/velocities, they are transformed to barycentric)
         let (center_of_mass_position, center_of_mass_velocity) =
             calculate_center_of_mass(&particles);
-        for particle in particles.iter_mut() {
+        for particle in &mut particles {
             particle.inertial_position.x =
                 particle.heliocentric_position.x - center_of_mass_position.x;
             particle.inertial_position.y =
@@ -131,12 +131,11 @@ impl Universe {
         // - The array should have a fixed size, thus it should always be equal or greater to the vector passed
         // - The array elements to be considered will be limited by the n_particles value
         let n_particles = particles.len();
-        if n_particles > MAX_PARTICLES {
-            panic!(
-                "Only {} bodies are allowed, you need to increase the MAX_PARTICLE constant.",
-                MAX_PARTICLES
-            );
-        }
+        assert!(
+            (n_particles <= MAX_PARTICLES),
+            "Only {} bodies are allowed, you need to increase the MAX_PARTICLE constant.",
+            MAX_PARTICLES
+        );
         let mut transformed_particles = [Particle::new_dummy(); MAX_PARTICLES];
         let mut particles_evolvers: Vec<Evolver> = Vec::with_capacity(n_particles);
         for i in 0..n_particles {
@@ -197,19 +196,18 @@ impl Universe {
         let roche_radiuses: [f64; MAX_PARTICLES * MAX_PARTICLES] =
             [0.; MAX_PARTICLES * MAX_PARTICLES];
 
-        let universe = Universe {
-            initial_time: initial_time,
-            time_limit: time_limit,
+        Universe {
+            initial_time,
+            time_limit,
             particles: transformed_particles,
-            particles_evolvers: particles_evolvers,
-            n_particles: n_particles,
-            consider_effects: consider_effects,
-            general_relativity_implementation: general_relativity_implementation,
-            hosts: hosts,
+            particles_evolvers,
+            n_particles,
+            consider_effects,
+            general_relativity_implementation,
+            hosts,
             pair_dependent_scaled_dissipation_factor: HashMap::new(),
-            roche_radiuses: roche_radiuses,
-        };
-        universe
+            roche_radiuses,
+        }
     }
 
     pub fn calculate_roche_radiuses(&mut self) {
@@ -407,21 +405,21 @@ impl Universe {
     }
 
     pub fn calculate_spin_and_evolving_quantities(&mut self, current_time: f64, evolution: bool) {
-        let (mut particles, _) = self.particles.split_at_mut(self.n_particles);
+        let (particles, _) = self.particles.split_at_mut(self.n_particles);
         if evolution && self.consider_effects.evolution {
             // Evolve quantities (among others, it computes a new moment of inertia)
             evolution::calculate_particles_non_spin_dependent_evolving_quantities(
                 current_time,
-                &mut particles,
+                particles,
                 &mut self.particles_evolvers,
             );
         }
-        common::calculate_spin(&mut particles); // uses moment of inertia to compute spin
+        common::calculate_spin(particles); // uses moment of inertia to compute spin
         if evolution && self.consider_effects.evolution {
             // Evolve quantities that require a computed spin
             evolution::calculate_particles_spin_dependent_evolving_quantities(
                 current_time,
-                &mut particles,
+                particles,
                 &mut self.particles_evolvers,
             );
         }
@@ -477,17 +475,16 @@ impl Universe {
     }
 
     pub fn initialize(&mut self, dangular_momentum_dt: bool, accelerations: bool) {
-        let initialize_tides = (dangular_momentum_dt && self.consider_effects.tides)
-            || (accelerations && self.consider_effects.tides);
-        let initialize_rotational_flattening = (dangular_momentum_dt
-            && self.consider_effects.rotational_flattening)
-            || (accelerations && self.consider_effects.rotational_flattening);
+        let initialize_tides =
+            self.consider_effects.tides && (accelerations || dangular_momentum_dt);
+        let initialize_rotational_flattening =
+            self.consider_effects.rotational_flattening && (dangular_momentum_dt || accelerations);
         let initialize_wind = dangular_momentum_dt && self.consider_effects.wind;
-        let initialize_general_relativity = (dangular_momentum_dt
-            && self.consider_effects.general_relativity
-            && self.general_relativity_implementation
-                == GeneralRelativityImplementation::Kidder1995)
-            || (accelerations && self.consider_effects.general_relativity);
+        let initialize_general_relativity = self.consider_effects.general_relativity
+            && (accelerations
+                || (dangular_momentum_dt
+                    && self.general_relativity_implementation
+                        == GeneralRelativityImplementation::Kidder1995));
         let initialize_disk = accelerations && self.consider_effects.disk;
         //
         let initialize = initialize_tides
@@ -496,147 +493,125 @@ impl Universe {
             || initialize_general_relativity
             || initialize_disk;
         if initialize {
-            let (mut particles, _) = self.particles.split_at_mut(self.n_particles);
+            let (particles, _) = self.particles.split_at_mut(self.n_particles);
             //
             if initialize_wind {
-                wind::initialize(&mut particles);
+                wind::initialize(particles);
             }
             //
-            let (mut particles_left, particles_right) =
+            let (particles_left, particles_right) =
                 particles.split_at_mut(self.hosts.index.most_massive);
-            if let Some((mut host_particle, mut particles_right)) =
-                particles_right.split_first_mut()
-            {
+            if let Some((host_particle, particles_right)) = particles_right.split_first_mut() {
                 if initialize_tides && self.hosts.most_massive.tides {
                     tides::copy_heliocentric_coordinates(
-                        &mut host_particle,
-                        &mut particles_left,
-                        &mut particles_right,
+                        host_particle,
+                        particles_left,
+                        particles_right,
                     );
-                    tides::initialize(
-                        &mut host_particle,
-                        &mut particles_left,
-                        &mut particles_right,
-                    );
+                    tides::initialize(host_particle, particles_left, particles_right);
                 }
                 if initialize_rotational_flattening && self.hosts.most_massive.rotational_flattening
                 {
                     rotational_flattening::copy_heliocentric_coordinates(
-                        &mut host_particle,
-                        &mut particles_left,
-                        &mut particles_right,
+                        host_particle,
+                        particles_left,
+                        particles_right,
                     );
                     rotational_flattening::initialize(
-                        &mut host_particle,
-                        &mut particles_left,
-                        &mut particles_right,
+                        host_particle,
+                        particles_left,
+                        particles_right,
                     );
                 }
                 if initialize_general_relativity && self.hosts.most_massive.general_relativity {
                     general_relativity::copy_heliocentric_coordinates(
-                        &mut host_particle,
-                        &mut particles_left,
-                        &mut particles_right,
+                        host_particle,
+                        particles_left,
+                        particles_right,
                     );
-                    general_relativity::initialize(
-                        &mut host_particle,
-                        &mut particles_left,
-                        &mut particles_right,
-                    );
+                    general_relativity::initialize(host_particle, particles_left, particles_right);
                 }
                 if initialize_disk && self.hosts.most_massive.disk {
                     disk::copy_heliocentric_coordinates(
-                        &mut host_particle,
-                        &mut particles_left,
-                        &mut particles_right,
+                        host_particle,
+                        particles_left,
+                        particles_right,
                     );
-                    disk::initialize(
-                        &mut host_particle,
-                        &mut particles_left,
-                        &mut particles_right,
-                    );
+                    disk::initialize(host_particle, particles_left, particles_right);
                 }
             }
             //
             if !self.hosts.most_massive.all {
                 if initialize_tides && !self.hosts.most_massive.tides {
-                    let (mut particles_left, particles_right) =
+                    let (particles_left, particles_right) =
                         particles.split_at_mut(self.hosts.index.tides);
-                    if let Some((mut tidal_host_particle, mut particles_right)) =
+                    if let Some((tidal_host_particle, particles_right)) =
                         particles_right.split_first_mut()
                     {
                         tides::inertial_to_heliocentric_coordinates(
-                            &mut tidal_host_particle,
-                            &mut particles_left,
-                            &mut particles_right,
+                            tidal_host_particle,
+                            particles_left,
+                            particles_right,
                         );
-                        tides::initialize(
-                            &mut tidal_host_particle,
-                            &mut particles_left,
-                            &mut particles_right,
-                        );
+                        tides::initialize(tidal_host_particle, particles_left, particles_right);
                     }
                 }
                 if initialize_rotational_flattening
                     && !self.hosts.most_massive.rotational_flattening
                 {
-                    let (mut particles_left, particles_right) =
+                    let (particles_left, particles_right) =
                         particles.split_at_mut(self.hosts.index.rotational_flattening);
-                    if let Some((mut rotational_flattening_host_particle, mut particles_right)) =
+                    if let Some((rotational_flattening_host_particle, particles_right)) =
                         particles_right.split_first_mut()
                     {
                         rotational_flattening::inertial_to_heliocentric_coordinates(
-                            &mut rotational_flattening_host_particle,
-                            &mut particles_left,
-                            &mut particles_right,
+                            rotational_flattening_host_particle,
+                            particles_left,
+                            particles_right,
                         );
                         rotational_flattening::initialize(
-                            &mut rotational_flattening_host_particle,
-                            &mut particles_left,
-                            &mut particles_right,
+                            rotational_flattening_host_particle,
+                            particles_left,
+                            particles_right,
                         );
                     }
                 }
                 if initialize_general_relativity && !self.hosts.most_massive.general_relativity {
-                    let (mut particles_left, particles_right) =
+                    let (particles_left, particles_right) =
                         particles.split_at_mut(self.hosts.index.general_relativity);
-                    if let Some((mut general_relativity_host_particle, mut particles_right)) =
+                    if let Some((general_relativity_host_particle, particles_right)) =
                         particles_right.split_first_mut()
                     {
                         general_relativity::inertial_to_heliocentric_coordinates(
-                            &mut general_relativity_host_particle,
-                            &mut particles_left,
-                            &mut particles_right,
+                            general_relativity_host_particle,
+                            particles_left,
+                            particles_right,
                         );
                         general_relativity::initialize(
-                            &mut general_relativity_host_particle,
-                            &mut particles_left,
-                            &mut particles_right,
+                            general_relativity_host_particle,
+                            particles_left,
+                            particles_right,
                         );
                     }
                 }
                 if initialize_disk && !self.hosts.most_massive.disk {
-                    let (mut particles_left, particles_right) =
+                    let (particles_left, particles_right) =
                         particles.split_at_mut(self.hosts.index.disk);
-                    if let Some((mut disk_host_particle, mut particles_right)) =
+                    if let Some((disk_host_particle, particles_right)) =
                         particles_right.split_first_mut()
                     {
                         disk::inertial_to_heliocentric_coordinates(
-                            &mut disk_host_particle,
-                            &mut particles_left,
-                            &mut particles_right,
+                            disk_host_particle,
+                            particles_left,
+                            particles_right,
                         );
-                        disk::initialize(
-                            &mut disk_host_particle,
-                            &mut particles_left,
-                            &mut particles_right,
-                        );
+                        disk::initialize(disk_host_particle, particles_left, particles_right);
                     }
                 }
             }
         }
         if accelerations {
-            for particle in self.particles[..self.n_particles].iter_mut() {
+            for particle in &mut self.particles[..self.n_particles] {
                 particle.inertial_additional_acceleration.x = 0.;
                 particle.inertial_additional_acceleration.y = 0.;
                 particle.inertial_additional_acceleration.z = 0.;
@@ -655,16 +630,14 @@ impl Universe {
         self.initialize(dangular_momentum_dt, accelerations);
         self.calculate_spin_and_evolving_quantities(current_time, evolution); // Make sure we start with the good initial values
 
-        let (mut particles, _) = self.particles.split_at_mut(self.n_particles);
+        let (particles, _) = self.particles.split_at_mut(self.n_particles);
         if dangular_momentum_dt && self.consider_effects.wind {
-            wind::calculate_wind_factor(&mut particles);
+            wind::calculate_wind_factor(particles);
         }
 
         if self.consider_effects.tides || self.consider_effects.rotational_flattening {
-            let (mut particles_left, particles_right) =
-                particles.split_at_mut(self.hosts.index.tides);
-            if let Some((mut tidal_host_particle, mut particles_right)) =
-                particles_right.split_first_mut()
+            let (particles_left, particles_right) = particles.split_at_mut(self.hosts.index.tides);
+            if let Some((tidal_host_particle, particles_right)) = particles_right.split_first_mut()
             {
                 if (dangular_momentum_dt
                     && (self.consider_effects.tides || self.consider_effects.rotational_flattening))
@@ -678,32 +651,32 @@ impl Universe {
                         //// calculate_orthogonal_components
 
                         tides::calculate_pair_dependent_scaled_dissipation_factors(
-                            &mut tidal_host_particle,
-                            &mut particles_left,
-                            &mut particles_right,
+                            tidal_host_particle,
+                            particles_left,
+                            particles_right,
                             &mut self.pair_dependent_scaled_dissipation_factor,
                         ); // Needed by calculate_orthogonal_component_of_the_tidal_force and calculate_orthogonal_component_of_the_tidal_force if BolmontMathis2016/GalletBolmont2017/LeconteChabrier2013(true)
 
                         if self.consider_effects.tides {
                             tides::calculate_orthogonal_component_of_the_tidal_force(
-                                &mut tidal_host_particle,
-                                &mut particles_left,
-                                &mut particles_right,
+                                tidal_host_particle,
+                                particles_left,
+                                particles_right,
                                 &mut self.pair_dependent_scaled_dissipation_factor,
                             );
                             tides::calculate_creep_coplanar_shapes(
-                                &mut tidal_host_particle,
-                                &mut particles_left,
-                                &mut particles_right,
+                                tidal_host_particle,
+                                particles_left,
+                                particles_right,
                             );
                         }
 
                         if self.consider_effects.rotational_flattening {
-                            rotational_flattening::calculate_orthogonal_component_of_the_force_induced_by_rotational_flattening(&mut tidal_host_particle, &mut particles_left, &mut particles_right);
+                            rotational_flattening::calculate_orthogonal_component_of_the_force_induced_by_rotational_flattening(tidal_host_particle, particles_left, particles_right);
                             rotational_flattening::calculate_creep_coplanar_shapes(
-                                &mut tidal_host_particle,
-                                &mut particles_left,
-                                &mut particles_right,
+                                tidal_host_particle,
+                                particles_left,
+                                particles_right,
                             );
                         }
                     }
@@ -714,21 +687,21 @@ impl Universe {
                     {
                         if self.consider_effects.tides {
                             tides::calculate_radial_component_of_the_tidal_force(
-                                &mut tidal_host_particle,
-                                &mut particles_left,
-                                &mut particles_right,
+                                tidal_host_particle,
+                                particles_left,
+                                particles_right,
                                 &mut self.pair_dependent_scaled_dissipation_factor,
                             ); // Needed for calculate_tidal_acceleration
                             tides::calculate_tidal_acceleration(
-                                &mut tidal_host_particle,
-                                &mut particles_left,
-                                &mut particles_right,
+                                tidal_host_particle,
+                                particles_left,
+                                particles_right,
                             );
                         }
 
                         if self.consider_effects.rotational_flattening {
-                            rotational_flattening::calculate_radial_component_of_the_force_induced_by_rotational_flattening(&mut tidal_host_particle, &mut particles_left, &mut particles_right);
-                            rotational_flattening::calculate_acceleration_induced_by_rotational_flattering(&mut tidal_host_particle, &mut particles_left, &mut particles_right);
+                            rotational_flattening::calculate_radial_component_of_the_force_induced_by_rotational_flattening(tidal_host_particle, particles_left, particles_right);
+                            rotational_flattening::calculate_acceleration_induced_by_rotational_flattering(tidal_host_particle, particles_left, particles_right);
                         }
                     }
 
@@ -741,14 +714,14 @@ impl Universe {
                             //// calculate_torques // Needed for dangular_momentum_dt
                             if self.consider_effects.tides {
                                 tides::calculate_dangular_momentum_dt_due_to_tides(
-                                    &mut tidal_host_particle,
-                                    &mut particles_left,
-                                    &mut particles_right,
+                                    tidal_host_particle,
+                                    particles_left,
+                                    particles_right,
                                 );
                             }
 
                             if self.consider_effects.rotational_flattening {
-                                rotational_flattening::calculate_dangular_momentum_dt_induced_by_rotational_flattening(&mut tidal_host_particle, &mut particles_left, &mut particles_right);
+                                rotational_flattening::calculate_dangular_momentum_dt_induced_by_rotational_flattening(tidal_host_particle, particles_left, particles_right);
                             }
                         }
                     }
@@ -756,9 +729,9 @@ impl Universe {
             }
         }
         if accelerations && self.consider_effects.general_relativity {
-            let (mut particles_left, particles_right) =
+            let (particles_left, particles_right) =
                 particles.split_at_mut(self.hosts.index.general_relativity);
-            if let Some((mut general_relativity_host_particle, mut particles_right)) =
+            if let Some((general_relativity_host_particle, particles_right)) =
                 particles_right.split_first_mut()
             {
                 if let GeneralRelativityEffect::CentralBody(general_relativity_implementation) =
@@ -766,13 +739,13 @@ impl Universe {
                 {
                     match general_relativity_implementation {
                         GeneralRelativityImplementation::Kidder1995 => {
-                            general_relativity::calculate_kidder1995_general_relativity_acceleration(&mut general_relativity_host_particle, &mut particles_left, &mut particles_right);
+                            general_relativity::calculate_kidder1995_general_relativity_acceleration(general_relativity_host_particle, particles_left, particles_right);
                         }
                         GeneralRelativityImplementation::Anderson1975 => {
-                            general_relativity::calculate_anderson1975_general_relativity_acceleration(&mut general_relativity_host_particle, &mut particles_left, &mut particles_right, ignored_gravity_terms);
+                            general_relativity::calculate_anderson1975_general_relativity_acceleration(general_relativity_host_particle, particles_left, particles_right, ignored_gravity_terms);
                         }
                         GeneralRelativityImplementation::Newhall1983 => {
-                            general_relativity::calculate_newhall1983_general_relativity_acceleration(&mut general_relativity_host_particle, &mut particles_left, &mut particles_right, ignored_gravity_terms);
+                            general_relativity::calculate_newhall1983_general_relativity_acceleration(general_relativity_host_particle, particles_left, particles_right, ignored_gravity_terms);
                         }
                         GeneralRelativityImplementation::Disabled => {}
                     }
@@ -780,31 +753,27 @@ impl Universe {
             }
         }
         if accelerations && self.consider_effects.disk {
-            let (mut particles_left, particles_right) =
-                particles.split_at_mut(self.hosts.index.disk);
-            if let Some((mut disk_host_particle, mut particles_right)) =
-                particles_right.split_first_mut()
-            {
+            let (particles_left, particles_right) = particles.split_at_mut(self.hosts.index.disk);
+            if let Some((disk_host_particle, particles_right)) = particles_right.split_first_mut() {
                 if let DiskEffect::CentralBody(_) = disk_host_particle.disk.effect {
                     disk::calculate_disk_interaction_acceleration(
                         current_time,
-                        &mut disk_host_particle,
-                        &mut particles_left,
-                        &mut particles_right,
+                        disk_host_particle,
+                        particles_left,
+                        particles_right,
                     );
                 }
             }
         }
-        if dangular_momentum_dt {
-            if self.consider_effects.tides
+        if dangular_momentum_dt
+            && (self.consider_effects.tides
                 || self.consider_effects.rotational_flattening
                 || (self.consider_effects.general_relativity
                     && self.general_relativity_implementation
                         == GeneralRelativityImplementation::Kidder1995)
-                || self.consider_effects.wind
-            {
-                self.calculate_dangular_momentum_dt();
-            }
+                || self.consider_effects.wind)
+        {
+            self.calculate_dangular_momentum_dt();
         }
 
         if accelerations {
@@ -820,7 +789,7 @@ impl Universe {
 
     fn add_additional_acceleration_corrections(&mut self) {
         // Add the tidal+flattening+general relativity accelerations to the gravitational one (already computed)
-        for particle in self.particles[..self.n_particles].iter_mut() {
+        for particle in &mut self.particles[..self.n_particles] {
             if self.consider_effects.tides {
                 particle.inertial_additional_acceleration.x +=
                     particle.tides.parameters.output.acceleration.x;
@@ -872,7 +841,7 @@ impl Universe {
     }
 
     pub fn apply_acceleration_corrections(&mut self) {
-        for particle in self.particles[..self.n_particles].iter_mut() {
+        for particle in &mut self.particles[..self.n_particles] {
             particle.inertial_acceleration.x += particle.inertial_additional_acceleration.x;
             particle.inertial_acceleration.y += particle.inertial_additional_acceleration.y;
             particle.inertial_acceleration.z += particle.inertial_additional_acceleration.z;
@@ -888,7 +857,7 @@ impl Universe {
 
         //// For compensated summation:
         //for (particle, dangular_momentum_dt_error) in self.particles[..self.n_particles].iter_mut().zip(dangular_momentum_dt_errors.iter_mut()) {
-        for particle in self.particles[..self.n_particles].iter_mut() {
+        for particle in &mut self.particles[..self.n_particles] {
             // - Equation 25 from Bolmont et al. 2015
             particle.dangular_momentum_dt.x =
                 particle.tides.parameters.output.dangular_momentum_dt.x
@@ -967,7 +936,6 @@ impl Universe {
         }
     }
 
-    ///
     pub fn compute_total_energy(&self) -> f64 {
         let mut e_kin = 0.;
         let mut e_pot = 0.;
@@ -976,7 +944,7 @@ impl Universe {
         let (particles, _) = self.particles.split_at(self.n_particles);
 
         // Kinectic energy
-        for particle in particles.iter() {
+        for particle in particles {
             e_kin += 0.5
                 * particle.mass
                 * (particle.heliocentric_velocity.x.powi(2)
@@ -985,7 +953,7 @@ impl Universe {
         }
         // Gravitationl potential energy
         for (i, particle_a) in particles.iter().enumerate() {
-            for particle_b in particles[i + 1..].iter() {
+            for particle_b in &particles[i + 1..] {
                 let dx = particle_a.heliocentric_position.x - particle_b.heliocentric_position.x;
                 let dy = particle_a.heliocentric_position.y - particle_b.heliocentric_position.y;
                 let dz = particle_a.heliocentric_position.z - particle_b.heliocentric_position.z;
@@ -1003,7 +971,7 @@ impl Universe {
             y: 0.,
             z: 0.,
         }; // L
-        for particle in self.particles[..self.n_particles].iter() {
+        for particle in &self.particles[..self.n_particles] {
             total_angular_momentum.x += particle.mass
                 * (particle.heliocentric_position.y * particle.heliocentric_velocity.z
                     - particle.heliocentric_position.z * particle.heliocentric_velocity.y);
@@ -1014,11 +982,11 @@ impl Universe {
                 * (particle.heliocentric_position.x * particle.heliocentric_velocity.y
                     - particle.heliocentric_position.y * particle.heliocentric_velocity.x);
         }
-        let total_angular_momentum = (total_angular_momentum.x.powi(2)
+
+        (total_angular_momentum.x.powi(2)
             + total_angular_momentum.y.powi(2)
             + total_angular_momentum.z.powi(2))
-        .sqrt();
-        total_angular_momentum
+        .sqrt()
     }
 }
 
@@ -1053,7 +1021,7 @@ fn get_center_of_mass_of_pair(
     new_center_of_mass_mass
 }
 
-pub fn calculate_center_of_mass(particles: &Vec<Particle>) -> (Axes, Axes) {
+pub fn calculate_center_of_mass(particles: &[Particle]) -> (Axes, Axes) {
     // Compute center of mass
     let mut center_of_mass_position = Axes {
         x: 0.,
@@ -1067,72 +1035,62 @@ pub fn calculate_center_of_mass(particles: &Vec<Particle>) -> (Axes, Axes) {
     };
     let mut center_of_mass_mass = 0.;
 
-    for particle in particles.iter() {
+    for particle in particles {
         center_of_mass_mass = get_center_of_mass_of_pair(
             &mut center_of_mass_position,
             &mut center_of_mass_velocity,
             center_of_mass_mass,
-            &particle,
+            particle,
         );
     }
 
     (center_of_mass_position, center_of_mass_velocity)
 }
 
-fn disable_unnecessary_effects(consider_effects: &mut ConsiderEffects, particles: &Vec<Particle>) {
+fn disable_unnecessary_effects(consider_effects: &mut ConsiderEffects, particles: &[Particle]) {
     let mut found_central_body_tides = false;
     let mut found_central_body_rotational_flattening = false;
     let mut found_central_body_general_relativity = false;
     let mut found_central_body_disk = false;
     let mut found_wind = false;
     let mut found_evolving_body = false;
-    for particle in particles.iter() {
+    for particle in particles {
         if let TidesEffect::CentralBody(_) = particle.tides.effect {
-            if found_central_body_tides {
-                panic!(
-                    "[PANIC {} UTC] Only one central body is allowed for tidal effect!",
-                    OffsetDateTime::now_utc()
-                        .format(
-                            &format_description::parse(
-                                "[year].[month].[day] [hour]:[minute]:[second]"
-                            )
+            assert!(
+                !found_central_body_tides,
+                "[PANIC {} UTC] Only one central body is allowed for tidal effect!",
+                OffsetDateTime::now_utc()
+                    .format(
+                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
                             .unwrap()
-                        )
-                        .unwrap()
-                );
-            }
+                    )
+                    .unwrap()
+            );
             found_central_body_tides = true;
         }
         if let RotationalFlatteningEffect::CentralBody(_) = particle.rotational_flattening.effect {
-            if found_central_body_rotational_flattening {
-                panic!("[PANIC {} UTC] Only one central body is allowed for rotational flattening effects!", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
-            }
+            assert!(!found_central_body_rotational_flattening, "[PANIC {} UTC] Only one central body is allowed for rotational flattening effects!", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
             found_central_body_rotational_flattening = true;
         }
         if let GeneralRelativityEffect::CentralBody(implementation) =
             particle.general_relativity.effect
         {
             if implementation != GeneralRelativityImplementation::Disabled {
-                if found_central_body_general_relativity {
-                    panic!("[PANIC {} UTC] Only one central body is allowed for general relativity effects!", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
-                }
+                assert!(!found_central_body_general_relativity, "[PANIC {} UTC] Only one central body is allowed for general relativity effects!", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
                 found_central_body_general_relativity = true;
             }
         }
         if let DiskEffect::CentralBody(_) = particle.disk.effect {
-            if found_central_body_disk {
-                panic!(
-                    "[PANIC {} UTC] Only one central body is allowed for disk effects!",
-                    OffsetDateTime::now_utc()
-                        .format(
-                            &format_description::parse(
-                                "[year].[month].[day] [hour]:[minute]:[second]"
-                            )
+            assert!(
+                !found_central_body_disk,
+                "[PANIC {} UTC] Only one central body is allowed for disk effects!",
+                OffsetDateTime::now_utc()
+                    .format(
+                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
                             .unwrap()
-                        )
-                        .unwrap()
-                );
-            }
+                    )
+                    .unwrap()
+            );
             found_central_body_disk = true;
         }
         if WindEffect::Disabled != particle.wind.effect {
@@ -1217,7 +1175,7 @@ fn disable_unnecessary_effects(consider_effects: &mut ConsiderEffects, particles
 }
 
 fn check_effects_vs_central_and_orbiting(
-    particles: &Vec<Particle>,
+    particles: &[Particle],
     consider_effects: &ConsiderEffects,
 ) {
     let mut found_tides_central_body = false;
@@ -1397,18 +1355,16 @@ fn check_effects_vs_central_and_orbiting(
             }
         }
     }
-    if consider_effects.wind {
-        if !found_wind {
-            println!(
-                "[INFO {} UTC] No wind effects",
-                OffsetDateTime::now_utc()
-                    .format(
-                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
-                            .unwrap()
-                    )
-                    .unwrap()
-            );
-        }
+    if consider_effects.wind && !found_wind {
+        println!(
+            "[INFO {} UTC] No wind effects",
+            OffsetDateTime::now_utc()
+                .format(
+                    &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
+                        .unwrap()
+                )
+                .unwrap()
+        );
     }
 
     let mut found_evolution = false;
@@ -1420,22 +1376,20 @@ fn check_effects_vs_central_and_orbiting(
             }
         }
     }
-    if consider_effects.evolution {
-        if !found_evolution {
-            println!(
-                "[INFO {} UTC] No evolution effects",
-                OffsetDateTime::now_utc()
-                    .format(
-                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
-                            .unwrap()
-                    )
-                    .unwrap()
-            );
-        }
+    if consider_effects.evolution && !found_evolution {
+        println!(
+            "[INFO {} UTC] No evolution effects",
+            OffsetDateTime::now_utc()
+                .format(
+                    &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
+                        .unwrap()
+                )
+                .unwrap()
+        );
     }
 }
 
-fn find_indices(particles: &Vec<Particle>, consider_effects: &ConsiderEffects) -> Hosts {
+fn find_indices(particles: &[Particle], consider_effects: &ConsiderEffects) -> Hosts {
     // Most massive particle
     let mut most_massive_particle_index = MAX_PARTICLES + 1;
     let mut max_mass_found = 0.;
@@ -1462,9 +1416,10 @@ fn find_indices(particles: &Vec<Particle>, consider_effects: &ConsiderEffects) -
                 }
             }
         }
-        if most_massive_particle_index != general_relativity_host_particle_index {
-            panic!("The central body for General Relativity should be the most massive one!");
-        }
+        assert!(
+            (most_massive_particle_index == general_relativity_host_particle_index),
+            "The central body for General Relativity should be the most massive one!"
+        );
     }
 
     // Particle that is the main one for tidal effects
@@ -1531,17 +1486,9 @@ fn find_indices(particles: &Vec<Particle>, consider_effects: &ConsiderEffects) -
         && most_massive_particle_index == general_relativity_host_particle_index;
     let disk_host_particle_is_the_most_massive =
         consider_effects.disk && most_massive_particle_index == disk_host_particle_index;
-    let all_same_particle_indices = ((consider_effects.tides
-        && tidal_host_particle_is_the_most_massive)
-        || !consider_effects.tides)
-        && ((consider_effects.rotational_flattening
-            && rotational_flattening_host_particle_is_the_most_massive)
-            || !consider_effects.rotational_flattening)
-        && ((consider_effects.general_relativity
-            && general_relativity_host_particle_is_the_most_massive)
-            || !consider_effects.general_relativity)
-        && ((consider_effects.disk && disk_host_particle_is_the_most_massive)
-            || !consider_effects.disk);
+    let all_same_particle_indices = (rotational_flattening_host_particle_is_the_most_massive
+        || !consider_effects.rotational_flattening)
+        && (tidal_host_particle_is_the_most_massive || !consider_effects.tides);
 
     Hosts {
         index: HostIndices {

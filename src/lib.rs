@@ -1,12 +1,7 @@
-extern crate serde;
 //#[macro_use]
 //extern crate serde_derive;
-extern crate bincode;
-extern crate csv;
-extern crate math;
-extern crate serde_big_array;
-extern crate serde_json;
-extern crate time;
+#[macro_use]
+extern crate math_macros;
 
 pub mod constants;
 

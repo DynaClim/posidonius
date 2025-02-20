@@ -57,7 +57,7 @@ pub struct Disk {
 impl Disk {
     pub fn new(effect: DiskEffect) -> Disk {
         Disk {
-            effect: effect,
+            effect,
             parameters: DiskParticleParameters {
                 internal: DiskParticleInternalParameters {
                     distance: 0.,
@@ -219,16 +219,19 @@ impl DiskProperties {
 
         let x = 1.0_f64;
         let a_dot = gas_radial_velocity
-            * x.min(2.0 * disk_surface_density * semi_major_axis.powi(2) / particle_mass);
-        let timescale = -semi_major_axis / a_dot;
-        timescale
+            * min!(
+                x,
+                2.0 * disk_surface_density * semi_major_axis.powi(2) / particle_mass
+            );
+
+        -semi_major_axis / a_dot
     }
 
-    fn calculate_temperature_disk(&self, host_particle_mass: f64, distance: f64) -> f64 {
+    fn calculate_temperature_disk(host_particle_mass: f64, distance: f64) -> f64 {
         // distance in AU, host_particle_mass in M_SUN
         let t_ref = 280.0; //K
-        let tdisk = t_ref * distance.powf(-0.5) * host_particle_mass; // K
-        tdisk
+                           // K
+        t_ref * distance.powf(-0.5) * host_particle_mass
     }
 
     fn calculate_disk_surface_density(&self, time: f64, distance: f64) -> f64 {
@@ -244,9 +247,9 @@ impl DiskProperties {
         disk_surface_density
     }
 
-    fn calculate_keplerian_velocity(&self, host_particle_mass_g: f64, distance: f64) -> f64 {
-        let keplerian_frequency = (host_particle_mass_g / (distance).powi(3)).sqrt(); // days^-1
-        keplerian_frequency
+    fn calculate_keplerian_velocity(host_particle_mass_g: f64, distance: f64) -> f64 {
+        // days^-1
+        (host_particle_mass_g / (distance).powi(3)).sqrt()
     }
 
     fn calculate_disk_viscosity(
@@ -255,12 +258,13 @@ impl DiskProperties {
         host_particle_mass_g: f64,
         distance: f64,
     ) -> f64 {
-        let keplerian_frequency = self.calculate_keplerian_velocity(host_particle_mass_g, distance);
-        let disk_temperature = self.calculate_temperature_disk(host_particle_mass, distance);
+        let keplerian_frequency =
+            Self::calculate_keplerian_velocity(host_particle_mass_g, distance);
+        let disk_temperature = Self::calculate_temperature_disk(host_particle_mass, distance);
         let speed_of_sound_squared = BOLTZMANN_CONSTANT * disk_temperature
             / (self.mean_molecular_weight * MASS_HYDROGEN_ATOM);
-        let viscosity = self.alpha * speed_of_sound_squared / keplerian_frequency; // AU^2.days^-1
-        viscosity
+        // AU^2.days^-1
+        self.alpha * speed_of_sound_squared / keplerian_frequency
     }
 
     fn calculate_gas_radial_velocity(
@@ -272,8 +276,8 @@ impl DiskProperties {
     ) -> f64 {
         let viscosity =
             self.calculate_disk_viscosity(host_particle_mass, host_particle_mass_g, distance);
-        let gas_radial_velocity = -3.0 * viscosity / (2.0 * semi_major_axis); // AU.days^-1
-        gas_radial_velocity
+        // AU.days^-1
+        -3.0 * viscosity / (2.0 * semi_major_axis)
     }
 }
 

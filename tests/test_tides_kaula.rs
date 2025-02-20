@@ -1,13 +1,8 @@
-extern crate posidonius;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
 
 mod common;
 use posidonius::constants::{DAY, TWO_PI};
-use posidonius::{Integrator, WHFast};
-use pretty_assertions::assert_eq;
 use std::path::Path;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,7 +39,7 @@ fn enabled_star_tides_case() -> posidonius::WHFast {
         star_evolution,
         general_relativity_implementation,
     );
-    let mut particles = vec![star.clone()];
+    let mut particles = vec![star];
     particles.extend(common::planets::basic_planetary_configuration_for_stellar_kaula(&star));
 
     //////////////////////////////////////////////////////////////////////////////////
@@ -94,14 +89,14 @@ fn enabled_star_tides_case() -> posidonius::WHFast {
     // let alternative_coordinates_type = posidonius::whfast::CoordinatesType::WHDS;
     // let universe_integrator = posidonius::LeapFrog::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
     // let universe_integrator = posidonius::Ias15::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
-    let universe_integrator = posidonius::WHFast::new(
+
+    posidonius::WHFast::new(
         time_step,
         recovery_snapshot_period,
         historic_snapshot_period,
         universe,
         alternative_coordinates_type,
-    );
-    universe_integrator
+    )
 }
 
 #[test]
@@ -112,7 +107,7 @@ fn enabled_star_tides_rust() {
         "enabled_star_tides"
     );
     let (rust_data_dirname, _python_data_dirname) = common::get_data_dirname(&test_name);
-    let mut universe_integrator = crate::enabled_star_tides_case();
+    let mut universe_integrator = enabled_star_tides_case();
     common::universe::iterate(&mut universe_integrator);
     common::universe::store_positions_unless_files_exist(
         &universe_integrator.universe,
@@ -176,7 +171,7 @@ fn enabled_planet_tides_case() -> posidonius::WHFast {
         general_relativity_implementation,
     );
 
-    let mut particles = vec![star.clone()];
+    let mut particles = vec![star];
     particles.extend(common::planets::basic_planetary_configuration_for_planetary_kaula(&star));
 
     //////////////////////////////////////////////////////////////////////////////////
@@ -214,14 +209,14 @@ fn enabled_planet_tides_case() -> posidonius::WHFast {
     //let alternative_coordinates_type = posidonius::whfast::CoordinatesType::WHDS;
     //let universe_integrator = posidonius::LeapFrog::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
     // let universe_integrator = posidonius::Ias15::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
-    let universe_integrator = posidonius::WHFast::new(
+
+    posidonius::WHFast::new(
         time_step,
         recovery_snapshot_period,
         historic_snapshot_period,
         universe,
         alternative_coordinates_type,
-    );
-    universe_integrator
+    )
 }
 
 #[test]
@@ -293,7 +288,7 @@ fn enabled_both_tides_case() -> posidonius::WHFast {
         general_relativity_implementation,
     );
 
-    let mut particles = vec![star.clone()];
+    let mut particles = vec![star];
     particles.extend(common::planets::basic_planetary_configuration_for_planetary_kaula(&star));
     //////////////////////////////////////////////////////////////////////////////////
     // Load star data
@@ -338,14 +333,14 @@ fn enabled_both_tides_case() -> posidonius::WHFast {
     //let alternative_coordinates_type = posidonius::whfast::CoordinatesType::WHDS;
     //let universe_integrator = posidonius::LeapFrog::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
     // let universe_integrator = posidonius::Ias15::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
-    let universe_integrator = posidonius::WHFast::new(
+
+    posidonius::WHFast::new(
         time_step,
         recovery_snapshot_period,
         historic_snapshot_period,
         universe,
         alternative_coordinates_type,
-    );
-    universe_integrator
+    )
 }
 //
 #[test]

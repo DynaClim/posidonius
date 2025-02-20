@@ -1,8 +1,5 @@
-extern crate posidonius;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
 
 mod common;
 
@@ -46,7 +43,7 @@ fn create_universe() -> posidonius::Universe {
         general_relativity_implementation,
     );
 
-    let mut particles = vec![star.clone()];
+    let mut particles = vec![star];
     particles.extend(common::planets::basic_configuration(&star));
     let mut universe =
         posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
@@ -95,14 +92,14 @@ fn create_kaula_universe() -> posidonius::Universe {
         general_relativity_implementation,
     );
 
-    let mut particles = vec![star.clone()];
+    let mut particles = vec![star];
     particles.extend(common::planets::basic_configuration(&star));
     //////////////////////////////////////////////////////////////////////////////////
     // Disable all first or `check_uniform_viscosity_coefficient` will fail
     let disabled_tides = posidonius::Tides::new(posidonius::TidesEffect::Disabled);
     let disabled_rotational_flattening =
         posidonius::RotationalFlattening::new(posidonius::RotationalFlatteningEffect::Disabled);
-    for particle in particles.iter_mut() {
+    for particle in &mut particles {
         particle.set_tides(disabled_tides);
         particle.set_rotational_flattening(disabled_rotational_flattening);
     }
@@ -161,7 +158,7 @@ fn criterion_benchmark_universe(c: &mut Criterion) {
     let current_time = 0.0;
 
     c.bench_function("gravity_calculate_acceleration", |b| {
-        b.iter(|| universe.gravity_calculate_acceleration(ignore_gravity_terms))
+        b.iter(|| universe.gravity_calculate_acceleration(ignore_gravity_terms));
     });
 
     let mut group = c.benchmark_group("calculate_additional_effects");
@@ -181,8 +178,8 @@ fn criterion_benchmark_universe(c: &mut Criterion) {
                 dangular_momentum_dt_per_moment_of_inertia,
                 accelerations,
                 ignored_gravity_terms,
-            )
-        })
+            );
+        });
     });
 
     universe.consider_effects = posidonius::ConsiderEffects {
@@ -201,8 +198,8 @@ fn criterion_benchmark_universe(c: &mut Criterion) {
                 dangular_momentum_dt_per_moment_of_inertia,
                 accelerations,
                 ignored_gravity_terms,
-            )
-        })
+            );
+        });
     });
 
     kaula_universe.consider_effects = posidonius::ConsiderEffects {
@@ -221,8 +218,8 @@ fn criterion_benchmark_universe(c: &mut Criterion) {
                 dangular_momentum_dt_per_moment_of_inertia,
                 accelerations,
                 ignored_gravity_terms,
-            )
-        })
+            );
+        });
     });
 
     universe.consider_effects = posidonius::ConsiderEffects {
@@ -241,8 +238,8 @@ fn criterion_benchmark_universe(c: &mut Criterion) {
                 dangular_momentum_dt_per_moment_of_inertia,
                 accelerations,
                 ignored_gravity_terms,
-            )
-        })
+            );
+        });
     });
 
     universe.consider_effects = posidonius::ConsiderEffects {
@@ -261,8 +258,8 @@ fn criterion_benchmark_universe(c: &mut Criterion) {
                 dangular_momentum_dt_per_moment_of_inertia,
                 accelerations,
                 ignored_gravity_terms,
-            )
-        })
+            );
+        });
     });
 
     universe.consider_effects = posidonius::ConsiderEffects {
@@ -281,8 +278,8 @@ fn criterion_benchmark_universe(c: &mut Criterion) {
                 dangular_momentum_dt_per_moment_of_inertia,
                 accelerations,
                 ignored_gravity_terms,
-            )
-        })
+            );
+        });
     });
 
     universe.consider_effects = posidonius::ConsiderEffects {
@@ -301,8 +298,8 @@ fn criterion_benchmark_universe(c: &mut Criterion) {
                 dangular_momentum_dt_per_moment_of_inertia,
                 accelerations,
                 ignored_gravity_terms,
-            )
-        })
+            );
+        });
     });
 
     universe.consider_effects = posidonius::ConsiderEffects {
@@ -321,8 +318,8 @@ fn criterion_benchmark_universe(c: &mut Criterion) {
                 dangular_momentum_dt_per_moment_of_inertia,
                 accelerations,
                 ignored_gravity_terms,
-            )
-        })
+            );
+        });
     });
 
     universe.consider_effects = posidonius::ConsiderEffects {
@@ -341,8 +338,8 @@ fn criterion_benchmark_universe(c: &mut Criterion) {
                 dangular_momentum_dt_per_moment_of_inertia,
                 accelerations,
                 ignored_gravity_terms,
-            )
-        })
+            );
+        });
     });
 
     group.finish();

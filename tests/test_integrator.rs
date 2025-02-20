@@ -1,8 +1,5 @@
-extern crate posidonius;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
 
 mod common;
 use std::path::Path;
@@ -33,7 +30,7 @@ fn whfast_jacobi_case() -> posidonius::WHFast {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star.clone()];
+    let mut particles = vec![star];
     particles.extend(common::planets::basic_configuration(&star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 
@@ -42,14 +39,14 @@ fn whfast_jacobi_case() -> posidonius::WHFast {
     //let alternative_coordinates_type = posidonius::whfast::CoordinatesType::WHDS;
     //let universe_integrator = posidonius::LeapFrog::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
     //let universe_integrator = posidonius::Ias15::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
-    let universe_integrator = posidonius::WHFast::new(
+
+    posidonius::WHFast::new(
         time_step,
         recovery_snapshot_period,
         historic_snapshot_period,
         universe,
         alternative_coordinates_type,
-    );
-    universe_integrator
+    )
 }
 
 #[test]
@@ -117,7 +114,7 @@ fn whfast_democraticheliocentric_case() -> posidonius::WHFast {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star.clone()];
+    let mut particles = vec![star];
     particles.extend(common::planets::basic_configuration(&star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 
@@ -126,14 +123,14 @@ fn whfast_democraticheliocentric_case() -> posidonius::WHFast {
     //let alternative_coordinates_type = posidonius::whfast::CoordinatesType::WHDS;
     //let universe_integrator = posidonius::LeapFrog::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
     //let universe_integrator = posidonius::Ias15::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
-    let universe_integrator = posidonius::WHFast::new(
+
+    posidonius::WHFast::new(
         time_step,
         recovery_snapshot_period,
         historic_snapshot_period,
         universe,
         alternative_coordinates_type,
-    );
-    universe_integrator
+    )
 }
 
 #[test]
@@ -201,7 +198,7 @@ fn whfast_whds_case() -> posidonius::WHFast {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star.clone()];
+    let mut particles = vec![star];
     particles.extend(common::planets::basic_configuration(&star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 
@@ -210,14 +207,14 @@ fn whfast_whds_case() -> posidonius::WHFast {
     let alternative_coordinates_type = posidonius::whfast::CoordinatesType::WHDS;
     //let universe_integrator = posidonius::LeapFrog::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
     //let universe_integrator = posidonius::Ias15::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
-    let universe_integrator = posidonius::WHFast::new(
+
+    posidonius::WHFast::new(
         time_step,
         recovery_snapshot_period,
         historic_snapshot_period,
         universe,
         alternative_coordinates_type,
-    );
-    universe_integrator
+    )
 }
 
 #[test]
@@ -285,22 +282,22 @@ fn leapfrog_case() -> posidonius::LeapFrog {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star.clone()];
+    let mut particles = vec![star];
     particles.extend(common::planets::basic_configuration(&star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 
     //let alternative_coordinates_type = posidonius::whfast::CoordinatesType::Jacobi;
     //let alternative_coordinates_type = posidonius::whfast::CoordinatesType::DemocraticHeliocentric;
     //let alternative_coordinates_type = posidonius::whfast::CoordinatesType::WHDS;
-    let universe_integrator = posidonius::LeapFrog::new(
+
+    //let universe_integrator = posidonius::Ias15::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
+    //let universe_integrator = posidonius::WHFast::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe, alternative_coordinates_type);
+    posidonius::LeapFrog::new(
         time_step,
         recovery_snapshot_period,
         historic_snapshot_period,
         universe,
-    );
-    //let universe_integrator = posidonius::Ias15::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
-    //let universe_integrator = posidonius::WHFast::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe, alternative_coordinates_type);
-    universe_integrator
+    )
 }
 
 #[test]
@@ -368,7 +365,7 @@ fn ias15_case() -> posidonius::Ias15 {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star.clone()];
+    let mut particles = vec![star];
     particles.extend(common::planets::basic_configuration(&star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 
@@ -376,14 +373,14 @@ fn ias15_case() -> posidonius::Ias15 {
     //let alternative_coordinates_type = posidonius::whfast::CoordinatesType::DemocraticHeliocentric;
     //let alternative_coordinates_type = posidonius::whfast::CoordinatesType::WHDS;
     //let universe_integrator = posidonius::LeapFrog::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
-    let universe_integrator = posidonius::Ias15::new(
+
+    //let universe_integrator = posidonius::WHFast::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe, alternative_coordinates_type);
+    posidonius::Ias15::new(
         time_step,
         recovery_snapshot_period,
         historic_snapshot_period,
         universe,
-    );
-    //let universe_integrator = posidonius::WHFast::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe, alternative_coordinates_type);
-    universe_integrator
+    )
 }
 
 #[test]

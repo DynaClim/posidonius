@@ -24,43 +24,40 @@ pub fn calculate_torque_due_to_tides(
 
     // Torque expression for studying creep tide tidal despinning (use torque = 0 as above to study stat. rotation, makes code run faster)
 
-    let torque_due_to_tides_z = match central_body {
-        true => {
-            // Host shape is planet dependent, it needs to be computed for each.
-            // For (mainly) co-orbital and circumbinary systems, planet shape cannot be linearly added.
-            // The resulting shape is a combination of the shapes caused by each planet, but the
-            // way of implementation is not a direct sum of the force components, but actually a
-            // composition of the figures of equilibrium caused by each planet.
-            // See more discussions in https://arxiv.org/abs/2105.02336
-            let consider_tides = true;
-            let consider_rotational_flattening = false;
-            let tidal_host_shape = calculate_creep_coplanar_shape(
-                &tidal_host_particle,
-                &particle,
-                consider_tides,
-                consider_rotational_flattening,
-                central_body,
-            );
-            3.0 / 5.0
-                * K2
-                * tidal_host_particle.mass
-                * particle.mass
-                * tidal_host_particle.radius
-                * tidal_host_particle.radius
-                * tidal_host_shape.y
-                / particle.tides.parameters.internal.distance.powi(3)
-        }
-        false => {
-            // Planet shape is host dependent and it was already computed
-            3.0 / 5.0
-                * K2
-                * particle.mass
-                * tidal_host_particle.mass
-                * particle.radius
-                * particle.radius
-                * particle.tides.parameters.internal.shape.y
-                / particle.tides.parameters.internal.distance.powi(3)
-        }
+    let torque_due_to_tides_z = if central_body {
+        // Host shape is planet dependent, it needs to be computed for each.
+        // For (mainly) co-orbital and circumbinary systems, planet shape cannot be linearly added.
+        // The resulting shape is a combination of the shapes caused by each planet, but the
+        // way of implementation is not a direct sum of the force components, but actually a
+        // composition of the figures of equilibrium caused by each planet.
+        // See more discussions in https://arxiv.org/abs/2105.02336
+        let consider_tides = true;
+        let consider_rotational_flattening = false;
+        let tidal_host_shape = calculate_creep_coplanar_shape(
+            tidal_host_particle,
+            particle,
+            consider_tides,
+            consider_rotational_flattening,
+            central_body,
+        );
+        3.0 / 5.0
+            * K2
+            * tidal_host_particle.mass
+            * particle.mass
+            * tidal_host_particle.radius
+            * tidal_host_particle.radius
+            * tidal_host_shape.y
+            / particle.tides.parameters.internal.distance.powi(3)
+    } else {
+        // Planet shape is host dependent and it was already computed
+        3.0 / 5.0
+            * K2
+            * particle.mass
+            * tidal_host_particle.mass
+            * particle.radius
+            * particle.radius
+            * particle.tides.parameters.internal.shape.y
+            / particle.tides.parameters.internal.distance.powi(3)
     };
 
     Axes {
@@ -150,25 +147,22 @@ pub fn calculate_creep_coplanar_shapes(
     // It does not compute the host shape since it is planet dependent
     // and it will be computed later when it is needed
     for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
-        let particle_uniform_viscosity_coefficient = match &particle.tides.effect {
-            TidesEffect::CentralBody(tidal_model) | TidesEffect::OrbitingBody(tidal_model) => {
-                if let TidalModel::CreepCoplanar(params) = tidal_model {
-                    params.uniform_viscosity_coefficient
-                } else {
-                    0.
-                }
-            }
-            _ => 0.,
+        // particle_uniform_viscosity_coefficient
+        let (TidesEffect::CentralBody(TidalModel::CreepCoplanar(params))
+        | TidesEffect::OrbitingBody(TidalModel::CreepCoplanar(params))) = &particle.tides.effect
+        else {
+            continue;
         };
-        if particle_uniform_viscosity_coefficient == 0. {
+        if params.uniform_viscosity_coefficient == 0.0 {
             continue;
         }
+
         let consider_tides = true;
         let consider_rotational_flattening = false;
         let central_body = false;
         let shape = calculate_creep_coplanar_shape(
-            &tidal_host_particle,
-            &particle,
+            tidal_host_particle,
+            particle,
             consider_tides,
             consider_rotational_flattening,
             central_body,
@@ -203,60 +197,48 @@ pub fn calculate_creep_coplanar_shape(
 
     //     println!("{} {}", perihelion_longitude, true_anomaly);
 
-    let shape = match central_body {
-        false => {
-            let particle_uniform_viscosity_coefficient = match &particle.tides.effect {
-                TidesEffect::OrbitingBody(tidal_model) => {
-                    if let TidalModel::CreepCoplanar(params) = tidal_model {
-                        params.uniform_viscosity_coefficient
-                    } else {
-                        0.
-                    }
+    if central_body {
+        let tidal_host_particle_uniform_viscosity_coefficient =
+            match &tidal_host_particle.tides.effect {
+                TidesEffect::CentralBody(TidalModel::CreepCoplanar(params)) => {
+                    params.uniform_viscosity_coefficient
                 }
                 _ => 0.,
             };
-            calculate_particle_shape(
-                semimajor_axis,
-                eccentricity,
-                mean_anomaly,
-                orbital_period,
-                particle.mass,
-                tidal_host_particle.mass,
-                particle.radius,
-                particle_uniform_viscosity_coefficient,
-                particle.spin.z,
-                consider_tides,
-                consider_rotational_flattening,
-            )
-        }
-        true => {
-            let tidal_host_particle_uniform_viscosity_coefficient =
-                match &tidal_host_particle.tides.effect {
-                    TidesEffect::CentralBody(tidal_model) => {
-                        if let TidalModel::CreepCoplanar(params) = tidal_model {
-                            params.uniform_viscosity_coefficient
-                        } else {
-                            0.
-                        }
-                    }
-                    _ => 0.,
-                };
-            calculate_particle_shape(
-                semimajor_axis,
-                eccentricity,
-                mean_anomaly,
-                orbital_period,
-                tidal_host_particle.mass,
-                particle.mass,
-                tidal_host_particle.radius,
-                tidal_host_particle_uniform_viscosity_coefficient,
-                tidal_host_particle.spin.z,
-                consider_tides,
-                consider_rotational_flattening,
-            )
-        }
-    };
-    shape
+        calculate_particle_shape(
+            semimajor_axis,
+            eccentricity,
+            mean_anomaly,
+            orbital_period,
+            tidal_host_particle.mass,
+            particle.mass,
+            tidal_host_particle.radius,
+            tidal_host_particle_uniform_viscosity_coefficient,
+            tidal_host_particle.spin.z,
+            consider_tides,
+            consider_rotational_flattening,
+        )
+    } else {
+        let particle_uniform_viscosity_coefficient = match &particle.tides.effect {
+            TidesEffect::OrbitingBody(TidalModel::CreepCoplanar(params)) => {
+                params.uniform_viscosity_coefficient
+            }
+            _ => 0.,
+        };
+        calculate_particle_shape(
+            semimajor_axis,
+            eccentricity,
+            mean_anomaly,
+            orbital_period,
+            particle.mass,
+            tidal_host_particle.mass,
+            particle.radius,
+            particle_uniform_viscosity_coefficient,
+            particle.spin.z,
+            consider_tides,
+            consider_rotational_flattening,
+        )
+    }
 }
 
 pub fn calculate_particle_shape(
@@ -272,10 +254,6 @@ pub fn calculate_particle_shape(
     consider_tides: bool,
     consider_rotational_flattening: bool,
 ) -> Axes {
-    let epsilon_rho_bar: f64;
-    let epsilon_z_bar: f64;
-    let mean_motion: f64;
-    let relaxation_factor: f64;
     let (x_component_of_the_equatorial_prolateness, y_component_of_the_equatorial_prolateness): (
         f64,
         f64,
@@ -298,35 +276,31 @@ pub fn calculate_particle_shape(
         f64,
     );
     let (ep_rho, delta, delta2, epsilon_z): (f64, f64, f64, f64);
-    let companion_mass_to_sum_of_masses_ratio: f64;
-    let pseudo_synchronization_frequency: f64;
 
-    relaxation_factor = 3.0 * K2 * primary_mass * primary_mass
+    let relaxation_factor: f64 = 3.0 * K2 * primary_mass * primary_mass
         / (8.0 * PI * radius.powi(4) * uniform_viscosity_coefficient);
-    mean_motion = 2.0 * PI / orbital_period;
-    if consider_tides {
-        epsilon_rho_bar =
-            15.0 * companion_mass * radius.powi(3) / (4.0 * primary_mass * semimajor_axis.powi(3));
+    let mean_motion: f64 = 2.0 * PI / orbital_period;
+    let epsilon_rho_bar = if consider_tides {
+        15.0 * companion_mass * radius.powi(3) / (4.0 * primary_mass * semimajor_axis.powi(3))
     } else {
-        epsilon_rho_bar = 0.;
-    }
-    if consider_rotational_flattening {
-        epsilon_z_bar =
-            5.0 * primary_spin * primary_spin * radius.powi(3) / (4.0 * K2 * primary_mass);
+        0.
+    };
+    let epsilon_z_bar = if consider_rotational_flattening {
+        5.0 * primary_spin * primary_spin * radius.powi(3) / (4.0 * K2 * primary_mass)
     } else {
-        epsilon_z_bar = 0.;
-    }
-    companion_mass_to_sum_of_masses_ratio = companion_mass / (primary_mass + companion_mass);
+        0.
+    };
+    let companion_mass_to_sum_of_masses_ratio: f64 =
+        companion_mass / (primary_mass + companion_mass);
 
     // This part is important, adjust properly!
 
-    if relaxation_factor < mean_motion {
-        pseudo_synchronization_frequency = 0.9 * mean_motion; // 1.0 * mean_motion + 6.0 * eccentricity * eccentricity * mean_motion;
+    let pseudo_synchronization_frequency = if relaxation_factor < mean_motion {
+        0.9 * mean_motion // 1.0 * mean_motion + 6.0 * eccentricity * eccentricity * mean_motion;
     } else {
-        pseudo_synchronization_frequency =
-            1.0 * mean_motion + 7.0 * eccentricity * eccentricity * mean_motion;
+        1.0 * mean_motion + 7.0 * eccentricity * eccentricity * mean_motion
         // 1.0 * mean_motion + 8.0 * eccentricity * eccentricity * mean_motion;
-    }
+    };
 
     if primary_spin < pseudo_synchronization_frequency {
         // be careful here
@@ -418,7 +392,7 @@ pub fn calculate_particle_shape(
         let cayley = calculate_cayley_coefficients(eccentricity);
         let mut true_anomaly = calculate_true_anomaly(eccentricity, mean_anomaly);
         if true_anomaly < 0.0 {
-            true_anomaly = true_anomaly + 2.0 * PI;
+            true_anomaly += 2.0 * PI;
         }
 
         let mut sum_x_component_of_the_equatorial_prolateness: f64;
@@ -500,13 +474,13 @@ fn calculate_cayley_coefficients(e: f64) -> [[f64; 15]; 2] {
 
     // Coefficients E_(0,k) of FM2015 arvix
 
-    cayley[0][0] = 432091.0 / 30720.0 * e7;
+    cayley[0][0] = 432_091.0 / 30_720.0 * e7;
     cayley[0][1] = 3167.0 / 320.0 * e6;
     cayley[0][2] = 1773.0 / 256.0 * e5 - 4987.0 / 6144.0 * e7;
     cayley[0][3] = 77.0 / 16.0 * e4 + 129.0 / 160.0 * e6;
-    cayley[0][4] = 53.0 / 16.0 * e3 + 393.0 / 256.0 * e5 + 24753.0 / 10240.0 * e7;
+    cayley[0][4] = 53.0 / 16.0 * e3 + 393.0 / 256.0 * e5 + 24_753.0 / 10_240.0 * e7;
     cayley[0][5] = 9.0 / 4.0 * e2 + 7.0 / 4.0 * e4 + 141.0 / 64.0 * e6;
-    cayley[0][6] = 3.0 / 2.0 * e + 27.0 / 16.0 * e3 - 261.0 / 128.0 * e5 + 14309.0 / 6144.0 * e7;
+    cayley[0][6] = 3.0 / 2.0 * e + 27.0 / 16.0 * e3 - 261.0 / 128.0 * e5 + 14_309.0 / 6144.0 * e7;
     cayley[0][7] = 1.0 + 3.0 / 2.0 * e2 + 15.0 / 8.0 * e4 - 35.0 / 16.0 * e6;
     cayley[0][8] = cayley[0][6];
     cayley[0][9] = cayley[0][5];
@@ -518,23 +492,23 @@ fn calculate_cayley_coefficients(e: f64) -> [[f64; 15]; 2] {
 
     // Coefficients E_(2,k) of FM2015 arvix
 
-    cayley[1][0] = 12144273.0 / 71680.0 * e7;
-    cayley[1][1] = 73369.0 / 720.0 * e6;
-    cayley[1][2] = 228347.0 / 3840.0 * e5 - 3071075.0 / 18432.0 * e7;
-    cayley[1][3] = 533.0 / 16.0 * e4 - 13827.0 / 160.0 * e6;
-    cayley[1][4] = 845.0 / 48.0 * e3 - 32525.0 / 768.0 * e5 + 208225.0 / 6144.0 * e7;
+    cayley[1][0] = 12_144_273.0 / 71_680.0 * e7;
+    cayley[1][1] = 73_369.0 / 720.0 * e6;
+    cayley[1][2] = 228_347.0 / 3840.0 * e5 - 3_071_075.0 / 18_432.0 * e7;
+    cayley[1][3] = 533.0 / 16.0 * e4 - 13_827.0 / 160.0 * e6;
+    cayley[1][4] = 845.0 / 48.0 * e3 - 32_525.0 / 768.0 * e5 + 208_225.0 / 6144.0 * e7;
     cayley[1][5] = 17.0 / 2.0 * e2 - 115.0 / 6.0 * e4 + 601.0 / 48.0 * e6;
     cayley[1][6] = 7.0 / 2.0 * e - 123.0 / 16.0 * e3 + 489.0 / 128.0 * e5 - 1763.0 / 2048.0 * e7;
     cayley[1][7] = 1.0 - 5.0 / 2.0 * e2 + 13.0 / 16.0 * e4 - 35.0 / 288.0 * e6;
-    cayley[1][8] = -1.0 / 2.0 * e + 1.0 / 16.0 * e3 - 5.0 / 384.0 * e5 - 143.0 / 18432.0 * e7;
+    cayley[1][8] = -1.0 / 2.0 * e + 1.0 / 16.0 * e3 - 5.0 / 384.0 * e5 - 143.0 / 18_432.0 * e7;
     cayley[1][9] = 0.0;
-    cayley[1][10] = 1.0 / 48.0 * e3 + 11.0 / 768.0 * e5 + 313.0 / 30720.0 * e7;
+    cayley[1][10] = 1.0 / 48.0 * e3 + 11.0 / 768.0 * e5 + 313.0 / 30_720.0 * e7;
     cayley[1][11] = 1.0 / 24.0 * e4 + 7.0 / 240.0 * e6;
     cayley[1][12] = 81.0 / 1280.0 * e5 + 81.0 / 2048.0 * e7;
     cayley[1][13] = 4.0 / 45.0 * e6;
-    cayley[1][14] = 15625.0 / 129024.0 * e7;
+    cayley[1][14] = 15_625.0 / 129_024.0 * e7;
 
-    return cayley;
+    cayley
 }
 
 fn calculate_true_anomaly(eccentricity: f64, mean_anomaly: f64) -> f64 {
@@ -542,7 +516,6 @@ fn calculate_true_anomaly(eccentricity: f64, mean_anomaly: f64) -> f64 {
     let precision: f64 = 1.0e-13;
     let mut eccentric_anomaly_0: f64 = mean_anomaly;
     let mut eccentric_anomaly_1: f64;
-    let true_anomaly: f64;
 
     while difference > precision {
         eccentric_anomaly_1 = mean_anomaly + eccentricity * eccentric_anomaly_0.sin();
@@ -553,12 +526,12 @@ fn calculate_true_anomaly(eccentricity: f64, mean_anomaly: f64) -> f64 {
     //   println!("{}", mean_anomaly);
     //   println!("{}", eccentric_anomaly_0);
 
-    true_anomaly = 2.0
+    let true_anomaly: f64 = 2.0
         * (((1.0 + eccentricity) / (1.0 - eccentricity)).powf(1.0 / 2.0)
             * (eccentric_anomaly_0 / 2.0).tan())
         .atan();
 
     //   println!("{}", true_anomaly);
 
-    return true_anomaly;
+    true_anomaly
 }

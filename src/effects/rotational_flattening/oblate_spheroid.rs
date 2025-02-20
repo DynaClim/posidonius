@@ -14,21 +14,18 @@ pub fn calculate_orthogonal_component_of_the_force_induced_by_rotational_flatten
     particles: &mut [Particle],
     more_particles: &mut [Particle],
 ) {
-    let mut rotational_flattening_host_particle = rotational_flattening_host_particle;
-    let mut particles = particles;
-    let mut more_particles = more_particles;
     let central_body = true;
     calculate_orthogonal_component_of_the_force_induced_by_rotational_flattening_for(
         central_body,
-        &mut rotational_flattening_host_particle,
-        &mut particles,
-        &mut more_particles,
+        rotational_flattening_host_particle,
+        particles,
+        more_particles,
     );
     calculate_orthogonal_component_of_the_force_induced_by_rotational_flattening_for(
         !central_body,
-        &mut rotational_flattening_host_particle,
-        &mut particles,
-        &mut more_particles,
+        rotational_flattening_host_particle,
+        particles,
+        more_particles,
     );
 }
 
@@ -40,95 +37,89 @@ fn calculate_orthogonal_component_of_the_force_induced_by_rotational_flattening_
 ) {
     // Calculation of the norm square of the spin for the planet
     for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
-        if let RotationalFlatteningEffect::OrbitingBody(rotational_flattening_model) =
-            particle.rotational_flattening.effect
+        if let RotationalFlatteningEffect::OrbitingBody(
+            RotationalFlatteningModel::OblateSpheroid(params),
+        ) = particle.rotational_flattening.effect
         {
-            if let RotationalFlatteningModel::OblateSpheroid(params) = rotational_flattening_model {
-                let rotational_flattening_host_particle_love_number =
-                    match rotational_flattening_host_particle
-                        .rotational_flattening
-                        .effect
-                    {
-                        RotationalFlatteningEffect::CentralBody(rotational_flattening_model) => {
-                            match rotational_flattening_model {
-                                RotationalFlatteningModel::OblateSpheroid(params) => {
-                                    params.love_number
-                                }
-                                _ => 0.,
-                            }
-                        }
-                        _ => 0.,
-                    };
-                if central_body {
-                    // - Star Equation 16 from Bolmont et al. 2015
-                    particle
+            let rotational_flattening_host_particle_love_number =
+                match rotational_flattening_host_particle
+                    .rotational_flattening
+                    .effect
+                {
+                    RotationalFlatteningEffect::CentralBody(
+                        RotationalFlatteningModel::OblateSpheroid(params),
+                    ) => params.love_number,
+                    _ => 0.,
+                };
+            if central_body {
+                // - Star Equation 16 from Bolmont et al. 2015
+                particle
+                    .rotational_flattening
+                    .parameters
+                    .internal
+                    .factor_for_the_force_induced_by_star_rotation = particle.mass
+                    * rotational_flattening_host_particle_love_number
+                    * rotational_flattening_host_particle.norm_spin_vector_2
+                    * rotational_flattening_host_particle.radius.powi(5)
+                    / 6.; // Msun.AU^5.day-2
+                          // - Second part of Equation 15 from Bolmont et al. 2015
+                particle
+                    .rotational_flattening
+                    .parameters
+                    .internal
+                    .orthogonal_component_of_the_force_induced_by_star_rotation = -6.
+                    * particle
                         .rotational_flattening
                         .parameters
                         .internal
-                        .factor_for_the_force_induced_by_star_rotation = particle.mass
-                        * rotational_flattening_host_particle_love_number
-                        * rotational_flattening_host_particle.norm_spin_vector_2
-                        * rotational_flattening_host_particle.radius.powi(5)
+                        .factor_for_the_force_induced_by_star_rotation
+                    * particle
+                        .rotational_flattening
+                        .parameters
+                        .internal
+                        .scalar_product_of_vector_position_with_stellar_spin
+                    / (rotational_flattening_host_particle.norm_spin_vector_2
+                        * particle
+                            .rotational_flattening
+                            .parameters
+                            .internal
+                            .distance
+                            .powi(5));
+            } else {
+                // - Planet Equation 16 from Bolmont et al. 2015
+                particle
+                    .rotational_flattening
+                    .parameters
+                    .internal
+                    .factor_for_the_force_induced_by_planet_rotation =
+                    rotational_flattening_host_particle.mass
+                        * params.love_number
+                        * particle.norm_spin_vector_2
+                        * particle.radius.powi(5)
                         / 6.; // Msun.AU^5.day-2
                               // - Second part of Equation 15 from Bolmont et al. 2015
-                    particle
+                particle
+                    .rotational_flattening
+                    .parameters
+                    .internal
+                    .orthogonal_component_of_the_force_induced_by_planet_rotation = -6.
+                    * particle
                         .rotational_flattening
                         .parameters
                         .internal
-                        .orthogonal_component_of_the_force_induced_by_star_rotation = -6.
-                        * particle
-                            .rotational_flattening
-                            .parameters
-                            .internal
-                            .factor_for_the_force_induced_by_star_rotation
-                        * particle
-                            .rotational_flattening
-                            .parameters
-                            .internal
-                            .scalar_product_of_vector_position_with_stellar_spin
-                        / (rotational_flattening_host_particle.norm_spin_vector_2
-                            * particle
-                                .rotational_flattening
-                                .parameters
-                                .internal
-                                .distance
-                                .powi(5));
-                } else {
-                    // - Planet Equation 16 from Bolmont et al. 2015
-                    particle
+                        .factor_for_the_force_induced_by_planet_rotation
+                    * particle
                         .rotational_flattening
                         .parameters
                         .internal
-                        .factor_for_the_force_induced_by_planet_rotation =
-                        rotational_flattening_host_particle.mass
-                            * params.love_number
-                            * particle.norm_spin_vector_2
-                            * particle.radius.powi(5)
-                            / 6.; // Msun.AU^5.day-2
-                                  // - Second part of Equation 15 from Bolmont et al. 2015
-                    particle
-                        .rotational_flattening
-                        .parameters
-                        .internal
-                        .orthogonal_component_of_the_force_induced_by_planet_rotation = -6.
+                        .scalar_product_of_vector_position_with_planetary_spin
+                    / (particle.norm_spin_vector_2
                         * particle
                             .rotational_flattening
                             .parameters
                             .internal
-                            .factor_for_the_force_induced_by_planet_rotation
-                        * particle
-                            .rotational_flattening
-                            .parameters
-                            .internal
-                            .scalar_product_of_vector_position_with_planetary_spin
-                        / (particle.norm_spin_vector_2
-                            * particle
-                                .rotational_flattening
-                                .parameters
-                                .internal
-                                .distance
-                                .powi(5));
-                }
+                            .distance
+                            .powi(5));
             }
         }
     }
@@ -211,22 +202,22 @@ pub fn calculate_torque_induced_by_rotational_flattening(
     particle: &Particle,
     central_body: bool,
 ) -> Axes {
-    let mut reference_spin = rotational_flattening_host_particle.spin.clone();
+    let mut reference_spin = rotational_flattening_host_particle.spin;
     let orthogonal_component_of_the_force_induced_by_rotation: f64;
 
-    if !central_body {
-        reference_spin = particle.spin.clone();
-        orthogonal_component_of_the_force_induced_by_rotation = particle
-            .rotational_flattening
-            .parameters
-            .internal
-            .orthogonal_component_of_the_force_induced_by_planet_rotation;
-    } else {
+    if central_body {
         orthogonal_component_of_the_force_induced_by_rotation = particle
             .rotational_flattening
             .parameters
             .internal
             .orthogonal_component_of_the_force_induced_by_star_rotation;
+    } else {
+        reference_spin = particle.spin;
+        orthogonal_component_of_the_force_induced_by_rotation = particle
+            .rotational_flattening
+            .parameters
+            .internal
+            .orthogonal_component_of_the_force_induced_by_planet_rotation;
     }
 
     //// Torque calculation due to rotational flattening

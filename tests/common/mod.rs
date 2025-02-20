@@ -24,8 +24,8 @@ pub fn simulation_properties() -> (f64, f64, f64, f64, f64) {
 
 #[allow(dead_code)]
 pub fn get_data_dirname(test_name: &String) -> (String, String) {
-    let rust_data_dirname = format!("tests/data/{0}/", test_name);
-    let python_data_dirname = format!("posidonius/tests/data/{0}/", test_name);
+    let rust_data_dirname = format!("tests/data/{test_name}/");
+    let python_data_dirname = format!("posidonius/tests/data/{test_name}/");
     (rust_data_dirname, python_data_dirname)
 }
 
@@ -72,12 +72,12 @@ pub fn load_kaula_parameters(
     // Get the number of available data points
     let num_datapoints = w_lm.len();
 
-    if num_datapoints > expected_size {
-        panic!(
-            "Data size exceeds expected size: num_datapoints ({}) > expected_size ({})",
-            num_datapoints, expected_size
-        );
-    }
+    assert!(
+        (num_datapoints <= expected_size),
+        "Data size exceeds expected size: num_datapoints ({}) > expected_size ({})",
+        num_datapoints,
+        expected_size
+    );
 
     // Extend w_lm, im_k2, and re_k2 to expected_size by repeating the last element if needed
     if num_datapoints < expected_size {

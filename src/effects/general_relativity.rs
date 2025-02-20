@@ -1,10 +1,10 @@
-extern crate time;
 use super::super::constants::{DBL_EPSILON_2, G, MAX_PARTICLES, SPEED_OF_LIGHT_2};
 use super::super::particles::universe::IgnoreGravityTerms;
 use super::super::Axes;
 use super::super::Particle;
 use serde::{Deserialize, Serialize};
 use std::iter;
+use time;
 use time::{format_description, OffsetDateTime};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
@@ -61,7 +61,7 @@ pub struct GeneralRelativity {
 impl GeneralRelativity {
     pub fn new(effect: GeneralRelativityEffect) -> GeneralRelativity {
         GeneralRelativity {
-            effect: effect,
+            effect,
             parameters: GeneralRelativityParticleParameters {
                 internal: GeneralRelativityParticleInternalParameters {
                     distance: 0.,
@@ -342,23 +342,20 @@ pub fn calculate_kidder1995_general_relativity_acceleration(
     particles: &mut [Particle],
     more_particles: &mut [Particle],
 ) {
-    let mut host_particle = host_particle;
-    let mut particles = particles;
-    let mut more_particles = more_particles;
     calculate_kidder1995_first_order_general_relativity_acceleration(
-        &mut host_particle,
-        &mut particles,
-        &mut more_particles,
+        host_particle,
+        particles,
+        more_particles,
     );
     calculate_kidder1995_second_order_general_relativity_acceleration(
-        &mut host_particle,
-        &mut particles,
-        &mut more_particles,
+        host_particle,
+        particles,
+        more_particles,
     );
     calculate_kidder1995_spin_orbit_general_relativity_acceleration_and_dangular_momentum_dt(
-        &mut host_particle,
-        &mut particles,
-        &mut more_particles,
+        host_particle,
+        particles,
+        more_particles,
     );
 }
 
@@ -1006,14 +1003,12 @@ pub fn calculate_anderson1975_general_relativity_acceleration(
     ignored_gravity_terms: IgnoreGravityTerms,
 ) {
     // Calculate Newtonian accelerations in the current setup and considering all particles
-    let mut host_particle = host_particle;
-    let mut particles = particles;
-    let mut more_particles = more_particles;
+
     let (host_newtonian_inertial_accelerations, newtonian_inertial_accelerations) =
         get_anderson1975_newhall1983_newtonian_inertial_accelerations(
-            &mut host_particle,
-            &mut particles,
-            &mut more_particles,
+            host_particle,
+            particles,
+            more_particles,
             ignored_gravity_terms,
         );
 
@@ -1027,9 +1022,9 @@ pub fn calculate_anderson1975_general_relativity_acceleration(
         jacobi_particles_velocities,
         mut jacobi_particles_accelerations,
     ) = anderson1975_general_relativity_inertial_to_jacobi_posvelacc(
-        &host_particle,
-        &particles,
-        &more_particles,
+        host_particle,
+        particles,
+        more_particles,
         host_newtonian_inertial_accelerations,
         newtonian_inertial_accelerations,
     );
@@ -1118,8 +1113,8 @@ pub fn calculate_anderson1975_general_relativity_acceleration(
     };
     let (star_acceleration, particles_accelerations) =
         anderson1975_general_relativity_jacobi_to_inertial_acc(
-            &mut particles,
-            &mut more_particles,
+            particles,
+            more_particles,
             jacobi_star_mass,
             jacobi_star_acceleration,
             jacobi_particles_accelerations,
@@ -1174,7 +1169,6 @@ fn anderson1975_general_relativity_inertial_to_jacobi_posvelacc(
     [Axes; MAX_PARTICLES - 1],
     [Axes; MAX_PARTICLES - 1],
 ) {
-    let jacobi_star_mass;
     let mut jacobi_star_position = Axes {
         x: 0.,
         y: 0.,
@@ -1260,7 +1254,7 @@ fn anderson1975_general_relativity_inertial_to_jacobi_posvelacc(
     }
     let mtot = eta;
     let mtot_i = 1. / mtot;
-    jacobi_star_mass = mtot;
+    let jacobi_star_mass = mtot;
     jacobi_star_position.x = s_x * mtot_i;
     jacobi_star_position.y = s_y * mtot_i;
     jacobi_star_position.z = s_z * mtot_i;
@@ -1270,7 +1264,7 @@ fn anderson1975_general_relativity_inertial_to_jacobi_posvelacc(
     jacobi_star_acceleration.x = s_ax * mtot_i;
     jacobi_star_acceleration.y = s_ay * mtot_i;
     jacobi_star_acceleration.z = s_az * mtot_i;
-    return (
+    (
         jacobi_star_mass,
         jacobi_star_position,
         jacobi_star_velocity,
@@ -1278,7 +1272,7 @@ fn anderson1975_general_relativity_inertial_to_jacobi_posvelacc(
         jacobi_particles_positions,
         jacobi_particles_velocities,
         jacobi_particles_accelerations,
-    );
+    )
 }
 
 fn anderson1975_general_relativity_jacobi_to_inertial_acc(
@@ -1330,7 +1324,7 @@ fn anderson1975_general_relativity_jacobi_to_inertial_acc(
     star_acceleration.x = s_ax * mtot_i;
     star_acceleration.y = s_ay * mtot_i;
     star_acceleration.z = s_az * mtot_i;
-    return (star_acceleration, particles_accelerations);
+    (star_acceleration, particles_accelerations)
 }
 // [end] General Relativity based on REBOUNDx gr.c
 //--------------------------------------------------------------------------
@@ -1367,12 +1361,11 @@ fn get_anderson1975_newhall1983_newtonian_inertial_accelerations(
     if ignored_gravity_terms == IgnoreGravityTerms::WHFastOne
         || ignored_gravity_terms == IgnoreGravityTerms::WHFastTwo
     {
-        let n_particles;
-        if ignored_gravity_terms == IgnoreGravityTerms::WHFastOne {
-            n_particles = 2 - 1; // Only host - next particle interaction, and the host is already out of the particles vector
+        let n_particles = if ignored_gravity_terms == IgnoreGravityTerms::WHFastOne {
+            2 - 1 // Only host - next particle interaction, and the host is already out of the particles vector
         } else {
-            n_particles = particles.len() + more_particles.len();
-        }
+            particles.len() + more_particles.len()
+        };
         for (newtonian_acceleration, particle) in newtonian_inertial_accelerations[..n_particles]
             .iter_mut()
             .zip(particles.iter_mut().chain(more_particles.iter_mut()))
@@ -1396,10 +1389,10 @@ fn get_anderson1975_newhall1983_newtonian_inertial_accelerations(
             newtonian_acceleration.z += prefac_mass_star * dz;
         }
     }
-    return (
+    (
         host_newtonian_inertial_accelerations,
         newtonian_inertial_accelerations,
-    );
+    )
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -1447,14 +1440,11 @@ pub fn calculate_newhall1983_general_relativity_acceleration(
         z: 0.,
     }; MAX_PARTICLES]; MAX_PARTICLES];
 
-    let mut host_particle = host_particle;
-    let mut particles = particles;
-    let mut more_particles = more_particles;
     let (host_newtonian_inertial_accelerations, newtonian_inertial_accelerations) =
         get_anderson1975_newhall1983_newtonian_inertial_accelerations(
-            &mut host_particle,
-            &mut particles,
-            &mut more_particles,
+            host_particle,
+            particles,
+            more_particles,
             ignored_gravity_terms,
         );
 
@@ -1472,16 +1462,15 @@ pub fn calculate_newhall1983_general_relativity_acceleration(
             .zip(drs_i.iter_mut())
             .enumerate()
         {
-            if j != i {
-                if particle_i.general_relativity.effect != GeneralRelativityEffect::Disabled
-                    || particle_j.general_relativity.effect != GeneralRelativityEffect::Disabled
-                {
-                    drs_i_j.x = particle_i.inertial_position.x - particle_j.inertial_position.x;
-                    drs_i_j.y = particle_i.inertial_position.y - particle_j.inertial_position.y;
-                    drs_i_j.z = particle_i.inertial_position.z - particle_j.inertial_position.z;
-                    rs_i[j] = (drs_i_j.x.powi(2) + drs_i_j.y.powi(2) + drs_i_j.z.powi(2)).sqrt();
-                    //println!("i j: {} {} {:e}", i, j, rs_i[j]);
-                }
+            if j != i
+                && (particle_i.general_relativity.effect != GeneralRelativityEffect::Disabled
+                    || particle_j.general_relativity.effect != GeneralRelativityEffect::Disabled)
+            {
+                drs_i_j.x = particle_i.inertial_position.x - particle_j.inertial_position.x;
+                drs_i_j.y = particle_i.inertial_position.y - particle_j.inertial_position.y;
+                drs_i_j.z = particle_i.inertial_position.z - particle_j.inertial_position.z;
+                rs_i[j] = (drs_i_j.x.powi(2) + drs_i_j.y.powi(2) + drs_i_j.z.powi(2)).sqrt();
+                //println!("i j: {} {} {:e}", i, j, rs_i[j]);
             }
         }
     }
@@ -1505,85 +1494,83 @@ pub fn calculate_newhall1983_general_relativity_acceleration(
             .zip(drs_i.iter())
             .enumerate()
         {
-            if j != i {
-                if particle_i.general_relativity.effect != GeneralRelativityEffect::Disabled
-                    || particle_j.general_relativity.effect != GeneralRelativityEffect::Disabled
+            if j != i
+                && (particle_i.general_relativity.effect != GeneralRelativityEffect::Disabled
+                    || particle_j.general_relativity.effect != GeneralRelativityEffect::Disabled)
+            {
+                let dxij = drs_i_j.x;
+                let dyij = drs_i_j.y;
+                let dzij = drs_i_j.z;
+                let rij2 = rs_i[j].powi(2);
+                let rij3 = rij2 * rs_i[j];
+
+                let mut a1 = 0.;
+                for (k, (particle_k, rs_i_k)) in iter::once(&*host_particle)
+                    .chain(particles.iter())
+                    .chain(more_particles.iter()) // zip will pick the lowest common number of elements
+                    .zip(rs_i.iter())
+                    .enumerate()
                 {
-                    let dxij = drs_i_j.x;
-                    let dyij = drs_i_j.y;
-                    let dzij = drs_i_j.z;
-                    let rij2 = rs_i[j].powi(2);
-                    let rij3 = rij2 * rs_i[j];
-
-                    let mut a1 = 0.;
-                    for (k, (particle_k, rs_i_k)) in iter::once(&*host_particle)
-                        .chain(particles.iter())
-                        .chain(more_particles.iter()) // zip will pick the lowest common number of elements
-                        .zip(rs_i.iter())
-                        .enumerate()
-                    {
-                        if k != i {
-                            a1 += (4. / (SPEED_OF_LIGHT_2)) * G * particle_k.mass / rs_i_k;
-                        }
+                    if k != i {
+                        a1 += (4. / (SPEED_OF_LIGHT_2)) * G * particle_k.mass / rs_i_k;
                     }
-
-                    let mut a2 = 0.;
-                    for (l, (particle_l, rs_l)) in iter::once(&*host_particle)
-                        .chain(particles.iter())
-                        .chain(more_particles.iter()) // zip will pick the lowest common number of elements
-                        .zip(host_rs.iter().chain(rs.iter()))
-                        .enumerate()
-                    {
-                        if l != j {
-                            a2 += (1. / (SPEED_OF_LIGHT_2)) * G * particle_l.mass / rs_l[j];
-                        }
-                    }
-
-                    let vi2 = particle_i.inertial_velocity.x.powi(2)
-                        + particle_i.inertial_velocity.y.powi(2)
-                        + particle_i.inertial_velocity.z.powi(2);
-                    let a3 = -vi2 / SPEED_OF_LIGHT_2;
-
-                    let vj2 = particle_j.inertial_velocity.x.powi(2)
-                        + particle_j.inertial_velocity.y.powi(2)
-                        + particle_j.inertial_velocity.z.powi(2);
-                    let a4 = -2. * vj2 / SPEED_OF_LIGHT_2;
-
-                    let a5 = (4. / SPEED_OF_LIGHT_2)
-                        * (particle_i.inertial_velocity.x * particle_j.inertial_velocity.x
-                            + particle_i.inertial_velocity.y * particle_j.inertial_velocity.y
-                            + particle_i.inertial_velocity.z * particle_j.inertial_velocity.z);
-
-                    let a6_0 = dxij * particle_j.inertial_velocity.x
-                        + dyij * particle_j.inertial_velocity.y
-                        + dzij * particle_j.inertial_velocity.z;
-                    let a6 = (3. / (2. * SPEED_OF_LIGHT_2)) * a6_0.powi(2) / rij2;
-
-                    let factor1 = a1 + a2 + a3 + a4 + a5 + a6;
-                    //println!("factors {:e} {:e} {:e} {:e} {:e} {:e}", a1, a2, a3, a4, a5, a6);
-                    a_constx += G * particle_j.mass * dxij * factor1 / rij3;
-                    a_consty += G * particle_j.mass * dyij * factor1 / rij3;
-                    a_constz += G * particle_j.mass * dzij * factor1 / rij3;
-
-                    // 2nd constant part
-                    let dvxij = particle_i.inertial_velocity.x - particle_j.inertial_velocity.x;
-                    let dvyij = particle_i.inertial_velocity.y - particle_j.inertial_velocity.y;
-                    let dvzij = particle_i.inertial_velocity.z - particle_j.inertial_velocity.z;
-
-                    let factor2 = dxij
-                        * (4. * particle_i.inertial_velocity.x
-                            - 3. * particle_j.inertial_velocity.x)
-                        + dyij
-                            * (4. * particle_i.inertial_velocity.y
-                                - 3. * particle_j.inertial_velocity.y)
-                        + dzij
-                            * (4. * particle_i.inertial_velocity.z
-                                - 3. * particle_j.inertial_velocity.z);
-
-                    a_constx += G * particle_j.mass * factor2 * dvxij / rij3 / SPEED_OF_LIGHT_2;
-                    a_consty += G * particle_j.mass * factor2 * dvyij / rij3 / SPEED_OF_LIGHT_2;
-                    a_constz += G * particle_j.mass * factor2 * dvzij / rij3 / SPEED_OF_LIGHT_2;
                 }
+
+                let mut a2 = 0.;
+                for (l, (particle_l, rs_l)) in iter::once(&*host_particle)
+                    .chain(particles.iter())
+                    .chain(more_particles.iter()) // zip will pick the lowest common number of elements
+                    .zip(host_rs.iter().chain(rs.iter()))
+                    .enumerate()
+                {
+                    if l != j {
+                        a2 += (1. / (SPEED_OF_LIGHT_2)) * G * particle_l.mass / rs_l[j];
+                    }
+                }
+
+                let vi2 = particle_i.inertial_velocity.x.powi(2)
+                    + particle_i.inertial_velocity.y.powi(2)
+                    + particle_i.inertial_velocity.z.powi(2);
+                let a3 = -vi2 / SPEED_OF_LIGHT_2;
+
+                let vj2 = particle_j.inertial_velocity.x.powi(2)
+                    + particle_j.inertial_velocity.y.powi(2)
+                    + particle_j.inertial_velocity.z.powi(2);
+                let a4 = -2. * vj2 / SPEED_OF_LIGHT_2;
+
+                let a5 = (4. / SPEED_OF_LIGHT_2)
+                    * (particle_i.inertial_velocity.x * particle_j.inertial_velocity.x
+                        + particle_i.inertial_velocity.y * particle_j.inertial_velocity.y
+                        + particle_i.inertial_velocity.z * particle_j.inertial_velocity.z);
+
+                let a6_0 = dxij * particle_j.inertial_velocity.x
+                    + dyij * particle_j.inertial_velocity.y
+                    + dzij * particle_j.inertial_velocity.z;
+                let a6 = (3. / (2. * SPEED_OF_LIGHT_2)) * a6_0.powi(2) / rij2;
+
+                let factor1 = a1 + a2 + a3 + a4 + a5 + a6;
+                //println!("factors {:e} {:e} {:e} {:e} {:e} {:e}", a1, a2, a3, a4, a5, a6);
+                a_constx += G * particle_j.mass * dxij * factor1 / rij3;
+                a_consty += G * particle_j.mass * dyij * factor1 / rij3;
+                a_constz += G * particle_j.mass * dzij * factor1 / rij3;
+
+                // 2nd constant part
+                let dvxij = particle_i.inertial_velocity.x - particle_j.inertial_velocity.x;
+                let dvyij = particle_i.inertial_velocity.y - particle_j.inertial_velocity.y;
+                let dvzij = particle_i.inertial_velocity.z - particle_j.inertial_velocity.z;
+
+                let factor2 = dxij
+                    * (4. * particle_i.inertial_velocity.x - 3. * particle_j.inertial_velocity.x)
+                    + dyij
+                        * (4. * particle_i.inertial_velocity.y
+                            - 3. * particle_j.inertial_velocity.y)
+                    + dzij
+                        * (4. * particle_i.inertial_velocity.z
+                            - 3. * particle_j.inertial_velocity.z);
+
+                a_constx += G * particle_j.mass * factor2 * dvxij / rij3 / SPEED_OF_LIGHT_2;
+                a_consty += G * particle_j.mass * factor2 * dvyij / rij3 / SPEED_OF_LIGHT_2;
+                a_constz += G * particle_j.mass * factor2 * dvzij / rij3 / SPEED_OF_LIGHT_2;
             }
         }
         a_const_i.x = a_constx;
@@ -1597,8 +1584,8 @@ pub fn calculate_newhall1983_general_relativity_acceleration(
     let max_iterations = 10;
     // Now running the substitution again and again through the loop below
     for k in 0..max_iterations {
-        let host_a_old = host_a_new.clone();
-        let a_old = a_new.clone();
+        let host_a_old = host_a_new;
+        let a_old = a_new;
         // now add on the non-constant term
         for (i, ((((particle_i, a_new_i), drs_i), rs_i), a_const_i)) in iter::once(&*host_particle)
             .chain(particles.iter())
@@ -1625,47 +1612,47 @@ pub fn calculate_newhall1983_general_relativity_acceleration(
                     .zip(rs_i.iter())
                     .enumerate()
             {
-                if j != i {
-                    if particle_i.general_relativity.effect != GeneralRelativityEffect::Disabled
-                        || particle_j.general_relativity.effect != GeneralRelativityEffect::Disabled
-                    {
-                        let dxij = drs_i_j.x;
-                        let dyij = drs_i_j.y;
-                        let dzij = drs_i_j.z;
-                        let rij = rs_i_j;
-                        let rij2 = rij.powi(2);
-                        let rij3 = rij2 * rij;
-                        non_constx += (G * particle_j.mass * dxij / rij3)
-                            * (dxij * (a_newton_j.x + a_old_j.x)
-                                + dyij * (a_newton_j.y + a_old_j.y)
-                                + dzij * (a_newton_j.z + a_old_j.z))
-                            / (2. * SPEED_OF_LIGHT_2)
-                            + (7. / (2. * SPEED_OF_LIGHT_2))
-                                * G
-                                * particle_j.mass
-                                * (a_newton_j.x + a_old_j.x)
-                                / rij;
-                        non_consty += (G * particle_j.mass * dyij / rij3)
-                            * (dxij * (a_newton_j.x + a_old_j.x)
-                                + dyij * (a_newton_j.y + a_old_j.y)
-                                + dzij * (a_newton_j.z + a_old_j.z))
-                            / (2. * SPEED_OF_LIGHT_2)
-                            + (7. / (2. * SPEED_OF_LIGHT_2))
-                                * G
-                                * particle_j.mass
-                                * (a_newton_j.y + a_old_j.y)
-                                / rij;
-                        non_constz += (G * particle_j.mass * dzij / rij3)
-                            * (dxij * (a_newton_j.x + a_old_j.x)
-                                + dyij * (a_newton_j.y + a_old_j.y)
-                                + dzij * (a_newton_j.z + a_old_j.z))
-                            / (2. * SPEED_OF_LIGHT_2)
-                            + (7. / (2. * SPEED_OF_LIGHT_2))
-                                * G
-                                * particle_j.mass
-                                * (a_newton_j.z + a_old_j.z)
-                                / rij;
-                    }
+                if j != i
+                    && (particle_i.general_relativity.effect != GeneralRelativityEffect::Disabled
+                        || particle_j.general_relativity.effect
+                            != GeneralRelativityEffect::Disabled)
+                {
+                    let dxij = drs_i_j.x;
+                    let dyij = drs_i_j.y;
+                    let dzij = drs_i_j.z;
+                    let rij = rs_i_j;
+                    let rij2 = rij.powi(2);
+                    let rij3 = rij2 * rij;
+                    non_constx += (G * particle_j.mass * dxij / rij3)
+                        * (dxij * (a_newton_j.x + a_old_j.x)
+                            + dyij * (a_newton_j.y + a_old_j.y)
+                            + dzij * (a_newton_j.z + a_old_j.z))
+                        / (2. * SPEED_OF_LIGHT_2)
+                        + (7. / (2. * SPEED_OF_LIGHT_2))
+                            * G
+                            * particle_j.mass
+                            * (a_newton_j.x + a_old_j.x)
+                            / rij;
+                    non_consty += (G * particle_j.mass * dyij / rij3)
+                        * (dxij * (a_newton_j.x + a_old_j.x)
+                            + dyij * (a_newton_j.y + a_old_j.y)
+                            + dzij * (a_newton_j.z + a_old_j.z))
+                        / (2. * SPEED_OF_LIGHT_2)
+                        + (7. / (2. * SPEED_OF_LIGHT_2))
+                            * G
+                            * particle_j.mass
+                            * (a_newton_j.y + a_old_j.y)
+                            / rij;
+                    non_constz += (G * particle_j.mass * dzij / rij3)
+                        * (dxij * (a_newton_j.x + a_old_j.x)
+                            + dyij * (a_newton_j.y + a_old_j.y)
+                            + dzij * (a_newton_j.z + a_old_j.z))
+                        / (2. * SPEED_OF_LIGHT_2)
+                        + (7. / (2. * SPEED_OF_LIGHT_2))
+                            * G
+                            * particle_j.mass
+                            * (a_newton_j.z + a_old_j.z)
+                            / rij;
                 }
             }
             a_new_i.x = a_const_i.x + non_constx;

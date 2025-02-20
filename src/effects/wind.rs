@@ -41,11 +41,11 @@ pub struct Wind {
 impl Wind {
     pub fn new(effect: WindEffect, k_factor: f64, rotation_saturation: f64) -> Wind {
         Wind {
-            effect: effect,
+            effect,
             parameters: WindParticleParameters {
                 input: WindParticleInputParameters {
-                    k_factor: k_factor,
-                    rotation_saturation: rotation_saturation,
+                    k_factor,
+                    rotation_saturation,
                 },
                 internal: WindParticleInternalParameters {
                     rotation_saturation_2: rotation_saturation.powi(2),
@@ -114,6 +114,6 @@ pub fn calculate_wind_factor(particles: &mut [Particle]) {
                     * particle.norm_spin_vector_2
                     * (particle.radius / R_SUN * 1. / particle.mass).sqrt();
             }
-        };
+        }
     }
 }

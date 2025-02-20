@@ -103,22 +103,19 @@ pub struct Tides {
 impl Tides {
     pub fn new(effect: TidesEffect) -> Tides {
         let scaled_dissipation_factor = match effect {
-            TidesEffect::CentralBody(ref tidal_model)
-            | TidesEffect::OrbitingBody(ref tidal_model) => match tidal_model {
-                TidalModel::ConstantTimeLag(params) => {
-                    params.dissipation_factor_scale * params.dissipation_factor
-                }
-                _ => 0.,
-            },
+            TidesEffect::CentralBody(TidalModel::ConstantTimeLag(params))
+            | TidesEffect::OrbitingBody(TidalModel::ConstantTimeLag(params)) => {
+                params.dissipation_factor_scale * params.dissipation_factor
+            }
             _ => 0.,
         };
         Tides {
-            effect: effect,
+            effect,
             parameters: TidesParticleParameters {
                 internal: TidesParticleInternalParameters {
                     distance: 0.,
                     radial_velocity: 0.,
-                    scaled_dissipation_factor: scaled_dissipation_factor,
+                    scaled_dissipation_factor,
                     scalar_product_of_vector_position_with_stellar_spin: 0.,
                     scalar_product_of_vector_position_with_planetary_spin: 0.,
                     orthogonal_component_of_the_tidal_force_due_to_stellar_tide: 0.,
@@ -284,7 +281,7 @@ pub fn copy_heliocentric_coordinates(
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//// TIDES
+/// TIDES
 pub fn calculate_dangular_momentum_dt_due_to_tides(
     tidal_host_particle: &mut Particle,
     particles: &mut [Particle],

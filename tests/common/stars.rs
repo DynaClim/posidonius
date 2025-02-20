@@ -1,6 +1,4 @@
-extern crate posidonius;
-
-// use crate::common;
+use posidonius;
 
 // NewFeatures:solar_like_for_kaula_1, solar_like_for_kaula_2, red_dwarf_like_for_kaula
 #[allow(dead_code)]
@@ -443,40 +441,40 @@ pub fn brown_dwarf(
         posidonius::EvolutionType::Leconte2011(mass) => {
             let rotation_period; // hours
             let love_number;
-            if mass <= 0.0101 && mass >= 0.0099 {
+            if (0.0099..=0.0101).contains(&mass) {
                 rotation_period = 8.0;
                 love_number = 0.3790;
-            } else if mass <= 0.0121 && mass >= 0.0119 {
+            } else if (0.0119..=0.0121).contains(&mass) {
                 rotation_period = 13.0;
                 love_number = 0.3780;
-            } else if mass <= 0.0151 && mass >= 0.0149 {
+            } else if (0.0149..=0.0151).contains(&mass) {
                 rotation_period = 19.0;
                 love_number = 0.3760;
-            } else if mass <= 0.0201 && mass >= 0.0199 {
+            } else if (0.0199..=0.0201).contains(&mass) {
                 rotation_period = 24.0;
                 love_number = 0.3690;
-            } else if mass <= 0.0301 && mass >= 0.0299 {
+            } else if (0.0299..=0.0301).contains(&mass) {
                 rotation_period = 30.0;
                 love_number = 0.3550;
-            } else if mass <= 0.0401 && mass >= 0.0399 {
+            } else if (0.0399..=0.0401).contains(&mass) {
                 rotation_period = 36.0;
                 love_number = 0.3420;
-            } else if mass <= 0.0501 && mass >= 0.0499 {
+            } else if (0.0499..=0.0501).contains(&mass) {
                 rotation_period = 41.0;
                 love_number = 0.3330;
-            } else if mass <= 0.0601 && mass >= 0.0599 {
+            } else if (0.0599..=0.0601).contains(&mass) {
                 rotation_period = 47.0;
                 love_number = 0.3250;
-            } else if mass <= 0.0701 && mass >= 0.0699 {
+            } else if (0.0699..=0.0701).contains(&mass) {
                 rotation_period = 53.0;
                 love_number = 0.3110;
-            } else if mass <= 0.0721 && mass >= 0.0719 {
+            } else if (0.0719..=0.0721).contains(&mass) {
                 rotation_period = 58.0;
                 love_number = 0.3080;
-            } else if mass <= 0.0751 && mass >= 0.0749 {
+            } else if (0.0749..=0.0751).contains(&mass) {
                 rotation_period = 64.0;
                 love_number = 0.3070;
-            } else if mass <= 0.0801 && mass >= 0.0799 {
+            } else if (0.0799..=0.0801).contains(&mass) {
                 rotation_period = 70.0;
                 love_number = 0.3070;
             } else {
@@ -760,13 +758,13 @@ pub fn solar_like_secondary(
     let mut p: f64 = 0. * posidonius::constants::DEG2RAD; // argument of pericentre (degrees)
     let n: f64 = 0. * posidonius::constants::DEG2RAD; // longitude of the ascending node (degrees)
     let l: f64 = 0. * posidonius::constants::DEG2RAD; // mean anomaly (degrees)
-    p = p + n; // Convert to longitude of perihelion !!
+    p += n; // Convert to longitude of perihelion !!
     let q = a * (1.0 - e); // perihelion distance
     let gm: f64 = posidonius::constants::G * (primary_star.mass + secondary_star_mass);
     let (x, y, z, vx, vy, vz) =
         posidonius::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
 
-    let secondary_star_position = posidonius::Axes { x: x, y: y, z: z };
+    let secondary_star_position = posidonius::Axes { x, y, z };
     let secondary_star_velocity = posidonius::Axes {
         x: vx,
         y: vy,

@@ -24,7 +24,7 @@ pub fn calculate_creep_coplanar_shapes(
                     0.
                 }
             }
-            _ => 0.,
+            RotationalFlatteningEffect::Disabled => 0.,
         };
         if particle_uniform_viscosity_coefficient == 0. {
             continue;
@@ -33,8 +33,8 @@ pub fn calculate_creep_coplanar_shapes(
         let consider_rotational_flattening = true;
         let central_body = false;
         let shape = calculate_creep_coplanar_shape(
-            &rotational_flattening_host_particle,
-            &particle,
+            rotational_flattening_host_particle,
+            particle,
             consider_tides,
             consider_rotational_flattening,
             central_body,
@@ -54,48 +54,45 @@ pub fn calculate_torque_induced_by_rotational_flattening(
 
     // Torque expression for studying creep tide tidal despinning (use torque = 0 as above to study stat. rotation, makes code run faster)
 
-    let torque_induced_by_rotational_flattening_z = match central_body {
-        true => {
-            // Host shape is planet dependent, it needs to be computed for each
-            let consider_tides = false;
-            let consider_rotational_flattening = true;
-            let rotational_flattening_host_shape = calculate_creep_coplanar_shape(
-                &rotational_flattening_host_particle,
-                &particle,
-                consider_tides,
-                consider_rotational_flattening,
-                central_body,
-            );
-            3.0 / 5.0
-                * K2
-                * rotational_flattening_host_particle.mass
-                * particle.mass
-                * rotational_flattening_host_particle.radius
-                * rotational_flattening_host_particle.radius
-                * rotational_flattening_host_shape.y
-                / particle
-                    .rotational_flattening
-                    .parameters
-                    .internal
-                    .distance
-                    .powi(3)
-        }
-        false => {
-            // Planet shape is host dependent and it was already computed
-            3.0 / 5.0
-                * K2
-                * particle.mass
-                * rotational_flattening_host_particle.mass
-                * particle.radius
-                * particle.radius
-                * particle.rotational_flattening.parameters.internal.shape.y
-                / particle
-                    .rotational_flattening
-                    .parameters
-                    .internal
-                    .distance
-                    .powi(3)
-        }
+    let torque_induced_by_rotational_flattening_z = if central_body {
+        // Host shape is planet dependent, it needs to be computed for each
+        let consider_tides = false;
+        let consider_rotational_flattening = true;
+        let rotational_flattening_host_shape = calculate_creep_coplanar_shape(
+            rotational_flattening_host_particle,
+            particle,
+            consider_tides,
+            consider_rotational_flattening,
+            central_body,
+        );
+        3.0 / 5.0
+            * K2
+            * rotational_flattening_host_particle.mass
+            * particle.mass
+            * rotational_flattening_host_particle.radius
+            * rotational_flattening_host_particle.radius
+            * rotational_flattening_host_shape.y
+            / particle
+                .rotational_flattening
+                .parameters
+                .internal
+                .distance
+                .powi(3)
+    } else {
+        // Planet shape is host dependent and it was already computed
+        3.0 / 5.0
+            * K2
+            * particle.mass
+            * rotational_flattening_host_particle.mass
+            * particle.radius
+            * particle.radius
+            * particle.rotational_flattening.parameters.internal.shape.y
+            / particle
+                .rotational_flattening
+                .parameters
+                .internal
+                .distance
+                .powi(3)
     };
 
     Axes {

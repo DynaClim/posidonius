@@ -1,8 +1,5 @@
-extern crate posidonius;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
 
 mod common;
 use std::path::Path;
@@ -33,14 +30,14 @@ fn enabled_tides_case() -> posidonius::WHFast {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star.clone()];
+    let mut particles = vec![star];
     particles.extend(common::planets::basic_configuration(&star));
     //////////////////////////////////////////////////////////////////////////////////
     // Disable all first or `check_uniform_viscosity_coefficient` will fail
     let disabled_tides = posidonius::Tides::new(posidonius::TidesEffect::Disabled);
     let disabled_rotational_flattening =
         posidonius::RotationalFlattening::new(posidonius::RotationalFlatteningEffect::Disabled);
-    for particle in particles.iter_mut() {
+    for particle in &mut particles {
         particle.set_tides(disabled_tides);
         particle.set_rotational_flattening(disabled_rotational_flattening);
     }
@@ -51,7 +48,7 @@ fn enabled_tides_case() -> posidonius::WHFast {
         1.0e22 * posidonius::constants::AU * posidonius::constants::DAY
             / posidonius::constants::M_SUN; // value in kg s^-1 m^-1 => M_SUN day^-1 AU^-1 for the viscosity
     let planet_tidal_model_params = posidonius::CreepCoplanarParameters {
-        uniform_viscosity_coefficient: uniform_viscosity_coefficient,
+        uniform_viscosity_coefficient,
     };
     let planet_rotational_flattening = posidonius::RotationalFlattening::new(
         posidonius::RotationalFlatteningEffect::OrbitingBody(
@@ -79,14 +76,14 @@ fn enabled_tides_case() -> posidonius::WHFast {
     //let alternative_coordinates_type = posidonius::whfast::CoordinatesType::WHDS;
     //let universe_integrator = posidonius::LeapFrog::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
     //let universe_integrator = posidonius::Ias15::new(time_step, recovery_snapshot_period, historic_snapshot_period, universe);
-    let universe_integrator = posidonius::WHFast::new(
+
+    posidonius::WHFast::new(
         time_step,
         recovery_snapshot_period,
         historic_snapshot_period,
         universe,
         alternative_coordinates_type,
-    );
-    universe_integrator
+    )
 }
 
 #[test]

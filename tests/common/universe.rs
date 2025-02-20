@@ -1,5 +1,4 @@
-extern crate assert_approx_eq;
-use self::assert_approx_eq::assert_approx_eq;
+use assert_approx_eq::assert_approx_eq;
 use std::fs;
 use std::fs::File;
 use std::io::Read;
@@ -18,7 +17,7 @@ struct ParticleProperties {
 
 #[allow(dead_code)]
 pub fn store_positions_unless_files_exist(universe: &posidonius::Universe, dirname: &String) {
-    let _ = fs::create_dir(&dirname);
+    let _ = fs::create_dir(dirname);
     for (i, particle) in universe.particles[..universe.n_particles]
         .iter()
         .enumerate()
@@ -29,7 +28,7 @@ pub fn store_positions_unless_files_exist(universe: &posidonius::Universe, dirna
             inertial_acceleration: particle.inertial_acceleration,
             spin: particle.spin,
         };
-        let expected_particle_filename = format!("{0}/particle_{1}.json", dirname, i);
+        let expected_particle_filename = format!("{dirname}/particle_{i}.json");
         if !Path::new(&expected_particle_filename).exists() {
             let json_encoded = serde_json::to_string_pretty(&assert_properties).unwrap();
             let mut writer = BufWriter::new(File::create(&expected_particle_filename).unwrap());
@@ -43,8 +42,8 @@ pub fn store_unless_files_exist<I: serde::ser::Serialize>(
     universe_integrator: &I,
     dirname: &String,
 ) {
-    let _ = fs::create_dir(&dirname);
-    let snapshot_filename = format!("{0}/case.json", dirname);
+    let _ = fs::create_dir(dirname);
+    let snapshot_filename = format!("{dirname}/case.json");
     let snapshot_path = Path::new(&snapshot_filename);
     if !Path::new(&snapshot_path).exists() {
         posidonius::output::write_recovery_snapshot(snapshot_path, &universe_integrator);
@@ -63,10 +62,10 @@ pub fn assert_stored_positions(universe: &posidonius::Universe, dirname: &String
         .iter()
         .enumerate()
     {
-        let expected_particle_filename = format!("{0}/particle_{1}.json", dirname, i);
+        let expected_particle_filename = format!("{dirname}/particle_{i}.json");
         let expected_particle_path = Path::new(&expected_particle_filename);
         // Open the path in read-only mode, returns `io::Result<File>`
-        let mut expected_particle_file = File::open(&expected_particle_path).unwrap();
+        let mut expected_particle_file = File::open(expected_particle_path).unwrap();
         //// Deserialize using `json::decode`
         let mut expected_particle_json = String::new();
         let _ = expected_particle_file
@@ -177,14 +176,10 @@ where
     let mut universe_history_writer =
         posidonius::output::get_universe_history_writer(universe_history_path, expected_n_bytes);
     universe_integrator.initialize_physical_values();
-    loop {
-        match universe_integrator.iterate(&mut universe_history_writer, silent_mode) {
-            Ok(_) => {}
-            Err(_) => {
-                break;
-            }
-        };
-    }
+    while universe_integrator
+        .iterate(&mut universe_history_writer, silent_mode)
+        .is_ok()
+    {}
     let _ = fs::remove_file(universe_history_filename);
 }
 
@@ -226,26 +221,18 @@ fn iterate_box(universe_integrator: &mut Box<dyn posidonius::Integrator>) {
     let mut universe_history_writer =
         posidonius::output::get_universe_history_writer(universe_history_path, expected_n_bytes);
     universe_integrator.initialize_physical_values();
-    loop {
-        match universe_integrator.iterate(&mut universe_history_writer, silent_mode) {
-            Ok(_) => {
-                break;
-            }
-            Err(_) => {
-                break;
-            }
-        };
-    }
+
+    let _ = universe_integrator.iterate(&mut universe_history_writer, silent_mode);
     let _ = fs::remove_file(universe_history_filename);
 }
 
 #[allow(dead_code)]
 pub fn iterate_universe_from_json(dirname: &String) -> posidonius::Universe {
-    let snapshot_from_python_filename = format!("{0}/case.json", dirname);
+    let snapshot_from_python_filename = format!("{dirname}/case.json");
     let snapshot_from_python_path = Path::new(&snapshot_from_python_filename);
 
     let mut boxed_universe_integrator_from_python: Box<dyn posidonius::Integrator> =
-        posidonius::output::restore_snapshot(&snapshot_from_python_path).unwrap();
+        posidonius::output::restore_snapshot(snapshot_from_python_path).unwrap();
     iterate_box(&mut boxed_universe_integrator_from_python);
     // Extract universe from the integrator
     let universe_from_python: posidonius::Universe = match boxed_universe_integrator_from_python
@@ -282,11 +269,11 @@ pub fn iterate_universe_from_json(dirname: &String) -> posidonius::Universe {
 
 #[allow(dead_code)]
 pub fn one_step_from_json(dirname: &String) -> posidonius::Universe {
-    let snapshot_from_python_filename = format!("{0}/case.json", dirname);
+    let snapshot_from_python_filename = format!("{dirname}/case.json");
     let snapshot_from_python_path = Path::new(&snapshot_from_python_filename);
 
     let mut boxed_universe_integrator_from_python: Box<dyn posidonius::Integrator> =
-        posidonius::output::restore_snapshot(&snapshot_from_python_path).unwrap();
+        posidonius::output::restore_snapshot(snapshot_from_python_path).unwrap();
     one_step_box(&mut boxed_universe_integrator_from_python);
     // Extract universe from the integrator
     let universe_from_python: posidonius::Universe = match boxed_universe_integrator_from_python

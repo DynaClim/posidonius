@@ -1,6 +1,3 @@
-extern crate clap;
-extern crate posidonius;
-extern crate time;
 use clap::value_parser;
 use clap::{Arg, ArgAction, Command};
 use std::path::Path;
@@ -112,7 +109,7 @@ fn main() {
             universe_integrator_snapshot_filename = resume_matches
                 .get_one::<String>("resume_case_filename")
                 .unwrap();
-            first_universe_integrator_snapshot_filename = &universe_integrator_snapshot_filename;
+            first_universe_integrator_snapshot_filename = universe_integrator_snapshot_filename;
             universe_history_filename = resume_matches
                 .get_one::<String>("historic_snapshot_filename")
                 .unwrap();
@@ -144,7 +141,7 @@ fn main() {
 
     // Start/Resume from snapshot
     let mut boxed_universe_integrator: Box<dyn posidonius::Integrator> =
-        match posidonius::output::restore_snapshot(&first_universe_integrator_snapshot_path) {
+        match posidonius::output::restore_snapshot(first_universe_integrator_snapshot_path) {
             Ok(restored_case) => restored_case,
             Err(_) => {
                 if resume {
@@ -214,10 +211,7 @@ fn main() {
 
     // Simulate
     let instant = Instant::now();
-    let enabled_execution_time_limit = match execution_time_limit.as_secs() {
-        0 => false,
-        _ => true,
-    };
+    let enabled_execution_time_limit = !matches!(execution_time_limit.as_secs(), 0);
     loop {
         match boxed_universe_integrator.iterate(&mut universe_history_writer, silent_mode) {
             Ok(recovery_snapshot_time_trigger) => {
@@ -226,7 +220,7 @@ fn main() {
                     if elapsed >= execution_time_limit {
                         // Save a universe snapshot so that we can resume later on
                         boxed_universe_integrator.write_recovery_snapshot(
-                            &universe_integrator_snapshot_path,
+                            universe_integrator_snapshot_path,
                             &mut universe_history_writer,
                         );
                         println!("[WARNING {} UTC] Reached execution time limit before simulation completion", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
@@ -235,7 +229,7 @@ fn main() {
                 } else if recovery_snapshot_time_trigger {
                     // Save a universe snapshot so that we can resume in case of failure
                     boxed_universe_integrator.write_recovery_snapshot(
-                        &universe_integrator_snapshot_path,
+                        universe_integrator_snapshot_path,
                         &mut universe_history_writer,
                     );
                 }
@@ -256,13 +250,13 @@ fn main() {
                 );
                 break;
             }
-        };
+        }
     }
 
     let duration = timer.elapsed(); // duration
-    if !resume {
+    if resume {
         println!(
-            "[INFO {} UTC] Execution time: {} seconds",
+            "[INFO {} UTC] Execution time since last resume: {} seconds",
             OffsetDateTime::now_utc()
                 .format(
                     &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
@@ -273,7 +267,7 @@ fn main() {
         );
     } else {
         println!(
-            "[INFO {} UTC] Execution time since last resume: {} seconds",
+            "[INFO {} UTC] Execution time: {} seconds",
             OffsetDateTime::now_utc()
                 .format(
                     &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")

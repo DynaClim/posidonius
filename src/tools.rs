@@ -1,7 +1,7 @@
-extern crate time;
-use super::constants::*;
+use super::constants::{AU, G_SI, HOUR, M_SUN, PI, TWO_PI};
 use super::particles::Axes;
 use std;
+use time;
 use time::{format_description, OffsetDateTime};
 //use std::cmp::Ord;
 
@@ -99,15 +99,15 @@ pub fn calculate_keplerian_orbital_elements(
     let v = velocity.y;
     let w = velocity.z;
     // --- Output
-    let a: f64; // semi-major axis (in AU)
-    let q: f64; // perihelion distance
+    // semi-major axis (in AU)
+    // perihelion distance
     let mut eccentricity: f64; // eccentricity
     let mut i: f64 = 0.; // inclination
     let mut _p: f64; // longitude of perihelion (NOT argument of perihelion!!)
     let mut _n: f64; // longitude of ascending node
     let mut _l: f64; // mean anomaly (or mean longitude if eccentricity < 1.e-8)
-    let orbital_period: f64; // orbital_period (in days)
-                             // --- Local
+                     // orbital_period (in days)
+                     // --- Local
     let eccentricity_vector = calculate_eccentricity_vector(gm, position, velocity);
     let ex = eccentricity_vector.x;
     let ey = eccentricity_vector.y;
@@ -124,7 +124,7 @@ pub fn calculate_keplerian_orbital_elements(
     let s = h2 / gm;
 
     // --- Semi-major axis
-    a = gm * r / (2.0 * gm - r * v2);
+    let a: f64 = gm * r / (2.0 * gm - r * v2);
 
     // --- Inclination and longitude of ascending node
     let mut longitude_of_ascending_node: f64;
@@ -137,7 +137,7 @@ pub fn calculate_keplerian_orbital_elements(
         //longitude_of_ascending_node = (hx / -hy).atan();
         longitude_of_ascending_node = hx.atan2(-hy);
         if longitude_of_ascending_node < 0. {
-            longitude_of_ascending_node = longitude_of_ascending_node + TWO_PI;
+            longitude_of_ascending_node += TWO_PI;
         }
         if i == 0. {
             longitude_of_ascending_node = 0.;
@@ -160,7 +160,7 @@ pub fn calculate_keplerian_orbital_elements(
     } else {
         eccentricity = temp.sqrt();
     }
-    q = s / (1. + eccentricity);
+    let q: f64 = s / (1. + eccentricity);
     if eccentricity < 3.0e-8 {
         eccentricity = 0.;
     }
@@ -172,9 +172,9 @@ pub fn calculate_keplerian_orbital_elements(
     //} else {
     //longitude_perihelion = modulus(ey.atan2(ex) + TWO_PI + TWO_PI, TWO_PI);
     //}
-    let argument_perihelion: f64;
-    if eccentricity == 0. {
-        argument_perihelion = 0.;
+
+    let argument_perihelion = if eccentricity == 0. {
+        0.
     } else {
         let ex_rot =
             ex * longitude_of_ascending_node.cos() + ey * longitude_of_ascending_node.sin();
@@ -186,8 +186,8 @@ pub fn calculate_keplerian_orbital_elements(
         //let ez_rot_2 = -ey_rot*i.sin() + ez_rot*i.cos();
 
         // argument_perihelion = (ey_rot_2/ex_rot_2).atan();
-        argument_perihelion = (ey_rot_2).atan2(ex_rot_2);
-    }
+        (ey_rot_2).atan2(ex_rot_2)
+    };
 
     let longitude_perihelion = argument_perihelion + longitude_of_ascending_node;
 
@@ -237,7 +237,7 @@ pub fn calculate_keplerian_orbital_elements(
     }
 
     if mean_anomaly < 0. {
-        mean_anomaly = mean_anomaly + TWO_PI;
+        mean_anomaly += TWO_PI;
     }
     if mean_anomaly > TWO_PI {
         mean_anomaly = modulus(mean_anomaly, TWO_PI);
@@ -245,7 +245,7 @@ pub fn calculate_keplerian_orbital_elements(
 
     // Given relative coordinates and velocities (of the body 1 respect to body 2),
     // and GM = G times the sum of the masses (body 1 + body 2)
-    orbital_period = (TWO_PI / gm.sqrt()) * a.powf(3. / 2.); // in days
+    let orbital_period: f64 = (TWO_PI / gm.sqrt()) * a.powf(3. / 2.); // in days
 
     // a Semimajor axis
     // q perihelion distance
@@ -256,7 +256,7 @@ pub fn calculate_keplerian_orbital_elements(
     // l mean anomaly
     // orbital period bah...
 
-    return (
+    (
         a,
         q,
         eccentricity,
@@ -265,7 +265,7 @@ pub fn calculate_keplerian_orbital_elements(
         longitude_of_ascending_node,
         mean_anomaly,
         orbital_period,
-    );
+    )
 }
 
 pub fn calculate_perihelion_distance_and_eccentricity(
@@ -285,9 +285,8 @@ pub fn calculate_perihelion_distance_and_eccentricity(
     let v = velocity.y;
     let w = velocity.z;
     // Output
-    let q: f64; // perihelion distance
-    let eccentricity: f64; // eccentricity
-                           // Local
+    // perihelion distance
+    // Local
     let hx = y * w - z * v;
     let hy = z * u - x * w;
     let hz = x * v - y * u;
@@ -298,14 +297,11 @@ pub fn calculate_perihelion_distance_and_eccentricity(
 
     // Eccentricity and perihelion distance
     let temp = 1. + s * (v2 / gm - 2. / r);
-    if temp <= 0. {
-        eccentricity = 0.;
-    } else {
-        eccentricity = temp.sqrt();
-    }
-    q = s / (1. + eccentricity);
 
-    return (q, eccentricity);
+    let eccentricity = if temp <= 0. { 0. } else { temp.sqrt() };
+    let q: f64 = s / (1. + eccentricity);
+
+    (q, eccentricity)
 }
 
 pub fn calculate_cartesian_coordinates(
@@ -333,12 +329,12 @@ pub fn calculate_cartesian_coordinates(
     // l  = mean anomaly
 
     // Output
-    let x: f64; // Cartesian positions  ( units the same as a )
-    let y: f64; // Cartesian positions  ( units the same as a )
-    let z: f64; // Cartesian positions  ( units the same as a )
-    let u: f64; // Cartesian velocities ( units the same as sqrt(gm/a) )
-    let v: f64; // Cartesian velocities ( units the same as sqrt(gm/a) )
-    let w: f64; // Cartesian velocities ( units the same as sqrt(gm/a) )
+    // Cartesian positions  ( units the same as a )
+    // Cartesian positions  ( units the same as a )
+    // Cartesian positions  ( units the same as a )
+    // Cartesian velocities ( units the same as sqrt(gm/a) )
+    // Cartesian velocities ( units the same as sqrt(gm/a) )
+    // Cartesian velocities ( units the same as sqrt(gm/a) )
 
     // Change from longitude of perihelion to argument of perihelion
     let g0 = p - n0;
@@ -405,14 +401,14 @@ pub fn calculate_cartesian_coordinates(
         }
     }
 
-    x = d11 * z1 + d21 * z2;
-    y = d12 * z1 + d22 * z2;
-    z = d13 * z1 + d23 * z2;
-    u = d11 * z3 + d21 * z4;
-    v = d12 * z3 + d22 * z4;
-    w = d13 * z3 + d23 * z4;
+    let x: f64 = d11 * z1 + d21 * z2;
+    let y: f64 = d12 * z1 + d22 * z2;
+    let z: f64 = d13 * z1 + d23 * z2;
+    let u: f64 = d11 * z3 + d21 * z4;
+    let v: f64 = d12 * z3 + d22 * z4;
+    let w: f64 = d13 * z3 + d23 * z4;
 
-    return (x, y, z, u, v, w);
+    (x, y, z, u, v, w)
 }
 
 fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
@@ -429,7 +425,7 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
     //real(double_precision) :: x,x2,sn,dsn,z1,z2,z3,f0,f1,f2,f3
     //real(double_precision) :: p,q,p2,ss,cc
     //logical flag,big,bigg
-    let ome: f64;
+
     let mut x: f64;
     let mut x2: f64;
     let mut dsn: f64;
@@ -438,7 +434,7 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
     let mut f0: f64;
     let mut f1: f64;
     let mut f2: f64;
-    let f3: f64;
+
     let mut z1: f64;
     let mut z2: f64;
     let mut z3: f64;
@@ -446,8 +442,6 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
     let p2: f64;
     let q: f64;
     let sn: f64;
-    let ss: f64;
-    let cc: f64;
 
     let mut l: f64;
     let piby2 = 0.5 * PI;
@@ -464,7 +458,7 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
         sign = -1.;
     }
 
-    ome = 1. - e;
+    let ome: f64 = 1. - e;
 
     if (l >= 0.45) || (e < 0.55) {
         // Regions A,B or C in Nijenhuis
@@ -473,12 +467,10 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
         // Rough starting value for eccentric anomaly
         if l < ome {
             u1 = ome;
+        } else if l > (PI - 1. - e) {
+            u1 = (l + e * PI) / (1. + e);
         } else {
-            if l > (PI - 1. - e) {
-                u1 = (l + e * PI) / (1. + e);
-            } else {
-                u1 = l + e;
-            }
+            u1 = l + e;
         }
 
         // Improved value using Halley's method
@@ -537,7 +529,7 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
 
     x2 = x * x;
 
-    ss = x * x2 / 6.
+    let ss: f64 = x * x2 / 6.
         * (1.
             - x2 / 20.
                 * (1.
@@ -548,7 +540,7 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
                                     - x2 / 110.
                                         * (1.
                                             - x2 / 156. * (1. - x2 / 210. * (1. - x2 / 272.)))))));
-    cc = x2 / 2.
+    let cc: f64 = x2 / 2.
         * (1.
             - x2 / 12.
                 * (1.
@@ -579,10 +571,10 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
     f0 = l - u2 * ome - e * z1;
     f1 = ome + e * z2;
     f2 = 0.5 * e * (u2 - z1);
-    f3 = e / 6. * (1. - z2);
+    let f3: f64 = e / 6. * (1. - z2);
     z1 = f0 / f1;
     z2 = f0 / (f2 * z1 + f1);
-    return sign * (u2 + f0 / ((f3 * z1 + f2) * z2 + f1));
+    sign * (u2 + f0 / ((f3 * z1 + f2) * z2 + f1))
 }
 
 fn kepler_solution_for_a_parabola(q0: f64) -> (f64, f64) {
@@ -609,7 +601,7 @@ fn kepler_solution_for_a_parabola(q0: f64) -> (f64, f64) {
     //----
     if q < 0. {
         iflag = 1;
-        q = -q
+        q = -q;
     } else {
         iflag = 0;
     }
@@ -627,7 +619,7 @@ fn kepler_solution_for_a_parabola(q0: f64) -> (f64, f64) {
         q = -q;
     }
 
-    return (q, eccentric_anomaly);
+    (q, eccentric_anomaly)
 }
 
 fn kepler_solution_for_a_hyperbola(e: f64, n: f64) -> f64 {
@@ -641,7 +633,7 @@ fn kepler_solution_for_a_hyperbola(e: f64, n: f64) -> f64 {
     // n = hyperbola mean anomaly
 
     // Output
-    let orbel_fhybrid: f64; // eccentric anomaly
+    // orbel_fhybrid (eccentric anomaly)
 
     //...  Internals:
     let mut abn: f64;
@@ -655,14 +647,13 @@ fn kepler_solution_for_a_hyperbola(e: f64, n: f64) -> f64 {
     }
 
     //// TODO:
+    // orbel_fhybrid
     if abn < 0.636 * e - 0.6 {
         let tmp = kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e, n);
-        orbel_fhybrid = tmp.1;
+        tmp.1
     } else {
-        orbel_fhybrid = kepler_solution_for_a_hyperbola_hybrid_approach(e, n);
+        kepler_solution_for_a_hyperbola_hybrid_approach(e, n)
     }
-
-    return orbel_fhybrid;
 }
 
 fn kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e: f64, capn0: f64) -> (f64, f64) {
@@ -681,27 +672,20 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e: f64, capn0: f64)
     // copy of the input capn0 that is not modified
     let mut capn = capn0;
     let mut iflag: i32;
-    let a: f64;
-    let b: f64;
-    let sq: f64;
-    let biga: f64;
-    let bigb: f64;
+
     let mut x: f64;
     let mut x2: f64;
     let mut f: f64;
     let mut fp: f64;
     let mut dx: f64;
     let diff: f64;
-    let a0: f64;
-    let a1: f64;
-    let b1: f64;
 
     let imax: i32 = 10;
     let tiny: f64 = 4.0e-15; // A small number
-    let a3: f64 = 1037836800.;
-    let a5: f64 = 51891840.;
-    let a7: f64 = 1235520.;
-    let a9: f64 = 17160.;
+    let a3: f64 = 1_037_836_800.;
+    let a5: f64 = 51_891_840.;
+    let a7: f64 = 1_235_520.;
+    let a9: f64 = 17_160.;
     let a11: f64 = 156.;
 
     let b3 = 3. * a3;
@@ -719,19 +703,20 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e: f64, capn0: f64)
         capn = -capn;
     }
 
-    a1 = 6227020800. * (1. - 1. / e);
-    a0 = -6227020800. * capn / e;
-    b1 = a1;
+    let a_tmp = 6_227_020_800.;
+    let a1: f64 = a_tmp * (1. - 1. / e);
+    let a0: f64 = -a_tmp * capn / e;
+    let b1: f64 = a1;
 
     //  Set iflag nonzero if capn < 0., in which case solve for -capn
     //  and change the sign of the final answer for F.
     //  Begin with a reasonable guess based on solving the cubic for small F
 
-    a = 6. * (e - 1.) / e;
-    b = -6. * capn / e;
-    sq = (0.25 * b * b + a * a * a / 27.).sqrt();
-    biga = (-0.5 * b + sq).powf(0.3333333333333333);
-    bigb = -(0.5 * b + sq).powf(0.3333333333333333);
+    let a: f64 = 6. * (e - 1.) / e;
+    let b: f64 = -6. * capn / e;
+    let sq: f64 = (0.25 * b * b + a * a * a / 27.).sqrt();
+    let biga: f64 = (-0.5 * b + sq).powf(1. / 3.);
+    let bigb: f64 = -(0.5 * b + sq).powf(1. / 3.);
     x = biga + bigb;
     //  write(6,*) 'cubic = ',x**3 +a*x +b
     orbel_flon = x;
@@ -771,7 +756,7 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e: f64, capn0: f64)
             );
             diff = e * orbel_flon.sinh() - orbel_flon - capn;
             println!("N, F, ecc * F.sinh() - F - N : ");
-            println!("{} {} {}", capn, orbel_flon, diff);
+            println!("{capn} {orbel_flon} {diff}");
             return (orbel_flon, capn);
         }
     }
@@ -782,7 +767,7 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e: f64, capn0: f64)
         capn = -capn;
     }
 
-    return (orbel_flon, capn);
+    (orbel_flon, capn)
 }
 
 fn kepler_solution_for_a_hyperbola_hybrid_approach(e: f64, capn: f64) -> f64 {
@@ -858,7 +843,7 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach(e: f64, capn: f64) -> f64 {
             )
             .unwrap()
     );
-    return orbel_fget;
+    orbel_fget
 }
 
 #[allow(dead_code)]
@@ -867,25 +852,22 @@ fn mco_sine(x0: f64) -> (f64, f64, f64) {
     // Calculates sin and cos of an angle X (in radians).
     // Chambers says: "x is modified by the routine. Without this part, outputs of mercury are different, don't ask me why."
 
-    let mut x = x0;
-
     // TODO why results of this routine are different from simple calls of intrinsec cos() and sin()
-    if x > 0. {
-        x = modulus(x, TWO_PI);
+    let x = if x0 > 0. {
+        modulus(x0, TWO_PI)
     } else {
-        x = modulus(x, TWO_PI + TWO_PI);
-    }
+        modulus(x0, TWO_PI + TWO_PI)
+    };
 
     let cx = x.cos();
-    let sx: f64;
 
-    if x > PI {
-        sx = -(1.0 - cx * cx).sqrt();
+    let sx = if x > PI {
+        -(1.0 - cx * cx).sqrt()
     } else {
-        sx = (1.0 - cx * cx).sqrt();
-    }
+        (1.0 - cx * cx).sqrt()
+    };
 
-    return (x, sx, cx);
+    (x, sx, cx)
 }
 
 fn modulus(a: f64, b: f64) -> f64 {
@@ -893,18 +875,16 @@ fn modulus(a: f64, b: f64) -> f64 {
     //println!("Modulus: {}", 21.0f64 % 4.0f64);          //  1
     //println!("Modulus: {}", modulus(-21.0f64, 4.0f64)); //  3 because -21 + 4 x 6 is 3.
     //println!("Modulus: {}", modulus(21.0f64, 4.0f64));  //  1
-    return a - (a / b).floor() * b;
+    a - (a / b).floor() * b
 }
 
 pub fn linear_interpolation(target_x: f64, x: &[f64], y: &[f64]) -> (f64, usize) {
-    let target_y: f64;
-
     // Find the nearest interval [ x(LEFT), x(RIGHT) ] to target_x.
-    let (left, right) = find_indices_around_target_value(&x, target_x);
+    let (left, right) = find_indices_around_target_value(x, target_x);
 
-    if left == right {
+    let target_y = if left == right {
         // Target value out of range, use limit values
-        target_y = y[left];
+        y[left]
     } else {
         //// Interpolate
         // Linear
@@ -912,17 +892,17 @@ pub fn linear_interpolation(target_x: f64, x: &[f64], y: &[f64]) -> (f64, usize)
         // Linear (alternative)
         let x_left = x[left];
         let target_percent = (target_x - x_left) / (x[right] - x_left); // Transform target to percent as in transforming x[left]..x[right] to 0..1
-        target_y = y[left] * (1. - target_percent) + y[right] * target_percent;
-    }
+        y[left] * (1. - target_percent) + y[right] * target_percent
+    };
 
-    return (target_y, left);
+    (target_y, left)
 }
 
 pub fn cosine_interpolation(target_x: f64, x: &[f64], y: &[f64]) -> (f64, usize) {
     let target_y: f64;
 
     // Find the nearest interval [ x(LEFT), x(RIGHT) ] to target_x.
-    let (left, right) = find_indices_around_target_value(&x, target_x);
+    let (left, right) = find_indices_around_target_value(x, target_x);
 
     if left == right {
         // Target value out of range, use limit values
@@ -937,7 +917,7 @@ pub fn cosine_interpolation(target_x: f64, x: &[f64], y: &[f64]) -> (f64, usize)
         target_y = y[left] * (1. - target_percent) + y[right] * target_percent;
     }
 
-    return (target_y, left);
+    (target_y, left)
 }
 
 fn find_indices_around_target_value(data: &[f64], target_value: f64) -> (usize, usize) {
@@ -962,7 +942,7 @@ fn find_indices_around_target_value(data: &[f64], target_value: f64) -> (usize, 
             }
         }
     };
-    return (left_idx, right_idx);
+    (left_idx, right_idx)
 }
 
 pub fn calculate_pseudo_synchronization_period(
@@ -981,8 +961,8 @@ pub fn calculate_pseudo_synchronization_period(
         / (1. - eccentricity.powi(2)).powf(1.5);
     let pseudo_rot = alpha * (G_SI * M_SUN * (star_mass + planet_mass)).sqrt();
     let angular_frequency = pseudo_rot * (semi_major_axis * AU).powf(-3. / 2.) * HOUR * 24.; // days^-1
-    let pseudo_synchronization_period = TWO_PI / (angular_frequency); // days
-    pseudo_synchronization_period
+                                                                                             // days
+    TWO_PI / (angular_frequency)
 }
 
 pub fn calculate_spin(
@@ -1008,7 +988,7 @@ pub fn calculate_spin(
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use crate::constants::{DEG2RAD, G, M_EARTH};
     #[test]
     fn calculate_keplerian_orbital_elements() {
         //---- Star (central body)

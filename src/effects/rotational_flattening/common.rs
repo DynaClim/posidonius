@@ -64,7 +64,7 @@ pub struct RotationalFlattening {
 impl RotationalFlattening {
     pub fn new(effect: RotationalFlatteningEffect) -> RotationalFlattening {
         RotationalFlattening {
-            effect: effect,
+            effect,
             parameters: RotationalFlatteningParticleParameters {
                 internal: RotationalFlatteningParticleInternalParameters {
                     distance: 0.,
@@ -328,15 +328,15 @@ pub fn calculate_dangular_momentum_dt_induced_by_rotational_flattening(
             let torque_induced_by_rotational_flattening = match rotational_flattening_model {
                 RotationalFlatteningModel::OblateSpheroid(_) => {
                     oblate_spheroid::calculate_torque_induced_by_rotational_flattening(
-                        &rotational_flattening_host_particle,
-                        &particle,
+                        rotational_flattening_host_particle,
+                        particle,
                         central_body,
                     )
                 }
                 RotationalFlatteningModel::CreepCoplanar(_) => {
                     creep_coplanar::calculate_torque_induced_by_rotational_flattening(
-                        &rotational_flattening_host_particle,
-                        &particle,
+                        rotational_flattening_host_particle,
+                        particle,
                         central_body,
                     )
                 }
@@ -379,15 +379,15 @@ pub fn calculate_dangular_momentum_dt_induced_by_rotational_flattening(
             let torque_induced_by_rotational_flattening = match rotational_flattening_model {
                 RotationalFlatteningModel::OblateSpheroid(_) => {
                     oblate_spheroid::calculate_torque_induced_by_rotational_flattening(
-                        &rotational_flattening_host_particle,
-                        &particle,
+                        rotational_flattening_host_particle,
+                        particle,
                         central_body,
                     )
                 }
                 RotationalFlatteningModel::CreepCoplanar(_) => {
                     creep_coplanar::calculate_torque_induced_by_rotational_flattening(
-                        &rotational_flattening_host_particle,
-                        &particle,
+                        rotational_flattening_host_particle,
+                        particle,
                         central_body,
                     )
                 }
@@ -440,14 +440,14 @@ pub fn calculate_acceleration_induced_by_rotational_flattering(
             let force_induced_by_rotation = match rotational_flattening_model {
                 RotationalFlatteningModel::OblateSpheroid(_) => {
                     oblate_spheroid::calculate_acceleration_induced_by_rotational_flattering(
-                        &rotational_flattening_host_particle,
-                        &particle,
+                        rotational_flattening_host_particle,
+                        particle,
                     )
                 }
                 RotationalFlatteningModel::CreepCoplanar(_) => {
                     creep_coplanar::calculate_acceleration_induced_by_rotational_flattering(
-                        &rotational_flattening_host_particle,
-                        &particle,
+                        rotational_flattening_host_particle,
+                        particle,
                     )
                 }
             };

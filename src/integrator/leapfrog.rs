@@ -1,11 +1,9 @@
-extern crate time;
 use super::super::effects::EvolutionType;
 use super::super::particles::IgnoreGravityTerms;
 use super::super::particles::Universe;
 use super::output::{write_historic_snapshot, write_recovery_snapshot};
 use super::Integrator;
 use serde::{Deserialize, Serialize};
-use std;
 use std::any::Any;
 use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
@@ -14,10 +12,10 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 use time::{format_description, OffsetDateTime};
 
-/// LeapFrog is a second order symplectic integrator
-/// http://adsabs.harvard.edu/cgi-bin/bib_query?arXiv:astro-ph/9710043
+/// `LeapFrog` is a second order symplectic integrator
+/// <http://adsabs.harvard.edu/cgi-bin/bib_query?arXiv:astro-ph/9710043>
 ///
-/// http://adsabs.harvard.edu/cgi-bin/bib_query?arXiv:1411.6671
+/// <http://adsabs.harvard.edu/cgi-bin/bib_query?arXiv:1411.6671>
 /// Time-reversible, symplectic integrators should in principle conserve energy to a better level
 /// than non-symplectic integrators, since there is no drift present in the energy error.
 /// Therefore, by using a symplectic integrator, the number of simulations with large energy error
@@ -27,7 +25,7 @@ use time::{format_description, OffsetDateTime};
 /// Solar System, resonant 3-body interactions often include very close encounters, which need a
 /// very small time-step size to be resolved accurately.
 ///
-///https://arxiv.org/pdf/1110.4876v2.pdf
+///<https://arxiv.org/pdf/1110.4876v2.pdf>
 ///Leap-frog is a second-order accurate and symplectic integrator
 ///for non-rotating frames. Here, the Hamiltonian is split into the
 ///kinetic part and the potential part. Both
@@ -57,7 +55,7 @@ impl Hash for LeapFrog {
         // Hash only works with certain types (for instance, it does not work with f64 values)
         // thus we convert the whole integrator to a string thanks to the debug trait
         // and we hash that value
-        format!("{:?}", self).hash(state);
+        format!("{self:?}").hash(state);
     }
 }
 
@@ -68,20 +66,19 @@ impl LeapFrog {
         historic_snapshot_period: f64,
         universe: Universe,
     ) -> LeapFrog {
-        let universe_integrator = LeapFrog {
-            time_step: time_step,
+        LeapFrog {
+            time_step,
             half_time_step: 0.5 * time_step,
-            recovery_snapshot_period: recovery_snapshot_period,
-            historic_snapshot_period: historic_snapshot_period,
+            recovery_snapshot_period,
+            historic_snapshot_period,
             last_recovery_snapshot_time: -1.,
             last_historic_snapshot_time: -1.,
             n_historic_snapshots: 0,
             hash: 0,
-            universe: universe,
+            universe,
             current_time: 0.,
             current_iteration: 0,
-        };
-        universe_integrator
+        }
     }
 }
 
@@ -107,21 +104,18 @@ impl Integrator for LeapFrog {
             if time_limit > self.universe.time_limit && self.universe.consider_effects.evolution {
                 // Check if the new time is in the range of the evolutionary model
                 for (i, evolver) in self.universe.particles_evolvers.iter().enumerate() {
-                    let is_an_evolving_body = match evolver.evolution {
-                        EvolutionType::NonEvolving => false,
-                        _ => true,
-                    };
-                    if is_an_evolving_body && evolver.time[evolver.time.len() - 1] < time_limit {
+                    // If it is an evolving body.
+                    if !matches!(evolver.evolution, EvolutionType::NonEvolving)
+                        && evolver.time[evolver.time.len() - 1] < time_limit
+                    {
                         panic!("Your new time limit ({} days) is greater than the maximum allowed age of the evolving body #{} ({} days)", time_limit, i+1, evolver.time[evolver.time.len()-1]);
-                    };
+                    }
                 }
-            } else if time_limit < self.universe.time_limit {
-                if time_limit < self.current_time {
-                    panic!(
-                        "Your new time limit ({} days) is smaller than the current time ({} days)",
-                        time_limit, self.current_time
-                    );
-                }
+            } else if time_limit < self.universe.time_limit && time_limit < self.current_time {
+                panic!(
+                    "Your new time limit ({} days) is smaller than the current time ({} days)",
+                    time_limit, self.current_time
+                );
             }
             println!(
                 "[INFO {} UTC] The time limit changed from {} to {} days",
@@ -201,9 +195,10 @@ impl Integrator for LeapFrog {
     }
 
     fn initialize_physical_values(&mut self) {
-        if self.current_time != 0. {
-            panic!("Physical values cannot be initialized on a resumed simulation");
-        }
+        assert!(
+            !(self.current_time != 0.),
+            "Physical values cannot be initialized on a resumed simulation"
+        );
         let evolution = true;
         self.universe
             .calculate_spin_and_evolving_quantities(self.current_time, evolution); // Make sure we start with the good initial values
@@ -235,12 +230,12 @@ impl Integrator for LeapFrog {
                 self.current_time,
                 self.time_step,
             );
-            if !first_snapshot_trigger {
+            if first_snapshot_trigger {
+                self.last_historic_snapshot_time = 0.;
+            } else {
                 // Do not use `self.current_time` to avoid small deviations
                 // Do not use `self.n_historic_snapshots as f64*self.historic_snapshot_period` because `historic_snapshot_period` can be changed by the user when resuming an already started simulation
                 self.last_historic_snapshot_time += self.historic_snapshot_period;
-            } else {
-                self.last_historic_snapshot_time = 0.;
             }
             self.n_historic_snapshots += 1;
             let current_time_years = self.current_time / 365.25;
@@ -314,7 +309,7 @@ impl Integrator for LeapFrog {
         self.hash = 0;
         self.hash(&mut s);
         self.hash = s.finish();
-        write_recovery_snapshot(&snapshot_path, &self);
+        write_recovery_snapshot(snapshot_path, &self);
     }
 }
 
@@ -323,24 +318,21 @@ impl LeapFrog {
     // for non-rotating frame.
     #[allow(dead_code)]
     fn integrator_part1(&mut self) {
-        for particle in self.universe.particles[..self.universe.n_particles].iter_mut() {
+        for particle in &mut self.universe.particles[..self.universe.n_particles] {
             particle.inertial_position.x += self.half_time_step * particle.inertial_velocity.x;
             particle.inertial_position.y += self.half_time_step * particle.inertial_velocity.y;
             particle.inertial_position.z += self.half_time_step * particle.inertial_velocity.z;
             //
-            particle.angular_momentum.x =
-                particle.angular_momentum.x + particle.dangular_momentum_dt.x * self.half_time_step;
-            particle.angular_momentum.y =
-                particle.angular_momentum.y + particle.dangular_momentum_dt.y * self.half_time_step;
-            particle.angular_momentum.z =
-                particle.angular_momentum.z + particle.dangular_momentum_dt.z * self.half_time_step;
+            particle.angular_momentum.x += particle.dangular_momentum_dt.x * self.half_time_step;
+            particle.angular_momentum.y += particle.dangular_momentum_dt.y * self.half_time_step;
+            particle.angular_momentum.z += particle.dangular_momentum_dt.z * self.half_time_step;
         }
         self.current_time += self.half_time_step;
     }
 
     #[allow(dead_code)]
     fn integrator_part2(&mut self) {
-        for particle in self.universe.particles[..self.universe.n_particles].iter_mut() {
+        for particle in &mut self.universe.particles[..self.universe.n_particles] {
             particle.inertial_velocity.x += self.time_step * particle.inertial_acceleration.x;
             particle.inertial_velocity.y += self.time_step * particle.inertial_acceleration.y;
             particle.inertial_velocity.z += self.time_step * particle.inertial_acceleration.z;
@@ -348,12 +340,9 @@ impl LeapFrog {
             particle.inertial_position.y += self.half_time_step * particle.inertial_velocity.y;
             particle.inertial_position.z += self.half_time_step * particle.inertial_velocity.z;
             //
-            particle.angular_momentum.x =
-                particle.angular_momentum.x + particle.dangular_momentum_dt.x * self.half_time_step;
-            particle.angular_momentum.y =
-                particle.angular_momentum.y + particle.dangular_momentum_dt.y * self.half_time_step;
-            particle.angular_momentum.z =
-                particle.angular_momentum.z + particle.dangular_momentum_dt.z * self.half_time_step;
+            particle.angular_momentum.x += particle.dangular_momentum_dt.x * self.half_time_step;
+            particle.angular_momentum.y += particle.dangular_momentum_dt.y * self.half_time_step;
+            particle.angular_momentum.z += particle.dangular_momentum_dt.z * self.half_time_step;
         }
         self.current_time += self.half_time_step;
     }
