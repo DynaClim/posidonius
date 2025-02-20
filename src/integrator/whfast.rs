@@ -1,3 +1,4 @@
+use super::super::Particle;
 use super::super::constants::{
     DBL_EPSILON_2, G, IMPLICIT_MIDPOINT_MAX_ITER, IMPLICIT_MIDPOINT_MIN_ITER, MAX_PARTICLES, PI,
     WHFAST_NMAX_NEWT, WHFAST_NMAX_QUART,
@@ -7,9 +8,8 @@ use super::super::effects::GeneralRelativityImplementation;
 use super::super::particles::Axes;
 use super::super::particles::IgnoreGravityTerms;
 use super::super::particles::Universe;
-use super::super::Particle;
-use super::output::{write_historic_snapshot, write_recovery_snapshot};
 use super::Integrator;
+use super::output::{write_historic_snapshot, write_recovery_snapshot};
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 use std;
@@ -21,7 +21,7 @@ use std::io::{BufWriter, Write};
 use std::iter;
 use std::path::Path;
 use time;
-use time::{format_description, OffsetDateTime};
+use time::{OffsetDateTime, format_description};
 
 /// Source: Rein & Tamayo, 2015
 /// `WHFast` is a complete reimplementation of the Wisdom-Holman integrator[1],
@@ -204,7 +204,12 @@ impl Integrator for WHFast {
                     if !matches!(evolver.evolution, EvolutionType::NonEvolving)
                         && evolver.time[evolver.time.len() - 1] < time_limit
                     {
-                        panic!("Your new time limit ({} days) is greater than the maximum allowed age of the evolving body #{} ({} days)", time_limit, i+1, evolver.time[evolver.time.len()-1]);
+                        panic!(
+                            "Your new time limit ({} days) is greater than the maximum allowed age of the evolving body #{} ({} days)",
+                            time_limit,
+                            i + 1,
+                            evolver.time[evolver.time.len() - 1]
+                        );
                     }
                 }
             } else if time_limit < self.universe.time_limit && time_limit < self.current_time {
@@ -366,19 +371,19 @@ impl Integrator for WHFast {
 
         let evolution = true;
         self.integrate_velocity_dependent_forces(self.half_time_step, integrate_spin, evolution); // Corrects the inertial velocity and computes spin
-                                                                                                  // A 'DKD'-like integrator will do the first 'D' part:
+        // A 'DKD'-like integrator will do the first 'D' part:
         self.iterate_position_and_velocity_with_whfasthelio_part1(); // updates alternative pos/vel (not using the inertial acceleration but the keplerian motion) by half-step
         self.universe
             .gravity_calculate_acceleration(ignore_gravity_terms); // computes gravitational inertial accelerations
-                                                                   //
-                                                                   //// Posidonius' additional effects are velocity dependent, thus we do not compute them here:
-                                                                   //self.universe.inertial_to_heliocentric(); // required to compute additional effects
-                                                                   //let evolution = true;
-                                                                   //let dangular_momentum_dt = false;
-                                                                   //let accelerations = true;
-                                                                   //self.universe.calculate_additional_effects(self.current_time, evolution, dangular_momentum_dt, accelerations, ignored_gravity_terms); // changes inertial accelerations
-                                                                   //
-                                                                   // A 'DKD'-like integrator will do the 'KD' part:
+        //
+        //// Posidonius' additional effects are velocity dependent, thus we do not compute them here:
+        //self.universe.inertial_to_heliocentric(); // required to compute additional effects
+        //let evolution = true;
+        //let dangular_momentum_dt = false;
+        //let accelerations = true;
+        //self.universe.calculate_additional_effects(self.current_time, evolution, dangular_momentum_dt, accelerations, ignored_gravity_terms); // changes inertial accelerations
+        //
+        // A 'DKD'-like integrator will do the 'KD' part:
         self.iterate_position_and_velocity_with_whfasthelio_part2(); // updates alternative and inertial pos/vel (using the inertial acceleration by one time step to compute interactions and the keplerian motion by half-step)
         let evolution = false; // Only evolve once per full step (optimization)
         self.integrate_velocity_dependent_forces(self.half_time_step, integrate_spin, evolution); // Corrects the inertial velocity and computes spin
@@ -441,7 +446,7 @@ impl WHFast {
             // - Positions and velocities are needed in heliocentric
             // - But additional accelerations are computed in inertial (i.e., barycentric)
             self.universe.inertial_to_heliocentric(); // required to compute additional effects
-                                                      // Calculate non-gravity accelerations
+            // Calculate non-gravity accelerations
             {
                 let evolution = evolution && i == 0; // Only evolve in the first iteration (optimization)
                 let dangular_momentum_dt = integrate_spin;
@@ -531,7 +536,15 @@ impl WHFast {
             );
         }
         if !converged {
-            println!("[WARNING {} UTC] WHFast convergence issue with the integration of the additional forces. Most probably the perturbation is too strong.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
+            println!(
+                "[WARNING {} UTC] WHFast convergence issue with the integration of the additional forces. Most probably the perturbation is too strong.",
+                OffsetDateTime::now_utc()
+                    .format(
+                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
+                            .unwrap()
+                    )
+                    .unwrap()
+            );
         }
         //
         for (
@@ -994,15 +1007,25 @@ impl WHFast {
             if abs!(dt) * invperiod > 1. && self.timestep_warning == 0 {
                 // Ignoring const qualifiers. This warning should not have any effect on
                 // other parts of the code, nor is it vital to show it.
-                println!("[WARNING {} UTC] WHFast convergence issue. Timestep is larger than at least one orbital period.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
+                println!(
+                    "[WARNING {} UTC] WHFast convergence issue. Timestep is larger than at least one orbital period.",
+                    OffsetDateTime::now_utc()
+                        .format(
+                            &format_description::parse(
+                                "[year].[month].[day] [hour]:[minute]:[second]"
+                            )
+                            .unwrap()
+                        )
+                        .unwrap()
+                );
                 self.timestep_warning += 1;
             }
             //x =  dt*invperiod*x_per_period; // first order guess
             let dtr0i = dt * r0i;
             //x = dtr0i; // first order guess
             x = dtr0i * (1. - dtr0i * eta0 * 0.5 * r0i); // second order guess
-                                                         //x = dtr0i *(1.- 0.5*dtr0i*r0i*(eta0-dtr0i*(eta0*eta0*r0i-1./3.*zeta0))); // third order guess
-                                                         //x =  dt*beta/mass_g + eta0/mass_g*(0.85*sqrt(1.+zeta0*zeta0/beta/eta0/eta0) - 1.);  // Dan's version
+        //x = dtr0i *(1.- 0.5*dtr0i*r0i*(eta0-dtr0i*(eta0*eta0*r0i-1./3.*zeta0))); // third order guess
+        //x =  dt*beta/mass_g + eta0/mass_g*(0.85*sqrt(1.+zeta0*zeta0/beta/eta0/eta0) - 1.);  // Dan's version
         } else {
             //// Hyperbolic orbit
             x = 0.; // Initial guess

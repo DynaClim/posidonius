@@ -2,7 +2,7 @@ use clap::value_parser;
 use clap::{Arg, ArgAction, Command};
 use std::path::Path;
 use std::time::{Duration, Instant};
-use time::{format_description, OffsetDateTime};
+use time::{OffsetDateTime, format_description};
 
 fn main() {
     let timer = Instant::now();
@@ -223,7 +223,17 @@ fn main() {
                             universe_integrator_snapshot_path,
                             &mut universe_history_writer,
                         );
-                        println!("[WARNING {} UTC] Reached execution time limit before simulation completion", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
+                        println!(
+                            "[WARNING {} UTC] Reached execution time limit before simulation completion",
+                            OffsetDateTime::now_utc()
+                                .format(
+                                    &format_description::parse(
+                                        "[year].[month].[day] [hour]:[minute]:[second]"
+                                    )
+                                    .unwrap()
+                                )
+                                .unwrap()
+                        );
                         break;
                     }
                 } else if recovery_snapshot_time_trigger {

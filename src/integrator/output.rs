@@ -1,8 +1,8 @@
+use super::super::Integrator;
 use super::super::constants::MIN_ORBITAL_PERIOD_TIME_STEP_RATIO;
 use super::super::particles::Reference;
 use super::super::particles::Universe;
 use super::super::tools::calculate_keplerian_orbital_elements;
-use super::super::Integrator;
 use super::super::{Axes, TidalModel, TidesEffect};
 use bincode;
 use serde::Serialize;
@@ -14,7 +14,7 @@ use std::io::{BufReader, Read};
 use std::io::{BufWriter, Write};
 use std::path::Path;
 use time;
-use time::{format_description, OffsetDateTime};
+use time::{OffsetDateTime, format_description};
 
 pub use super::ias15::*;
 pub use super::leapfrog::*;
@@ -90,7 +90,18 @@ pub fn get_universe_history_writer(
 
     let metadata = universe_history_file.metadata().unwrap();
     let current_n_bytes = metadata.len();
-    assert!((current_n_bytes >= expected_n_bytes), "[PANIC {} UTC] Historic snapshots do not contain all the expected history ({} bytes) as indicated by the recovery snapshot ({} bytes)", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap(), current_n_bytes, expected_n_bytes);
+    assert!(
+        (current_n_bytes >= expected_n_bytes),
+        "[PANIC {} UTC] Historic snapshots do not contain all the expected history ({} bytes) as indicated by the recovery snapshot ({} bytes)",
+        OffsetDateTime::now_utc()
+            .format(
+                &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
+                    .unwrap()
+            )
+            .unwrap(),
+        current_n_bytes,
+        expected_n_bytes
+    );
 
     // Keep only historic data that saved until the restored snapshot (if there it is the case)
     universe_history_file.set_len(expected_n_bytes).unwrap();
@@ -202,7 +213,22 @@ pub fn write_historic_snapshot<T: Write>(
                 && orbital_period <= time_step * MIN_ORBITAL_PERIOD_TIME_STEP_RATIO
             {
                 println!("\n");
-                panic!("[PANIC {} UTC] Time step is too large! Particle {} has an orbital period around particle {} of {:0.3} days which is less than the recommended limit ({:0.3} days) based on the current time step ({:0.3} days).", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap(), current_particle_index, reference_particle_index, orbital_period, time_step*MIN_ORBITAL_PERIOD_TIME_STEP_RATIO, time_step);
+                panic!(
+                    "[PANIC {} UTC] Time step is too large! Particle {} has an orbital period around particle {} of {:0.3} days which is less than the recommended limit ({:0.3} days) based on the current time step ({:0.3} days).",
+                    OffsetDateTime::now_utc()
+                        .format(
+                            &format_description::parse(
+                                "[year].[month].[day] [hour]:[minute]:[second]"
+                            )
+                            .unwrap()
+                        )
+                        .unwrap(),
+                    current_particle_index,
+                    reference_particle_index,
+                    orbital_period,
+                    time_step * MIN_ORBITAL_PERIOD_TIME_STEP_RATIO,
+                    time_step
+                );
             }
         }
     }

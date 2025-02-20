@@ -75,7 +75,9 @@ impl Evolver {
                 } else if (1.399..=1.401).contains(&mass) {
                     String::from("input/Gallet_Bolmont_2017/M_14_Z_0134.dat")
                 } else {
-                    panic!("The evolution type Gallet_Bolmont_2017 does not support a mass of {} Msun!", mass);
+                    panic!(
+                        "The evolution type Gallet_Bolmont_2017 does not support a mass of {mass} Msun!"
+                    );
                 }
             }
             EvolutionType::Baraffe2015(mass) => {
@@ -139,8 +141,7 @@ impl Evolver {
                     String::from("input/Baraffe_2015/1400_Msun.dat")
                 } else {
                     panic!(
-                        "The evolution type Baraffe2015 does not support a mass of {} Msun!",
-                        mass
+                        "The evolution type Baraffe2015 does not support a mass of {mass} Msun!",
                     );
                 }
             }
@@ -171,8 +172,7 @@ impl Evolver {
                     String::from("input/Leconte_2011/mass_80.0000.dat")
                 } else {
                     panic!(
-                        "The evolution type Leconte2011 does not support a mass of {} Msun!",
-                        mass
+                        "The evolution type Leconte2011 does not support a mass of {mass} Msun!",
                     );
                 }
             }
@@ -183,8 +183,7 @@ impl Evolver {
                     String::from("input/Baraffe_1998/SRad_Spli_M-1_0000.dat")
                 } else {
                     panic!(
-                        "The evolution type Baraffe1998 does not support a mass of {} Msun!",
-                        mass
+                        "The evolution type Baraffe1998 does not support a mass of {mass} Msun!"
                     );
                 }
             }
@@ -216,8 +215,7 @@ impl Evolver {
                     String::from("input/Bolmont_Mathis_2016/L15Z02r.dat")
                 } else {
                     panic!(
-                        "The evolution type BolmontMathis2016 does not support a mass of {} Msun!",
-                        mass
+                        "The evolution type BolmontMathis2016 does not support a mass of {mass} Msun!",
                     );
                 }
             }
@@ -359,8 +357,7 @@ impl Evolver {
                     12
                 } else {
                     panic!(
-                        "The evolution type Leconte2011 does not support a mass of {} Msun!",
-                        mass
+                        "The evolution type Leconte2011 does not support a mass of {mass} Msun!",
                     );
                 }
             };
@@ -403,8 +400,18 @@ impl Evolver {
             time = time.iter().map(|&t| t * 365.25 - initial_time).collect();
         }
 
-        assert!(time.is_empty() || time[0] <= 0., "Your initial time ({} days) is smaller than the minimum allowed age of the star ({} days)", initial_time, time[0]+initial_time);
-        assert!(time.is_empty() || time[time.len() - 1] >= time_limit, "Your time limit ({} days) is greater than the maximum allowed age of the star ({} days)", time_limit, time[time.len()-1]);
+        assert!(
+            time.is_empty() || time[0] <= 0.,
+            "Your initial time ({} days) is smaller than the minimum allowed age of the star ({} days)",
+            initial_time,
+            time[0] + initial_time
+        );
+        assert!(
+            time.is_empty() || time[time.len() - 1] >= time_limit,
+            "Your time limit ({} days) is greater than the maximum allowed age of the star ({} days)",
+            time_limit,
+            time[time.len() - 1]
+        );
 
         Evolver {
             evolution,
@@ -540,9 +547,10 @@ pub fn calculate_particles_non_spin_dependent_evolving_quantities(
         ////////////////////////////////////////////////////////////////////
         // Love number
         ////////////////////////////////////////////////////////////////////
-        match &particle.tides.effect {
-            TidesEffect::CentralBody(tidal_model) | TidesEffect::OrbitingBody(tidal_model) => {
-                if let TidalModel::ConstantTimeLag(mut params) = tidal_model {
+        match &mut particle.tides.effect {
+            &mut (TidesEffect::CentralBody(mut tidal_model)
+            | TidesEffect::OrbitingBody(mut tidal_model)) => {
+                if let &mut TidalModel::ConstantTimeLag(mut params) = &mut tidal_model {
                     params.love_number = evolver.love_number(current_time, params.love_number);
                 }
             }

@@ -1,8 +1,8 @@
 // Implemented by Alexandre Revol alexandre.revol@unige.ch
-use super::super::super::constants::{DAY, G, TWO_PI};
-use super::super::super::tools;
 use super::super::super::Axes;
 use super::super::super::Particle;
+use super::super::super::constants::{DAY, G, TWO_PI};
+use super::super::super::tools;
 use super::common::TidalModel;
 use super::common::TidesEffect;
 use serde::{Deserialize, Serialize};
@@ -165,8 +165,8 @@ fn calculate_tidal_force_component(
     //let tidal_force_z = radial_component_of_the_tidal_force_secular * cos_theta - normal_component_of_the_tidal_force_secular * sin_theta;
     // --- The tidal torque --- // return the secular part of the tidal torque (simplified from the rapid varying phases)
     if let Some(params) = match &mut particle.tides.effect {
-        TidesEffect::CentralBody(TidalModel::Kaula(ref mut params))
-        | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut params)) => Some(params),
+        &mut (TidesEffect::CentralBody(TidalModel::Kaula(ref mut params))
+        | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut params))) => Some(params),
         _ => None,
     } {
         params.kaula_tidal_force.x =
@@ -231,7 +231,7 @@ fn calculate_radial_component_of_the_tidal_force(
     let orbital_frequency = TWO_PI / (orbital_period * DAY); // The orbital mean motion in [rad.s^-1]
     let spin = sqrt!(particle.norm_spin_vector_2) / DAY; // The stellar/planetary spin in [rad.s^-1]
 
-    let (TidesEffect::CentralBody(TidalModel::Kaula(ref mut kaula_param))
+    let &mut (TidesEffect::CentralBody(TidalModel::Kaula(ref mut kaula_param))
     | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut kaula_param))) =
         &mut particle.tides.effect
     else {
@@ -566,7 +566,7 @@ fn calculate_normal_component_of_the_tidal_force(
     keplerian_elements: (f64, f64, f64, f64, f64, f64, f64, f64),
     central_body: bool,
 ) -> (f64, f64) {
-    let (TidesEffect::CentralBody(TidalModel::Kaula(ref mut kaula_param))
+    let &mut (TidesEffect::CentralBody(TidalModel::Kaula(ref mut kaula_param))
     | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut kaula_param))) =
         &mut particle.tides.effect
     else {
@@ -939,7 +939,7 @@ fn calculate_orthogonal_component_of_the_tidal_force(
     keplerian_elements: (f64, f64, f64, f64, f64, f64, f64, f64),
     central_body: bool,
 ) -> (f64, f64) {
-    let (TidesEffect::CentralBody(TidalModel::Kaula(ref mut kaula_param))
+    let &mut (TidesEffect::CentralBody(TidalModel::Kaula(ref mut kaula_param))
     | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut kaula_param))) =
         &mut particle.tides.effect
     else {

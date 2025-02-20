@@ -74,9 +74,7 @@ pub fn load_kaula_parameters(
 
     assert!(
         (num_datapoints <= expected_size),
-        "Data size exceeds expected size: num_datapoints ({}) > expected_size ({})",
-        num_datapoints,
-        expected_size
+        "Data size exceeds expected size: num_datapoints ({num_datapoints}) > expected_size ({expected_size})"
     );
 
     // Extend w_lm, im_k2, and re_k2 to expected_size by repeating the last element if needed

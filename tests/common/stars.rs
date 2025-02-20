@@ -14,7 +14,9 @@ pub fn solar_like_for_kaula_1(
         posidonius::EvolutionType::Baraffe2015(_) => {}
         posidonius::EvolutionType::NonEvolving => {}
         _ => {
-            panic!("Evolution type should be Baraffe1998, Baraffe2015, BolmontMathis2016, GalletBolmont2017 or non evolving to create a solar like body!");
+            panic!(
+                "Evolution type should be Baraffe1998, Baraffe2015, BolmontMathis2016, GalletBolmont2017 or non evolving to create a solar like body!"
+            );
         }
     }
     let radius_factor: f64 = 1.0;
@@ -86,7 +88,9 @@ pub fn solar_like_for_kaula_2(
         posidonius::EvolutionType::Baraffe2015(_) => {}
         posidonius::EvolutionType::NonEvolving => {}
         _ => {
-            panic!("Evolution type should be Baraffe1998, Baraffe2015, BolmontMathis2016, GalletBolmont2017 or non evolving to create a solar like body!");
+            panic!(
+                "Evolution type should be Baraffe1998, Baraffe2015, BolmontMathis2016, GalletBolmont2017 or non evolving to create a solar like body!"
+            );
         }
     }
     let radius_factor: f64 = 1.0;
@@ -158,14 +162,16 @@ pub fn red_dwarf_like_for_kaula(
         posidonius::EvolutionType::Baraffe2015(_) => {}
         posidonius::EvolutionType::NonEvolving => {}
         _ => {
-            panic!("Evolution type should be Baraffe1998, Baraffe2015, BolmontMathis2016, GalletBolmont2017 or non evolving to create a solar like body!");
+            panic!(
+                "Evolution type should be Baraffe1998, Baraffe2015, BolmontMathis2016, GalletBolmont2017 or non evolving to create a solar like body!"
+            );
         }
     }
     let radius_factor: f64 = 0.117;
     let star_radius: f64 = radius_factor * posidonius::constants::R_SUN;
     // Radius of gyration
     let star_radius_of_gyration = 4.47e-01; // Brown dwarf
-                                            // To calculate tidal forces, it is needed to have the central body/star at [0,0,0] and without velocity or acceleration (heliocentric)
+    // To calculate tidal forces, it is needed to have the central body/star at [0,0,0] and without velocity or acceleration (heliocentric)
     let star_position = posidonius::Axes {
         x: 0.,
         y: 0.,
@@ -231,14 +237,16 @@ pub fn solar_like(
         posidonius::EvolutionType::Baraffe2015(_) => {}
         posidonius::EvolutionType::NonEvolving => {}
         _ => {
-            panic!("Evolution type should be Baraffe1998, Baraffe2015, BolmontMathis2016, GalletBolmont2017 or non evolving to create a solar like body!");
+            panic!(
+                "Evolution type should be Baraffe1998, Baraffe2015, BolmontMathis2016, GalletBolmont2017 or non evolving to create a solar like body!"
+            );
         }
     }
     let radius_factor: f64 = 1.0;
     let star_radius: f64 = radius_factor * posidonius::constants::R_SUN;
     // Radius of gyration
     let star_radius_of_gyration: f64 = 2.43e-01; // Sun
-                                                 // To calculate tidal forces, it is needed to have the central body/star at [0,0,0] and without velocity or acceleration (heliocentric)
+    // To calculate tidal forces, it is needed to have the central body/star at [0,0,0] and without velocity or acceleration (heliocentric)
     let star_position = posidonius::Axes {
         x: 0.,
         y: 0.,
@@ -259,7 +267,7 @@ pub fn solar_like(
     };
 
     let star_love_number: f64 = 0.03; // Sun
-                                      // Disipation factor (sigma)
+    // Disipation factor (sigma)
     let star_dissipation_factor_scale: f64 = 1.;
     // Sun-like-star: sigmast = 4.992e-66 cgs, conversion to Msun-1.AU-2.day-1 = 3.845764022293d64
     let star_dissipation_factor: f64 = 4.992 * 3.845764e-2; // -66+64
@@ -324,14 +332,16 @@ pub fn solar_like_with_disk(
         posidonius::EvolutionType::Baraffe2015(_) => {}
         posidonius::EvolutionType::NonEvolving => {}
         _ => {
-            panic!("Evolution type should be Baraffe1998, Baraffe2015, BolmontMathis2016, GalletBolmont2017 or non evolving to create a solar like body!");
+            panic!(
+                "Evolution type should be Baraffe1998, Baraffe2015, BolmontMathis2016, GalletBolmont2017 or non evolving to create a solar like body!"
+            );
         }
     }
     let radius_factor: f64 = 1.0;
     let star_radius: f64 = radius_factor * posidonius::constants::R_SUN;
     // Radius of gyration
     let star_radius_of_gyration: f64 = 2.43e-01; // Sun
-                                                 //
+    //
     let star_position = posidonius::Axes {
         x: 0.,
         y: 0.,
@@ -352,7 +362,7 @@ pub fn solar_like_with_disk(
     };
 
     let star_love_number: f64 = 0.03; // Sun
-                                      // Disipation factor (sigma)
+    // Disipation factor (sigma)
     let star_dissipation_factor_scale: f64 = 1.;
     // Sun-like-star: sigmast = 4.992e-66 cgs, conversion to Msun-1.AU-2.day-1 = 3.845764022293d64
     let star_dissipation_factor: f64 = 4.992 * 3.845764e-2; // -66+64
@@ -428,7 +438,9 @@ pub fn brown_dwarf(
         posidonius::EvolutionType::Leconte2011(_) => {}
         posidonius::EvolutionType::NonEvolving => {}
         _ => {
-            panic!("Evolution type should be Leconte2011 or non evolving to create a Brown Dwarf body!");
+            panic!(
+                "Evolution type should be Leconte2011 or non evolving to create a Brown Dwarf body!"
+            );
         }
     }
 
@@ -478,10 +490,7 @@ pub fn brown_dwarf(
                 rotation_period = 70.0;
                 love_number = 0.3070;
             } else {
-                panic!(
-                    "The evolution type Leconte2011 does not support a mass of {} Msun!",
-                    mass
-                );
+                panic!("The evolution type Leconte2011 does not support a mass of {mass} Msun!");
             }
             (rotation_period, love_number)
         }
@@ -498,9 +507,9 @@ pub fn brown_dwarf(
     let star_dissipation_factor_scale: f64 = 1.;
     // BD, Mdwarf: sigmast = 2.006d-60 cgs, conversion to Msun-1.AU-2.day-1 = 3.845764022293d64
     let star_dissipation_factor: f64 = 2.006 * 3.845764e4; // -60+64
-                                                           // Radius of gyration
+    // Radius of gyration
     let star_radius_of_gyration: f64 = 4.41e-01; // Brown dwarf
-                                                 //
+    //
     let star_position = posidonius::Axes {
         x: 0.,
         y: 0.,
@@ -575,7 +584,9 @@ pub fn m_dwarf(
         posidonius::EvolutionType::Baraffe2015(_) => {}
         posidonius::EvolutionType::NonEvolving => {}
         _ => {
-            panic!("Evolution type should be Baraffe1998, Baraffe2015 or non evolving to create a M-Dwarf body!");
+            panic!(
+                "Evolution type should be Baraffe1998, Baraffe2015 or non evolving to create a M-Dwarf body!"
+            );
         }
     }
 
@@ -583,7 +594,7 @@ pub fn m_dwarf(
     let star_radius: f64 = radius_factor * posidonius::constants::R_SUN;
     // Radius of gyration
     let star_radius_of_gyration: f64 = 4.47e-01; // M-dwarf
-                                                 // To calculate tidal forces, it is needed to have the central body/star at [0,0,0] and without velocity or acceleration (heliocentric)
+    // To calculate tidal forces, it is needed to have the central body/star at [0,0,0] and without velocity or acceleration (heliocentric)
     let star_position = posidonius::Axes {
         x: 0.,
         y: 0.,
@@ -604,7 +615,7 @@ pub fn m_dwarf(
     };
 
     let star_love_number: f64 = 0.307; // Brown Dwarf / M Dwarf
-                                       // Disipation factor (sigma)
+    // Disipation factor (sigma)
     let star_dissipation_factor_scale: f64 = 1.;
     // BD, Mdwarf: sigmast = 2.006d-60 cgs, conversion to Msun-1.AU-2.day-1 = 3.845764022293d64
     let star_dissipation_factor: f64 = 2.006 * 3.845764e4; // -60+64
@@ -662,7 +673,7 @@ pub fn solar_like_primary(
     let primary_star_radius: f64 = primary_star_radius_factor * posidonius::constants::R_SUN;
     // Radius of gyration
     let primary_star_radius_of_gyration: f64 = 2.43e-01; // Sun
-                                                         //
+    //
     let primary_star_position = posidonius::Axes {
         x: 0.,
         y: 0.,
@@ -684,7 +695,7 @@ pub fn solar_like_primary(
     };
 
     let primary_star_love_number: f64 = 0.03; // Sun
-                                              // Disipation factor (sigma)
+    // Disipation factor (sigma)
     let primary_star_dissipation_factor_scale: f64 = 1.;
     // Sun-like-primary_star: sigmast = 4.992e-66 cgs, conversion to Msun-1.AU-2.day-1 = 3.845764022293d64
     let primary_star_dissipation_factor: f64 = 4.992 * 3.845764e-2; // -66+64
@@ -782,7 +793,7 @@ pub fn solar_like_secondary(
     };
 
     let secondary_star_love_number: f64 = 0.03; // Sun
-                                                // Disipation factor (sigma)
+    // Disipation factor (sigma)
     let secondary_star_dissipation_factor_scale: f64 = 1.;
     // Sun-like-secondary_star: sigmast = 4.992e-66 cgs, conversion to Msun-1.AU-2.day-1 = 3.845764022293d64
     let secondary_star_dissipation_factor: f64 = 4.992 * 3.845764e-2; // -66+64

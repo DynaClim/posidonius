@@ -3,15 +3,15 @@ use std;
 pub const MAX_PARTICLES: usize = 10; // The optimal value matches the real number of bodies (it will generate smaller snapshots), but a greater number will work too.
 pub const MAX_DISTANCE: f64 = 100.; // AU
 pub const MAX_DISTANCE_2: f64 = MAX_DISTANCE * MAX_DISTANCE; // AU (use a negative value to disable)
-                                                             //
+//
 pub const MIN_ORBITAL_PERIOD_TIME_STEP_RATIO: f64 = -1.0; // The orbital period should be 5.0 times greater than the time step to correctly integrate an orbit (use a negative value to disable)
 
 /// Constants for IAS15 integrator (to be ignored for others)
 pub const INTEGRATOR_FORCE_IS_VELOCITYDEPENDENT: bool = true; // Turn this off to safe some time if the force is not velocity dependent (i.e. radiation forces, tides depend on vel.).
 pub const INTEGRATOR_EPSILON_GLOBAL: bool = true; // if true: estimate the fractional error by max(acceleration_error)/max(acceleration), where max is take over all particles.
-                                                  // if false: estimate the fractional error by max(acceleration_error/acceleration).
+// if false: estimate the fractional error by max(acceleration_error/acceleration).
 pub const INTEGRATOR_EPSILON: f64 = 1e-6; // Precision parameter (default: 1e-9)
-                                          // If it is zero, then a constant timestep is used.
+// If it is zero, then a constant timestep is used.
 pub const INTEGRATOR_MIN_DT: f64 = 0.; // Minimum timestep used as a floor when adaptive timestepping is enabled (default: 0.).
 pub const INTEGRATOR_MAX_DT: f64 = 0.; // Maximum timestep used as a ceiling when adaptive timestepping is enabled (default: 0. => disabled).
 pub const SAFETY_FACTOR: f64 = 0.25; // Maximum increase/deacrease of consecutve timesteps (default: 0.25).
@@ -39,7 +39,7 @@ pub const DAY: f64 = 24. * HOUR; // s
 // https://en.wikipedia.org/wiki/Astronomical_constant
 pub const M_SUN: f64 = 1.9818e30; // Kg
 pub const M2EARTH: f64 = 332_946.050_895; // ratio sun/earth mass
-                                          //pub const M_EARTH : f64 = M_SUN/M2EARTH; // kg
+//pub const M_EARTH : f64 = M_SUN/M2EARTH; // kg
 pub const M_EARTH: f64 = 1. / M2EARTH; // M_SUN
 pub const G_SI: f64 = 6.67428e-11; // m^3.kg^-1.s^-2 (S.I. units)
 pub const AU: f64 = 1.495_978_707_00e11; // m
@@ -51,7 +51,8 @@ pub const SPEED_OF_LIGHT_2: f64 = SPEED_OF_LIGHT * SPEED_OF_LIGHT;
 // http://adsabs.harvard.edu/abs/2015arXiv151007674M
 pub const R_SUN: f64 = 6.957e8 / AU; // AU
 pub const R_EARTH: f64 = 6.3781e6 / AU; // AU
-                                        ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 // Constants in the units used in the Mercury code

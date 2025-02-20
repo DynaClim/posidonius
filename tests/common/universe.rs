@@ -5,7 +5,7 @@ use std::io::Read;
 use std::io::{BufWriter, Write};
 use std::iter;
 use std::path::Path;
-use time::{format_description, OffsetDateTime};
+use time::{OffsetDateTime, format_description};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 struct ParticleProperties {

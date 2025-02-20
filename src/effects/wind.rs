@@ -1,6 +1,6 @@
-use super::super::constants::R_SUN;
 use super::super::Axes;
 use super::super::Particle;
+use super::super::constants::R_SUN;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]

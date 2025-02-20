@@ -1,7 +1,7 @@
-use super::super::super::constants::{K2, MAX_PARTICLES, SMOOTHING_FACTOR_DYN_TIDE_COROTATION};
-use super::super::super::tools;
 use super::super::super::Axes;
 use super::super::super::Particle;
+use super::super::super::constants::{K2, MAX_PARTICLES, SMOOTHING_FACTOR_DYN_TIDE_COROTATION};
+use super::super::super::tools;
 use super::super::EvolutionType;
 use super::common::TidalModel;
 use super::common::TidesEffect;

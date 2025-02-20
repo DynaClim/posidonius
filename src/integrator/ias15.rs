@@ -6,8 +6,8 @@ use super::super::effects::EvolutionType;
 use super::super::effects::GeneralRelativityImplementation;
 use super::super::particles::IgnoreGravityTerms;
 use super::super::particles::Universe;
-use super::output::{write_historic_snapshot, write_recovery_snapshot};
 use super::Integrator;
+use super::output::{write_historic_snapshot, write_recovery_snapshot};
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 use std::any::Any;
@@ -16,7 +16,7 @@ use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{BufWriter, Write};
 use std::path::Path;
-use time::{format_description, OffsetDateTime};
+use time::{OffsetDateTime, format_description};
 
 ///<https://arxiv.org/abs/1409.4779>
 ///IAS15: A fast, adaptive, high-order integrator for gravitational dynamics, accurate to machine
@@ -380,7 +380,12 @@ impl Integrator for Ias15 {
                     if !matches!(evolver.evolution, EvolutionType::NonEvolving)
                         && evolver.time[evolver.time.len() - 1] < time_limit
                     {
-                        panic!("Your new time limit ({} days) is greater than the maximum allowed age of the evolving body #{} ({} days)", time_limit, i+1, evolver.time[evolver.time.len()-1]);
+                        panic!(
+                            "Your new time limit ({} days) is greater than the maximum allowed age of the evolving body #{} ({} days)",
+                            time_limit,
+                            i + 1,
+                            evolver.time[evolver.time.len() - 1]
+                        );
                     }
                 }
             } else if time_limit < self.universe.time_limit && time_limit < self.current_time {
@@ -807,7 +812,18 @@ impl Ias15 {
                     self.integrator_iterations_max_exceeded += 1;
                     let integrator_iterations_warning = 10;
                     if self.integrator_iterations_max_exceeded == integrator_iterations_warning {
-                        println!("[WARNING {} UTC] At least {} predictor corrector loops in integrator IAS15 did not converge. This is typically an indication of the timestep being too large.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap(), integrator_iterations_warning);
+                        println!(
+                            "[WARNING {} UTC] At least {} predictor corrector loops in integrator IAS15 did not converge. This is typically an indication of the timestep being too large.",
+                            OffsetDateTime::now_utc()
+                                .format(
+                                    &format_description::parse(
+                                        "[year].[month].[day] [hour]:[minute]:[second]"
+                                    )
+                                    .unwrap()
+                                )
+                                .unwrap(),
+                            integrator_iterations_warning
+                        );
                     }
                     break; // Quit predictor corrector loop
                 }
@@ -1473,7 +1489,17 @@ impl Ias15 {
                             }
                         }
                         _ => {
-                            println!("[WARNING {} UTC] This should not happen because the loop stops at 7!", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
+                            println!(
+                                "[WARNING {} UTC] This should not happen because the loop stops at 7!",
+                                OffsetDateTime::now_utc()
+                                    .format(
+                                        &format_description::parse(
+                                            "[year].[month].[day] [hour]:[minute]:[second]"
+                                        )
+                                        .unwrap()
+                                    )
+                                    .unwrap()
+                            );
                         }
                     } // end match
                 } // end loop over interval using Gauss-Radau spacings

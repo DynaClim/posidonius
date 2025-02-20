@@ -1,8 +1,8 @@
 use super::super::effects::EvolutionType;
 use super::super::particles::IgnoreGravityTerms;
 use super::super::particles::Universe;
-use super::output::{write_historic_snapshot, write_recovery_snapshot};
 use super::Integrator;
+use super::output::{write_historic_snapshot, write_recovery_snapshot};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::collections::hash_map::DefaultHasher;
@@ -10,7 +10,7 @@ use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{BufWriter, Write};
 use std::path::Path;
-use time::{format_description, OffsetDateTime};
+use time::{OffsetDateTime, format_description};
 
 /// `LeapFrog` is a second order symplectic integrator
 /// <http://adsabs.harvard.edu/cgi-bin/bib_query?arXiv:astro-ph/9710043>
@@ -108,7 +108,12 @@ impl Integrator for LeapFrog {
                     if !matches!(evolver.evolution, EvolutionType::NonEvolving)
                         && evolver.time[evolver.time.len() - 1] < time_limit
                     {
-                        panic!("Your new time limit ({} days) is greater than the maximum allowed age of the evolving body #{} ({} days)", time_limit, i+1, evolver.time[evolver.time.len()-1]);
+                        panic!(
+                            "Your new time limit ({} days) is greater than the maximum allowed age of the evolving body #{} ({} days)",
+                            time_limit,
+                            i + 1,
+                            evolver.time[evolver.time.len() - 1]
+                        );
                     }
                 }
             } else if time_limit < self.universe.time_limit && time_limit < self.current_time {

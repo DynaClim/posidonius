@@ -62,7 +62,7 @@ fn calculate_orthogonal_component_of_the_force_induced_by_rotational_flattening_
                     * rotational_flattening_host_particle.norm_spin_vector_2
                     * rotational_flattening_host_particle.radius.powi(5)
                     / 6.; // Msun.AU^5.day-2
-                          // - Second part of Equation 15 from Bolmont et al. 2015
+                // - Second part of Equation 15 from Bolmont et al. 2015
                 particle
                     .rotational_flattening
                     .parameters
@@ -97,7 +97,7 @@ fn calculate_orthogonal_component_of_the_force_induced_by_rotational_flattening_
                         * particle.norm_spin_vector_2
                         * particle.radius.powi(5)
                         / 6.; // Msun.AU^5.day-2
-                              // - Second part of Equation 15 from Bolmont et al. 2015
+                // - Second part of Equation 15 from Bolmont et al. 2015
                 particle
                     .rotational_flattening
                     .parameters

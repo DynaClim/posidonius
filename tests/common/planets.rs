@@ -164,8 +164,8 @@ pub fn super_earth_like(
         / 86400.; // in days
     let planet_rotation_period = orbital_period * (1.03); // days
     let planet_angular_frequency = posidonius::constants::TWO_PI / (planet_rotation_period); // days^-1
-                                                                                             //
-                                                                                             // Leon: Following statement seems to be a bit redundant/duplicate, see if one can reduce it.
+    //
+    // Leon: Following statement seems to be a bit redundant/duplicate, see if one can reduce it.
     let planet_keplerian_orbital_elements = posidonius::tools::calculate_keplerian_orbital_elements(
         posidonius::constants::G * star.mass * planet_mass,
         planet_position,
@@ -268,7 +268,7 @@ pub fn trappist1_h_like(
         / 86400.; // in days
     let planet_rotation_period = orbital_period * (1.03); // days
     let planet_angular_frequency = posidonius::constants::TWO_PI / (planet_rotation_period); // days^-1
-                                                                                             // dbg!(orbital_period, planet_rotation_period, planet_angular_frequency);
+    // dbg!(orbital_period, planet_rotation_period, planet_angular_frequency);
 
     //
     // Leon: Following statement seems to be a bit redundant/duplicate, see if one can reduce it.
@@ -356,7 +356,7 @@ pub fn earth_like(
     ////// Keplerian orbital elements, in the `asteroidal' format of Mercury code
     //let a: f64 = 0.018;                             // semi-major axis (in AU)
     let a: f64 = semimajor_axis; // semi-major axis (in AU)
-                                 //let e: f64 = 0.1;                               // eccentricity
+    //let e: f64 = 0.1;                               // eccentricity
     let e: f64 = eccentricity; // eccentricity
     let i: f64 = 5. * posidonius::constants::DEG2RAD; // inclination (degrees)
     let mut p: f64 = 0. * posidonius::constants::DEG2RAD; // argument of pericentre (degrees)
@@ -388,7 +388,7 @@ pub fn earth_like(
     //let planet_obliquity: f64 = 11.459156 * posidonius::constants::DEG2RAD; // 0.2 rad
     let planet_rotation_period: f64 = 24.; // hours
     let planet_angular_frequency = posidonius::constants::TWO_PI / (planet_rotation_period / 24.); // days^-1
-                                                                                                   //
+    //
     let planet_keplerian_orbital_elements = posidonius::tools::calculate_keplerian_orbital_elements(
         posidonius::constants::G * star.mass * planet_mass,
         planet_position,
@@ -405,7 +405,8 @@ pub fn earth_like(
 
     let planet_love_number: f64 = 0.299; // Earth
     let planet_fluid_love_number: f64 = 0.9532; // Earth
-                                                ////// Disipation factor (sigma)
+
+    ////// Disipation factor (sigma)
     let planet_dissipation_factor_scale: f64 = 1.;
     //// Hot Gas Giant:
     //let planet_dissipation_factor: f64 = 2.006*3.845764d4;
@@ -475,7 +476,9 @@ pub fn jupiter_like(
         posidonius::EvolutionType::LeconteChabrier2013(_) => {}
         posidonius::EvolutionType::NonEvolving => {}
         _ => {
-            panic!("Evolution type should be LeconteChabrier2013 or non evolving to create a gaseous/jupiter-like planet!");
+            panic!(
+                "Evolution type should be LeconteChabrier2013 or non evolving to create a gaseous/jupiter-like planet!"
+            );
         }
     }
 
@@ -489,7 +492,7 @@ pub fn jupiter_like(
     ////// Keplerian orbital elements, in the `asteroidal' format of Mercury code
     //let a: f64 = 0.018;                             // semi-major axis (in AU)
     let a: f64 = semimajor_axis; // semi-major axis (in AU)
-                                 //let e: f64 = 0.1;                               // eccentricity
+    //let e: f64 = 0.1;                               // eccentricity
     let e: f64 = eccentricity; // eccentricity
     let i: f64 = 5. * posidonius::constants::DEG2RAD; // inclination (degrees)
     let mut p: f64 = 0. * posidonius::constants::DEG2RAD; // argument of pericentre (degrees)
@@ -521,7 +524,7 @@ pub fn jupiter_like(
     //let planet_obliquity: f64 = 11.459156 * posidonius::constants::DEG2RAD; // 0.2 rad
     let planet_rotation_period: f64 = 24.; // hours
     let planet_angular_frequency = posidonius::constants::TWO_PI / (planet_rotation_period / 24.); // days^-1
-                                                                                                   //
+    //
     let planet_keplerian_orbital_elements = posidonius::tools::calculate_keplerian_orbital_elements(
         posidonius::constants::G * star.mass * planet_mass,
         planet_position,
@@ -537,7 +540,7 @@ pub fn jupiter_like(
     );
 
     let planet_love_number: f64 = 0.380; // Gas
-                                         // Disipation factor (sigma)
+    // Disipation factor (sigma)
     let planet_dissipation_factor_scale: f64 = 1.;
     // Hot Gas Giant:
     //let k2pdelta: f64 = 8.101852e-9; // Gas giant

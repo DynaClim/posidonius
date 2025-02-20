@@ -1,11 +1,11 @@
-use super::super::constants::{DBL_EPSILON_2, G, MAX_PARTICLES, SPEED_OF_LIGHT_2};
-use super::super::particles::universe::IgnoreGravityTerms;
 use super::super::Axes;
 use super::super::Particle;
+use super::super::constants::{DBL_EPSILON_2, G, MAX_PARTICLES, SPEED_OF_LIGHT_2};
+use super::super::particles::universe::IgnoreGravityTerms;
 use serde::{Deserialize, Serialize};
 use std::iter;
 use time;
-use time::{format_description, OffsetDateTime};
+use time::{OffsetDateTime, format_description};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GeneralRelativityParticleInternalParameters {
@@ -991,7 +991,18 @@ pub fn calculate_anderson1975_general_relativity_acceleration(
                 if (dvx * dvx + dvy * dvy + dvz * dvz) / vi2 < DBL_EPSILON_2 {
                     break;
                 } else if q == max_iterations {
-                    println!("[WARNING {} UTC] {} iterations in general relativity failed to converge. This is typically because the perturbation is too strong for the current implementation.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap(), max_iterations);
+                    println!(
+                        "[WARNING {} UTC] {} iterations in general relativity failed to converge. This is typically because the perturbation is too strong for the current implementation.",
+                        OffsetDateTime::now_utc()
+                            .format(
+                                &format_description::parse(
+                                    "[year].[month].[day] [hour]:[minute]:[second]"
+                                )
+                                .unwrap()
+                            )
+                            .unwrap(),
+                        max_iterations
+                    );
                 }
             }
 

@@ -1,8 +1,8 @@
 // Implemented by Gabriel Oliveira Gomes
 // Described in Gomes et al (2021): https://ui.adsabs.harvard.edu/abs/2021A%26A...651A..23G/abstract
-use super::super::super::constants::K2;
 use super::super::super::Axes;
 use super::super::super::Particle;
+use super::super::super::constants::K2;
 use super::super::rotational_flattening::RotationalFlatteningEffect;
 use super::super::rotational_flattening::RotationalFlatteningModel;
 use super::super::tides::creep_coplanar::calculate_creep_coplanar_shape;

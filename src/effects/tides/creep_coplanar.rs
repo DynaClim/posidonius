@@ -1,9 +1,9 @@
 // Implemented by Gabriel Oliveira Gomes
 // Described in Gomes et al (2021): https://ui.adsabs.harvard.edu/abs/2021A%26A...651A..23G/abstract
-use super::super::super::constants::{K2, PI, TWO_PI};
-use super::super::super::tools;
 use super::super::super::Axes;
 use super::super::super::Particle;
+use super::super::super::constants::{K2, PI, TWO_PI};
+use super::super::super::tools;
 use super::common::TidalModel;
 use super::common::TidesEffect;
 use serde::{Deserialize, Serialize};
@@ -445,11 +445,8 @@ fn calculate_true_anomaly(eccentricity: f64, mean_anomaly: f64) -> f64 {
         eccentric_anomaly_0 = eccentric_anomaly_1;
     }
 
-    
-
-    2.0
-        * atan!(
-            ((1.0 + eccentricity) / (1.0 - eccentricity)).powf(1.0 / 2.0)
-                * tan!(eccentric_anomaly_0 / 2.0)
-        )
+    2.0 * atan!(
+        ((1.0 + eccentricity) / (1.0 - eccentricity)).powf(1.0 / 2.0)
+            * tan!(eccentric_anomaly_0 / 2.0)
+    )
 }

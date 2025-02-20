@@ -2,7 +2,7 @@ use super::constants::{AU, G_SI, HOUR, M_SUN, PI, TWO_PI};
 use super::particles::Axes;
 use std;
 use time;
-use time::{format_description, OffsetDateTime};
+use time::{OffsetDateTime, format_description};
 
 pub fn calculate_inclination_orbital_equatorial_plane(
     position: Axes,
@@ -78,10 +78,10 @@ pub fn calculate_keplerian_orbital_elements(
     // perihelion distance
     let mut eccentricity; // eccentricity
     let mut i = 0.; // inclination
-                    // longitude of perihelion (NOT argument of perihelion!!)
-                    // longitude of ascending node
-                    // mean anomaly (or mean longitude if eccentricity < 1.e-8)
-                    // orbital_period (in days)
+    // longitude of perihelion (NOT argument of perihelion!!)
+    // longitude of ascending node
+    // mean anomaly (or mean longitude if eccentricity < 1.e-8)
+    // orbital_period (in days)
 
     // --- Local
     let (ex, ey, ez) = calculate_eccentricity_vector(gm, position, velocity).unpack();
@@ -896,7 +896,7 @@ pub fn calculate_pseudo_synchronization_period(
         / (1. - eccentricity.powi(2)).powf(1.5);
     let pseudo_rot = alpha * sqrt!(G_SI * M_SUN * (star_mass + planet_mass));
     let angular_frequency = pseudo_rot * (semi_major_axis * AU).powf(-3. / 2.) * HOUR * 24.; // days^-1
-                                                                                             // days
+    // days
     TWO_PI / (angular_frequency)
 }
 
