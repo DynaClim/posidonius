@@ -43,7 +43,7 @@ fn create_universe() -> posidonius::Universe {
         general_relativity_implementation,
     );
 
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_configuration(&star));
     let mut universe =
         posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
@@ -92,7 +92,7 @@ fn create_kaula_universe() -> posidonius::Universe {
         general_relativity_implementation,
     );
 
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_configuration(&star));
     //////////////////////////////////////////////////////////////////////////////////
     // Disable all first or `check_uniform_viscosity_coefficient` will fail
@@ -100,7 +100,7 @@ fn create_kaula_universe() -> posidonius::Universe {
     let disabled_rotational_flattening =
         posidonius::RotationalFlattening::new(posidonius::RotationalFlatteningEffect::Disabled);
     for particle in &mut particles {
-        particle.set_tides(disabled_tides);
+        particle.set_tides(disabled_tides.clone());
         particle.set_rotational_flattening(disabled_rotational_flattening);
     }
     //////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +130,7 @@ fn create_kaula_universe() -> posidonius::Universe {
         // Change from constant time lag to kaula:
         star.set_tides(star_tides);
         for planet in planets.iter_mut() {
-            planet.set_tides(planet_tides);
+            planet.set_tides(planet_tides.clone());
         }
     }
     //////////////////////////////////////////////////////////////////////////////////

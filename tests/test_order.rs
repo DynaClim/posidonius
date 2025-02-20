@@ -32,7 +32,7 @@ fn whfast_star_first(
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_configuration(&star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 
@@ -129,7 +129,7 @@ fn leapfrog_star_first() -> posidonius::LeapFrog {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_configuration(&star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 
@@ -222,7 +222,7 @@ fn ias15_star_first() -> posidonius::Ias15 {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_configuration(&star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 
@@ -330,7 +330,7 @@ fn ias15_binary_setup1() -> posidonius::Ias15 {
         general_relativity_implementation,
     );
 
-    let mut particles = vec![primary_star, secondary_star];
+    let mut particles = vec![primary_star.clone(), secondary_star.clone()];
     particles.extend(common::planets::basic_configuration(&primary_star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 
@@ -389,7 +389,7 @@ fn ias15_binary_setup2() -> posidonius::Ias15 {
         general_relativity_implementation,
     );
 
-    let mut particles = vec![secondary_star, primary_star];
+    let mut particles = vec![secondary_star, primary_star.clone()];
     particles.extend(common::planets::basic_configuration(&primary_star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 

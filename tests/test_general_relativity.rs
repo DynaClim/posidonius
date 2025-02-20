@@ -30,7 +30,7 @@ fn kidder1995_case() -> posidonius::WHFast {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_configuration(&star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 
@@ -115,7 +115,7 @@ fn anderson1975_case() -> posidonius::WHFast {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_configuration(&star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 
@@ -200,7 +200,7 @@ fn newhall1983_case() -> posidonius::WHFast {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_configuration(&star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 
@@ -284,7 +284,7 @@ fn none_case() -> posidonius::WHFast {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_configuration(&star));
     let universe = posidonius::Universe::new(initial_time, time_limit, particles, consider_effects);
 

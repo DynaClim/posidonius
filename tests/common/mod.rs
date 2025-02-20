@@ -89,9 +89,9 @@ pub fn load_kaula_parameters(
     }
 
     // Create a zeroed out array for the Kaula parameters (size: 32*32 = 1024)
-    let mut love_number_excitation_frequency = [0.0; 32 * 32];
-    let mut real_part_love_number = [0.0; 32 * 32];
-    let mut imaginary_part_love_number = [0.0; 32 * 32];
+    let mut love_number_excitation_frequency = vec![0.0; 32 * 32];
+    let mut real_part_love_number = vec![0.0; 32 * 32];
+    let mut imaginary_part_love_number = vec![0.0; 32 * 32];
 
     // Copy data from the vectors into the fixed-size arrays
     love_number_excitation_frequency.copy_from_slice(&w_lm[..expected_size]);

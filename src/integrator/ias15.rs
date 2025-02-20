@@ -9,7 +9,6 @@ use super::super::particles::Universe;
 use super::Integrator;
 use super::output::{write_historic_snapshot, write_recovery_snapshot};
 use serde::{Deserialize, Serialize};
-use serde_big_array::BigArray;
 use std::any::Any;
 use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
@@ -42,189 +41,99 @@ pub struct Ias15 {
     n_particles: usize,
     integrator_iterations_max_exceeded: i32, // Count how many times the iteration did not converge
     time_step_last_success: f64,             // Last accepted timestep (corresponding to br and er)
-    //#[serde(with = "BigArray")]
     //b: [[f64; 3*MAX_PARTICLES]; 7], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     b_0: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     b_1: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     b_2: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     b_3: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     b_4: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     b_5: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     b_6: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    //#[serde(with = "BigArray")]
     //br: [[f64; 3*MAX_PARTICLES]; 7], // Previous b
-    #[serde(with = "BigArray")]
     br_0: [f64; 3 * MAX_PARTICLES], // Previous b
-    #[serde(with = "BigArray")]
     br_1: [f64; 3 * MAX_PARTICLES], // Previous b
-    #[serde(with = "BigArray")]
     br_2: [f64; 3 * MAX_PARTICLES], // Previous b
-    #[serde(with = "BigArray")]
     br_3: [f64; 3 * MAX_PARTICLES], // Previous b
-    #[serde(with = "BigArray")]
     br_4: [f64; 3 * MAX_PARTICLES], // Previous b
-    #[serde(with = "BigArray")]
     br_5: [f64; 3 * MAX_PARTICLES], // Previous b
-    #[serde(with = "BigArray")]
     br_6: [f64; 3 * MAX_PARTICLES], // Previous b
-    //#[serde(with = "BigArray")]
     //g: [[f64; 3*MAX_PARTICLES]; 7], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     g_0: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     g_1: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     g_2: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     g_3: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     g_4: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     g_5: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     g_6: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    //#[serde(with = "BigArray")]
     //e: [[f64; 3*MAX_PARTICLES]; 7],
-    #[serde(with = "BigArray")]
     e_0: [f64; 3 * MAX_PARTICLES],
-    #[serde(with = "BigArray")]
     e_1: [f64; 3 * MAX_PARTICLES],
-    #[serde(with = "BigArray")]
     e_2: [f64; 3 * MAX_PARTICLES],
-    #[serde(with = "BigArray")]
     e_3: [f64; 3 * MAX_PARTICLES],
-    #[serde(with = "BigArray")]
     e_4: [f64; 3 * MAX_PARTICLES],
-    #[serde(with = "BigArray")]
     e_5: [f64; 3 * MAX_PARTICLES],
-    #[serde(with = "BigArray")]
     e_6: [f64; 3 * MAX_PARTICLES],
-    //#[serde(with = "BigArray")]
     //er: [[f64; 3*MAX_PARTICLES]; 7], // Previous g
-    #[serde(with = "BigArray")]
     er_0: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
     er_1: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
     er_2: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
     er_3: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
     er_4: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
     er_5: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
     er_6: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
-    at: [f64; 3 * MAX_PARTICLES], // Temporary buffer for acceleration
-    #[serde(with = "BigArray")]
+    at: [f64; 3 * MAX_PARTICLES],   // Temporary buffer for acceleration
     x0: [f64; 3 * MAX_PARTICLES], // Temporary buffer for position (used for initial values at h=0)
-    #[serde(with = "BigArray")]
     v0: [f64; 3 * MAX_PARTICLES], // Temporary buffer for velocity (used for initial values at h=0)
-    #[serde(with = "BigArray")]
     a0: [f64; 3 * MAX_PARTICLES], // Temporary buffer for acceleration (used for initial values at h=0)
     // spin coeff
-    //#[serde(with = "BigArray")]
     //sb: [[f64; 3*MAX_PARTICLES]; 7], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     sb_0: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     sb_1: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     sb_2: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     sb_3: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     sb_4: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     sb_5: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    #[serde(with = "BigArray")]
     sb_6: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-    //#[serde(with = "BigArray")]
     //sbr: [[f64; 3*MAX_PARTICLES]; 7], // Previous b
-    #[serde(with = "BigArray")]
     sbr_0: [f64; 3 * MAX_PARTICLES], // Previous b
-    #[serde(with = "BigArray")]
     sbr_1: [f64; 3 * MAX_PARTICLES], // Previous b
-    #[serde(with = "BigArray")]
     sbr_2: [f64; 3 * MAX_PARTICLES], // Previous b
-    #[serde(with = "BigArray")]
     sbr_3: [f64; 3 * MAX_PARTICLES], // Previous b
-    #[serde(with = "BigArray")]
     sbr_4: [f64; 3 * MAX_PARTICLES], // Previous b
-    #[serde(with = "BigArray")]
     sbr_5: [f64; 3 * MAX_PARTICLES], // Previous b
-    #[serde(with = "BigArray")]
     sbr_6: [f64; 3 * MAX_PARTICLES], // Previous b
-    //#[serde(with = "BigArray")]
     //sg: [[f64; 3*MAX_PARTICLES]; 7], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     sg_0: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     sg_1: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     sg_2: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     sg_3: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     sg_4: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     sg_5: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    #[serde(with = "BigArray")]
     sg_6: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-    //#[serde(with = "BigArray")]
     //se: [[f64; 3*MAX_PARTICLES]; 7],
-    #[serde(with = "BigArray")]
     se_0: [f64; 3 * MAX_PARTICLES],
-    #[serde(with = "BigArray")]
     se_1: [f64; 3 * MAX_PARTICLES],
-    #[serde(with = "BigArray")]
     se_2: [f64; 3 * MAX_PARTICLES],
-    #[serde(with = "BigArray")]
     se_3: [f64; 3 * MAX_PARTICLES],
-    #[serde(with = "BigArray")]
     se_4: [f64; 3 * MAX_PARTICLES],
-    #[serde(with = "BigArray")]
     se_5: [f64; 3 * MAX_PARTICLES],
-    #[serde(with = "BigArray")]
     se_6: [f64; 3 * MAX_PARTICLES],
-    //#[serde(with = "BigArray")]
     //ser: [[f64; 3*MAX_PARTICLES]; 7], // Previous g
-    #[serde(with = "BigArray")]
-    ser_0: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
-    ser_1: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
-    ser_2: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
-    ser_3: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
-    ser_4: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
-    ser_5: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
-    ser_6: [f64; 3 * MAX_PARTICLES], // Previous g
-    #[serde(with = "BigArray")]
+    ser_0: [f64; 3 * MAX_PARTICLES],                 // Previous g
+    ser_1: [f64; 3 * MAX_PARTICLES],                 // Previous g
+    ser_2: [f64; 3 * MAX_PARTICLES],                 // Previous g
+    ser_3: [f64; 3 * MAX_PARTICLES],                 // Previous g
+    ser_4: [f64; 3 * MAX_PARTICLES],                 // Previous g
+    ser_5: [f64; 3 * MAX_PARTICLES],                 // Previous g
+    ser_6: [f64; 3 * MAX_PARTICLES],                 // Previous g
     dangular_momentum_dtt: [f64; 3 * MAX_PARTICLES], // Temporary buffer for dangular_momentum_dt
-    #[serde(with = "BigArray")]
     dangular_momentum_dt0: [f64; 3 * MAX_PARTICLES], // Temporary buffer for dangular_momentum_dt (used for initial values at h=0)
-    #[serde(with = "BigArray")]
     angular_momentum0: [f64; 3 * MAX_PARTICLES], // Temporary buffer for angular_momentum (used for initial values at h=0)
     // Compensated summation coefficients
-    #[serde(with = "BigArray")]
     csx: [f64; 3 * MAX_PARTICLES], // position
-    #[serde(with = "BigArray")]
     csv: [f64; 3 * MAX_PARTICLES], // velocity
-    #[serde(with = "BigArray")]
     css: [f64; 3 * MAX_PARTICLES], // spin
-    s: [f64; 9], // Summation coefficients
+    s: [f64; 9],                   // Summation coefficients
 }
 
 impl Hash for Ias15 {

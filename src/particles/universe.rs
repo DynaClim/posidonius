@@ -10,7 +10,6 @@ use super::Particle;
 use super::common;
 use itertools::izip;
 use serde::{Deserialize, Serialize};
-use serde_big_array::BigArray;
 use std::collections::HashMap;
 use time;
 use time::{OffsetDateTime, format_description};
@@ -53,16 +52,14 @@ pub struct ConsiderEffects {
 pub struct Universe {
     pub initial_time: f64,
     pub time_limit: f64,
-    #[serde(with = "BigArray")]
-    pub particles: [Particle; MAX_PARTICLES],
+    pub particles: Vec<Particle>,
     pub particles_evolvers: Vec<Evolver>,
     pub n_particles: usize,
     pub consider_effects: ConsiderEffects,
     pub general_relativity_implementation: GeneralRelativityImplementation, // Optimization: fast access to GR implementation for integrators
     pub hosts: Hosts,
     pair_dependent_scaled_dissipation_factor: HashMap<usize, f64>, // Central body specific
-    #[serde(with = "BigArray")]
-    roche_radiuses: [f64; MAX_PARTICLES * MAX_PARTICLES],
+    roche_radiuses: Vec<f64>,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
@@ -136,13 +133,16 @@ impl Universe {
             (n_particles <= MAX_PARTICLES),
             "Only {MAX_PARTICLES} bodies are allowed, you need to increase the MAX_PARTICLE constant."
         );
-        let mut transformed_particles = [Particle::new_dummy(); MAX_PARTICLES];
+        let mut transformed_particles = particles.clone();
         let mut particles_evolvers: Vec<Evolver> = Vec::with_capacity(n_particles);
-        for i in 0..n_particles {
-            transformed_particles[i] = particles[i];
-            transformed_particles[i].id = i;
+        for (i, transformed_particle_i) in transformed_particles
+            .iter_mut()
+            .enumerate()
+            .take(n_particles)
+        {
+            transformed_particle_i.id = i;
             particles_evolvers.push(Evolver::new(
-                transformed_particles[i].evolution,
+                transformed_particle_i.evolution,
                 initial_time,
                 time_limit,
             ));
@@ -224,8 +224,7 @@ impl Universe {
             }
         }
 
-        let roche_radiuses: [f64; MAX_PARTICLES * MAX_PARTICLES] =
-            [0.; MAX_PARTICLES * MAX_PARTICLES];
+        let roche_radiuses = vec![0.; MAX_PARTICLES * MAX_PARTICLES];
 
         Universe {
             initial_time,

@@ -11,7 +11,6 @@ use super::super::particles::Universe;
 use super::Integrator;
 use super::output::{write_historic_snapshot, write_recovery_snapshot};
 use serde::{Deserialize, Serialize};
-use serde_big_array::BigArray;
 use std;
 use std::any::Any;
 use std::collections::hash_map::DefaultHasher;
@@ -111,14 +110,11 @@ pub struct WHFast {
     pub n_historic_snapshots: usize,
     pub hash: u64,
     /// Internal data structures below. Nothing to be changed by the user.
-    #[serde(with = "BigArray")]
-    particles_alternative_coordinates: [AlternativeCoordinates; MAX_PARTICLES], // Jacobi, democractic-heliocentric or WHDS
+    particles_alternative_coordinates: Vec<AlternativeCoordinates>, // Jacobi, democractic-heliocentric or WHDS
     alternative_coordinates_type: CoordinatesType,
     timestep_warning: usize,
-    #[serde(with = "BigArray")]
-    inertial_velocity_errors: [Axes; MAX_PARTICLES], // A running compensation for lost low-order bits (Kahan 1965; Higham 2002; Hairer et al. 2006)
-    #[serde(with = "BigArray")]
-    particle_angular_momentum_errors: [Axes; MAX_PARTICLES], // A running compensation for lost low-order bits (Kahan 1965; Higham 2002; Hairer et al. 2006)
+    inertial_velocity_errors: Vec<Axes>, // A running compensation for lost low-order bits (Kahan 1965; Higham 2002; Hairer et al. 2006)
+    particle_angular_momentum_errors: Vec<Axes>, // A running compensation for lost low-order bits (Kahan 1965; Higham 2002; Hairer et al. 2006)
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -148,13 +144,16 @@ impl WHFast {
         universe: Universe,
         alternative_coordinates_type: CoordinatesType,
     ) -> WHFast {
-        let particles_alternative_coordinates = [AlternativeCoordinates {
-            mass: 0.,
-            mass_g: 0.,
-            position: Axes::new(),
-            velocity: Axes::new(),
-            acceleration: Axes::new(),
-        }; MAX_PARTICLES];
+        let particles_alternative_coordinates = vec![
+            AlternativeCoordinates {
+                mass: 0.,
+                mass_g: 0.,
+                position: Axes::new(),
+                velocity: Axes::new(),
+                acceleration: Axes::new(),
+            };
+            MAX_PARTICLES
+        ];
 
         WHFast {
             time_step,
@@ -172,8 +171,8 @@ impl WHFast {
             particles_alternative_coordinates,
             alternative_coordinates_type,
             timestep_warning: 0,
-            inertial_velocity_errors: [Axes::new(); MAX_PARTICLES],
-            particle_angular_momentum_errors: [Axes::new(); MAX_PARTICLES],
+            inertial_velocity_errors: vec![Axes::new(); MAX_PARTICLES],
+            particle_angular_momentum_errors: vec![Axes::new(); MAX_PARTICLES],
         }
     }
 }
@@ -434,14 +433,14 @@ impl WHFast {
             }
         };
 
-        let mut particles_orig = self.universe.particles;
-        let mut particles_final: [Particle; MAX_PARTICLES] = particles_orig;
-        let mut particles_prev: [Particle; MAX_PARTICLES];
+        let mut particles_orig = self.universe.particles.clone();
+        let mut particles_final = particles_orig.clone();
+        let mut particles_prev;
         let mut inertial_velocity_changes: [Axes; MAX_PARTICLES] = [Axes::new(); MAX_PARTICLES];
         let mut angular_momentum_changes: [Axes; MAX_PARTICLES] = [Axes::new(); MAX_PARTICLES];
         let mut converged = false;
         for i in 0..IMPLICIT_MIDPOINT_MAX_ITER {
-            particles_prev = particles_final;
+            particles_prev = particles_final.clone();
             // To calculate non-gravity/additional accelerations:
             // - Positions and velocities are needed in heliocentric
             // - But additional accelerations are computed in inertial (i.e., barycentric)
@@ -609,8 +608,8 @@ impl WHFast {
 
     fn converged_velocity_dependent_forces_integration(
         &mut self,
-        particles_final: &[Particle; MAX_PARTICLES],
-        particles_prev: &[Particle; MAX_PARTICLES],
+        particles_final: &[Particle],
+        particles_prev: &[Particle],
         integrate_spin: bool,
     ) -> bool {
         let mut final_total_velocity_2 = 0.;
@@ -648,8 +647,8 @@ impl WHFast {
 
     fn average_particles_for_velocity_dependent_forces_integration(
         &mut self,
-        particles_orig: &[Particle; MAX_PARTICLES],
-        particles_final: &[Particle; MAX_PARTICLES],
+        particles_orig: &[Particle],
+        particles_final: &[Particle],
         integrate_spin: bool,
     ) {
         for ((particle_avg, particle_orig), particle_final) in self.universe.particles

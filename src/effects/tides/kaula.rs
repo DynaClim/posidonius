@@ -7,18 +7,13 @@ use super::common::TidalModel;
 use super::common::TidesEffect;
 use serde::{Deserialize, Serialize};
 
-use serde_big_array::BigArray;
-
 // Structure declare the intput parameters needed for the Kaula model calculation.
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct KaulaParameters {
     // The tidal Love numbers function of the excitation frequency
-    #[serde(with = "BigArray")]
-    pub love_number_excitation_frequency: [f64; 32 * 32], // The excitation frequency
-    #[serde(with = "BigArray")]
-    pub real_part_love_number: [f64; 32 * 32], // The real part of the complex love number
-    #[serde(with = "BigArray")]
-    pub imaginary_part_love_number: [f64; 32 * 32], // The imaginary part of the complex love number
+    pub love_number_excitation_frequency: Vec<f64>, // The excitation frequency
+    pub real_part_love_number: Vec<f64>,            // The real part of the complex love number
+    pub imaginary_part_love_number: Vec<f64>,       // The imaginary part of the complex love number
     pub num_datapoints: f64, // The number of point stored in the 32 by 32 array
     // If we are simulating stellar tide, then we need the value of the spectrum spin rate,
     // which was an input value of stellar spin rate from the computation of the spectrum.

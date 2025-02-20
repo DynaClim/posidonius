@@ -944,7 +944,7 @@ pub fn calculate_anderson1975_general_relativity_acceleration(
         particles,
         more_particles,
         host_newtonian_inertial_accelerations,
-        newtonian_inertial_accelerations,
+        &newtonian_inertial_accelerations,
     );
 
     let n_particles = particles.len() + more_particles.len();
@@ -1039,7 +1039,7 @@ pub fn calculate_anderson1975_general_relativity_acceleration(
             more_particles,
             jacobi_star_mass,
             jacobi_star_acceleration,
-            jacobi_particles_accelerations,
+            &jacobi_particles_accelerations,
         );
 
     // This algorithm computes general_relativity.parameters.output.acceleration in the inertial frame,
@@ -1072,22 +1072,14 @@ fn anderson1975_general_relativity_inertial_to_jacobi_posvelacc(
     particles: &[Particle],
     more_particles: &[Particle],
     host_newtonian_inertial_accelerations: Axes,
-    newtonian_inertial_accelerations: [Axes; MAX_PARTICLES - 1],
-) -> (
-    f64,
-    Axes,
-    Axes,
-    Axes,
-    [Axes; MAX_PARTICLES - 1],
-    [Axes; MAX_PARTICLES - 1],
-    [Axes; MAX_PARTICLES - 1],
-) {
+    newtonian_inertial_accelerations: &[Axes],
+) -> (f64, Axes, Axes, Axes, Vec<Axes>, Vec<Axes>, Vec<Axes>) {
     let mut jacobi_star_position = Axes::new();
     let mut jacobi_star_velocity = Axes::new();
     let mut jacobi_star_acceleration = Axes::new();
-    let mut jacobi_particles_positions = [Axes::new(); MAX_PARTICLES - 1];
-    let mut jacobi_particles_velocities = [Axes::new(); MAX_PARTICLES - 1];
-    let mut jacobi_particles_accelerations = [Axes::new(); MAX_PARTICLES - 1];
+    let mut jacobi_particles_positions = vec![Axes::new(); MAX_PARTICLES - 1];
+    let mut jacobi_particles_velocities = vec![Axes::new(); MAX_PARTICLES - 1];
+    let mut jacobi_particles_accelerations = vec![Axes::new(); MAX_PARTICLES - 1];
 
     let m0 = host_particle.mass;
     let mut eta = m0;
@@ -1169,10 +1161,10 @@ fn anderson1975_general_relativity_jacobi_to_inertial_acc(
     more_particles: &mut [Particle],
     jacobi_star_mass: f64,
     jacobi_star_acceleration: Axes,
-    jacobi_particles_accelerations: [Axes; MAX_PARTICLES - 1],
-) -> (Axes, [Axes; MAX_PARTICLES - 1]) {
+    jacobi_particles_accelerations: &[Axes],
+) -> (Axes, Vec<Axes>) {
     let mut star_acceleration = Axes::new();
-    let mut particles_accelerations = [Axes::new(); MAX_PARTICLES - 1];
+    let mut particles_accelerations = vec![Axes::new(); MAX_PARTICLES - 1];
     let n_particles = particles.len() + more_particles.len();
 
     let mut eta = jacobi_star_mass;
@@ -1216,9 +1208,9 @@ fn get_anderson1975_newhall1983_newtonian_inertial_accelerations(
     particles: &mut [Particle],
     more_particles: &mut [Particle],
     ignored_gravity_terms: IgnoreGravityTerms,
-) -> (Axes, [Axes; MAX_PARTICLES - 1]) {
+) -> (Axes, Vec<Axes>) {
     let mut host_newtonian_inertial_accelerations = Axes::new();
-    let mut newtonian_inertial_accelerations = [Axes::new(); MAX_PARTICLES - 1];
+    let mut newtonian_inertial_accelerations = vec![Axes::new(); MAX_PARTICLES - 1];
     host_newtonian_inertial_accelerations.copy_from(&host_particle.inertial_acceleration);
     for (newtonian_acceleration, particle) in newtonian_inertial_accelerations
         .iter_mut()

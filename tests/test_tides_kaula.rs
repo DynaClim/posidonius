@@ -39,7 +39,7 @@ fn enabled_star_tides_case() -> posidonius::WHFast {
         star_evolution,
         general_relativity_implementation,
     );
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_planetary_configuration_for_stellar_kaula(&star));
 
     //////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +78,7 @@ fn enabled_star_tides_case() -> posidonius::WHFast {
     if let Some((star, planets)) = particles.split_first_mut() {
         star.set_tides(star_tides);
         for planet in planets.iter_mut() {
-            planet.set_tides(planet_tides);
+            planet.set_tides(planet_tides.clone());
         }
     }
     //////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +171,7 @@ fn enabled_planet_tides_case() -> posidonius::WHFast {
         general_relativity_implementation,
     );
 
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_planetary_configuration_for_planetary_kaula(&star));
 
     //////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +198,7 @@ fn enabled_planet_tides_case() -> posidonius::WHFast {
     if let Some((star, planets)) = particles.split_first_mut() {
         star.set_tides(star_tides);
         for planet in planets.iter_mut() {
-            planet.set_tides(planet_tides);
+            planet.set_tides(planet_tides.clone());
         }
     }
     //////////////////////////////////////////////////////////////////////////////////
@@ -288,7 +288,7 @@ fn enabled_both_tides_case() -> posidonius::WHFast {
         general_relativity_implementation,
     );
 
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_planetary_configuration_for_planetary_kaula(&star));
     //////////////////////////////////////////////////////////////////////////////////
     // Load star data
@@ -310,7 +310,7 @@ fn enabled_both_tides_case() -> posidonius::WHFast {
     let planet_tidal_model_params =
         common::load_kaula_parameters(planet_file, stellar_tide, spectrum_spin_rate).unwrap();
     let planet_tides = posidonius::Tides::new(posidonius::TidesEffect::OrbitingBody(
-        posidonius::TidalModel::Kaula(planet_tidal_model_params),
+        posidonius::TidalModel::Kaula(planet_tidal_model_params.clone()),
     ));
 
     dbg!(
@@ -322,7 +322,7 @@ fn enabled_both_tides_case() -> posidonius::WHFast {
     if let Some((star, planets)) = particles.split_first_mut() {
         star.set_tides(star_tides);
         for planet in planets.iter_mut() {
-            planet.set_tides(planet_tides);
+            planet.set_tides(planet_tides.clone());
         }
     }
     //////////////////////////////////////////////////////////////////////////////////

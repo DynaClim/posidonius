@@ -30,7 +30,7 @@ fn enabled_tides_case() -> posidonius::WHFast {
     let star =
         common::stars::brown_dwarf(star_mass, star_evolution, general_relativity_implementation);
 
-    let mut particles = vec![star];
+    let mut particles = vec![star.clone()];
     particles.extend(common::planets::basic_configuration(&star));
     //////////////////////////////////////////////////////////////////////////////////
     // Disable all first or `check_uniform_viscosity_coefficient` will fail
@@ -38,7 +38,7 @@ fn enabled_tides_case() -> posidonius::WHFast {
     let disabled_rotational_flattening =
         posidonius::RotationalFlattening::new(posidonius::RotationalFlatteningEffect::Disabled);
     for particle in &mut particles {
-        particle.set_tides(disabled_tides);
+        particle.set_tides(disabled_tides.clone());
         particle.set_rotational_flattening(disabled_rotational_flattening);
     }
     //////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +65,7 @@ fn enabled_tides_case() -> posidonius::WHFast {
         // Change from constant time lag to creep:
         for planet in planets.iter_mut() {
             planet.set_rotational_flattening(planet_rotational_flattening);
-            planet.set_tides(planet_tides);
+            planet.set_tides(planet_tides.clone());
         }
     }
     //////////////////////////////////////////////////////////////////////////////////
