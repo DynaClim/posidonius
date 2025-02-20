@@ -66,24 +66,12 @@ impl Disk {
                     migration_timescale: 0.,
                 },
                 output: DiskParticleOutputParameters {
-                    acceleration: Axes {
-                        x: 0.,
-                        y: 0.,
-                        z: 0.,
-                    },
+                    acceleration: Axes::new(),
                 },
             },
             coordinates: DiskParticleCoordinates {
-                position: Axes {
-                    x: 0.,
-                    y: 0.,
-                    z: 0.,
-                },
-                velocity: Axes {
-                    x: 0.,
-                    y: 0.,
-                    z: 0.,
-                },
+                position: Axes::new(),
+                velocity: Axes::new(),
             },
         }
     }
@@ -95,15 +83,11 @@ pub fn initialize(
     more_particles: &mut [Particle],
 ) {
     if let DiskEffect::CentralBody(_disk) = host_particle.disk.effect {
-        host_particle.disk.parameters.output.acceleration.x = 0.;
-        host_particle.disk.parameters.output.acceleration.y = 0.;
-        host_particle.disk.parameters.output.acceleration.z = 0.;
+        host_particle.disk.parameters.output.acceleration.zero();
         //host_particle.disk.coordinates.radial_velocity = 0.;
         for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
             if let DiskEffect::OrbitingBody = particle.disk.effect {
-                particle.disk.parameters.output.acceleration.x = 0.;
-                particle.disk.parameters.output.acceleration.y = 0.;
-                particle.disk.parameters.output.acceleration.z = 0.;
+                particle.disk.parameters.output.acceleration.zero();
             }
         }
     }
@@ -116,12 +100,8 @@ pub fn inertial_to_heliocentric_coordinates(
 ) {
     if let DiskEffect::CentralBody(_disk) = host_particle.disk.effect {
         // Inertial to Heliocentric positions/velocities
-        host_particle.disk.coordinates.position.x = 0.;
-        host_particle.disk.coordinates.position.y = 0.;
-        host_particle.disk.coordinates.position.z = 0.;
-        host_particle.disk.coordinates.velocity.x = 0.;
-        host_particle.disk.coordinates.velocity.y = 0.;
-        host_particle.disk.coordinates.velocity.z = 0.;
+        host_particle.disk.coordinates.position.zero();
+        host_particle.disk.coordinates.velocity.zero();
         host_particle.disk.parameters.internal.distance = 0.;
         host_particle.disk.parameters.internal.norm_velocity_vector = 0.;
         host_particle
@@ -143,11 +123,11 @@ pub fn inertial_to_heliocentric_coordinates(
                     particle.inertial_velocity.y - host_particle.inertial_velocity.y;
                 particle.disk.coordinates.velocity.z =
                     particle.inertial_velocity.z - host_particle.inertial_velocity.z;
-                particle.disk.parameters.internal.distance =
-                    (particle.disk.coordinates.position.x.powi(2)
+                particle.disk.parameters.internal.distance = sqrt!(
+                    particle.disk.coordinates.position.x.powi(2)
                         + particle.disk.coordinates.position.y.powi(2)
-                        + particle.disk.coordinates.position.z.powi(2))
-                    .sqrt();
+                        + particle.disk.coordinates.position.z.powi(2)
+                );
                 particle.disk.parameters.internal.norm_velocity_vector_2 =
                     (particle.disk.coordinates.velocity.x
                         - host_particle.disk.coordinates.velocity.x)
@@ -158,12 +138,8 @@ pub fn inertial_to_heliocentric_coordinates(
                         + (particle.disk.coordinates.velocity.z
                             - host_particle.disk.coordinates.velocity.z)
                             .powi(2);
-                particle.disk.parameters.internal.norm_velocity_vector = particle
-                    .disk
-                    .parameters
-                    .internal
-                    .norm_velocity_vector_2
-                    .sqrt();
+                particle.disk.parameters.internal.norm_velocity_vector =
+                    sqrt!(particle.disk.parameters.internal.norm_velocity_vector_2);
             }
         }
     }
@@ -228,28 +204,26 @@ impl DiskProperties {
     }
 
     fn calculate_temperature_disk(host_particle_mass: f64, distance: f64) -> f64 {
-        // distance in AU, host_particle_mass in M_SUN
-        let t_ref = 280.0; //K
-                           // K
-        t_ref * distance.powf(-0.5) * host_particle_mass
+        // distance in AU, host_particle_mass in M_SUN, r_ref in K
+        280. * distance.powf(-0.5) * host_particle_mass
     }
 
     fn calculate_disk_surface_density(&self, time: f64, distance: f64) -> f64 {
         let initial_disk_surface_density = self.surface_density_normalization
             * distance.powi(-1)
             * (-1.0 * distance / self.outer_edge_distance).exp()
-            * (1.0 - (self.inner_edge_distance / distance).sqrt()); // Unit of surface_density_normalization
+            * (1.0 - sqrt!(self.inner_edge_distance / distance)); // Unit of surface_density_normalization
 
-        let mut disk_surface_density = 0.0;
         if distance > self.inner_edge_distance {
-            disk_surface_density = initial_disk_surface_density * (-time / self.lifetime).exp();
+            initial_disk_surface_density * (-time / self.lifetime).exp()
+        } else {
+            0.0
         }
-        disk_surface_density
     }
 
     fn calculate_keplerian_velocity(host_particle_mass_g: f64, distance: f64) -> f64 {
         // days^-1
-        (host_particle_mass_g / (distance).powi(3)).sqrt()
+        sqrt!(host_particle_mass_g / (distance).powi(3))
     }
 
     fn calculate_disk_viscosity(
@@ -289,11 +263,7 @@ pub fn calculate_disk_interaction_acceleration(
 ) {
     if let DiskEffect::CentralBody(disk) = disk_host_particle.disk.effect {
         let factor2 = 1. / disk_host_particle.mass;
-        let mut sum_total_disk_interaction_force = Axes {
-            x: 0.,
-            y: 0.,
-            z: 0.,
-        };
+        let mut sum_total_disk_interaction_force = Axes::new();
 
         for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
             if let DiskEffect::OrbitingBody = particle.disk.effect {

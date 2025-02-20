@@ -75,36 +75,16 @@ impl RotationalFlattening {
                     factor_for_the_force_induced_by_planet_rotation: 0.,
                     orthogonal_component_of_the_force_induced_by_star_rotation: 0.,
                     orthogonal_component_of_the_force_induced_by_planet_rotation: 0.,
-                    shape: Axes {
-                        x: 0.,
-                        y: 0.,
-                        z: 0.,
-                    },
+                    shape: Axes::new(),
                 },
                 output: RotationalFlatteningParticleOutputParameters {
-                    acceleration: Axes {
-                        x: 0.,
-                        y: 0.,
-                        z: 0.,
-                    },
-                    dangular_momentum_dt: Axes {
-                        x: 0.,
-                        y: 0.,
-                        z: 0.,
-                    },
+                    acceleration: Axes::new(),
+                    dangular_momentum_dt: Axes::new(),
                 },
             },
             coordinates: RotationalFlatteningParticleCoordinates {
-                position: Axes {
-                    x: 0.,
-                    y: 0.,
-                    z: 0.,
-                },
-                velocity: Axes {
-                    x: 0.,
-                    y: 0.,
-                    z: 0.,
-                },
+                position: Axes::new(),
+                velocity: Axes::new(),
             },
         }
     }
@@ -131,37 +111,13 @@ pub fn initialize(
             .parameters
             .output
             .acceleration
-            .x = 0.;
-        host_particle
-            .rotational_flattening
-            .parameters
-            .output
-            .acceleration
-            .y = 0.;
-        host_particle
-            .rotational_flattening
-            .parameters
-            .output
-            .acceleration
-            .z = 0.;
+            .zero();
         host_particle
             .rotational_flattening
             .parameters
             .output
             .dangular_momentum_dt
-            .x = 0.;
-        host_particle
-            .rotational_flattening
-            .parameters
-            .output
-            .dangular_momentum_dt
-            .y = 0.;
-        host_particle
-            .rotational_flattening
-            .parameters
-            .output
-            .dangular_momentum_dt
-            .z = 0.;
+            .zero();
         for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
             if let RotationalFlatteningEffect::OrbitingBody(_) =
                 particle.rotational_flattening.effect
@@ -189,37 +145,13 @@ pub fn initialize(
                     .parameters
                     .output
                     .acceleration
-                    .x = 0.;
-                particle
-                    .rotational_flattening
-                    .parameters
-                    .output
-                    .acceleration
-                    .y = 0.;
-                particle
-                    .rotational_flattening
-                    .parameters
-                    .output
-                    .acceleration
-                    .z = 0.;
+                    .zero();
                 particle
                     .rotational_flattening
                     .parameters
                     .output
                     .dangular_momentum_dt
-                    .x = 0.;
-                particle
-                    .rotational_flattening
-                    .parameters
-                    .output
-                    .dangular_momentum_dt
-                    .y = 0.;
-                particle
-                    .rotational_flattening
-                    .parameters
-                    .output
-                    .dangular_momentum_dt
-                    .z = 0.;
+                    .zero();
             }
         }
     }
@@ -232,12 +164,16 @@ pub fn inertial_to_heliocentric_coordinates(
 ) {
     if let RotationalFlatteningEffect::CentralBody(_) = host_particle.rotational_flattening.effect {
         // Inertial to Heliocentric positions/velocities
-        host_particle.rotational_flattening.coordinates.position.x = 0.;
-        host_particle.rotational_flattening.coordinates.position.y = 0.;
-        host_particle.rotational_flattening.coordinates.position.z = 0.;
-        host_particle.rotational_flattening.coordinates.velocity.x = 0.;
-        host_particle.rotational_flattening.coordinates.velocity.y = 0.;
-        host_particle.rotational_flattening.coordinates.velocity.z = 0.;
+        host_particle
+            .rotational_flattening
+            .coordinates
+            .position
+            .zero();
+        host_particle
+            .rotational_flattening
+            .coordinates
+            .velocity
+            .zero();
         host_particle
             .rotational_flattening
             .parameters
@@ -259,25 +195,26 @@ pub fn inertial_to_heliocentric_coordinates(
                     particle.inertial_velocity.y - host_particle.inertial_velocity.y;
                 particle.rotational_flattening.coordinates.velocity.z =
                     particle.inertial_velocity.z - host_particle.inertial_velocity.z;
-                particle.rotational_flattening.parameters.internal.distance = (particle
-                    .rotational_flattening
-                    .coordinates
-                    .position
-                    .x
-                    .powi(2)
-                    + particle
+                particle.rotational_flattening.parameters.internal.distance = sqrt!(
+                    particle
                         .rotational_flattening
                         .coordinates
                         .position
-                        .y
+                        .x
                         .powi(2)
-                    + particle
-                        .rotational_flattening
-                        .coordinates
-                        .position
-                        .z
-                        .powi(2))
-                .sqrt();
+                        + particle
+                            .rotational_flattening
+                            .coordinates
+                            .position
+                            .y
+                            .powi(2)
+                        + particle
+                            .rotational_flattening
+                            .coordinates
+                            .position
+                            .z
+                            .powi(2)
+                );
             }
         }
     }
@@ -289,10 +226,16 @@ pub fn copy_heliocentric_coordinates(
     more_particles: &mut [Particle],
 ) {
     if let RotationalFlatteningEffect::CentralBody(_) = host_particle.rotational_flattening.effect {
-        host_particle.rotational_flattening.coordinates.position =
-            host_particle.heliocentric_position;
-        host_particle.rotational_flattening.coordinates.velocity =
-            host_particle.heliocentric_velocity;
+        host_particle
+            .rotational_flattening
+            .coordinates
+            .position
+            .copy_from(&host_particle.heliocentric_position);
+        host_particle
+            .rotational_flattening
+            .coordinates
+            .velocity
+            .copy_from(&host_particle.heliocentric_velocity);
         host_particle
             .rotational_flattening
             .parameters
@@ -302,10 +245,16 @@ pub fn copy_heliocentric_coordinates(
             if let RotationalFlatteningEffect::OrbitingBody(_) =
                 particle.rotational_flattening.effect
             {
-                particle.rotational_flattening.coordinates.position =
-                    particle.heliocentric_position;
-                particle.rotational_flattening.coordinates.velocity =
-                    particle.heliocentric_velocity;
+                particle
+                    .rotational_flattening
+                    .coordinates
+                    .position
+                    .copy_from(&particle.heliocentric_position);
+                particle
+                    .rotational_flattening
+                    .coordinates
+                    .velocity
+                    .copy_from(&particle.heliocentric_velocity);
                 particle.rotational_flattening.parameters.internal.distance =
                     particle.heliocentric_distance;
             }
@@ -348,28 +297,18 @@ pub fn calculate_dangular_momentum_dt_induced_by_rotational_flattening(
                 .parameters
                 .output
                 .dangular_momentum_dt
-                .x = factor * torque_induced_by_rotational_flattening.x;
+                .copy_from(&torque_induced_by_rotational_flattening);
             particle
                 .rotational_flattening
                 .parameters
                 .output
                 .dangular_momentum_dt
-                .y = factor * torque_induced_by_rotational_flattening.y;
-            particle
-                .rotational_flattening
-                .parameters
-                .output
-                .dangular_momentum_dt
-                .z = factor * torque_induced_by_rotational_flattening.z;
+                .mul(factor);
         }
     }
 
     let central_body = true;
-    let mut dangular_momentum_dt = Axes {
-        x: 0.,
-        y: 0.,
-        z: 0.,
-    };
+    let mut dangular_momentum_dt = Axes::new();
     for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
         if let RotationalFlatteningEffect::CentralBody(rotational_flattening_model) =
             rotational_flattening_host_particle
@@ -404,19 +343,7 @@ pub fn calculate_dangular_momentum_dt_induced_by_rotational_flattening(
         .parameters
         .output
         .dangular_momentum_dt
-        .x = dangular_momentum_dt.x;
-    rotational_flattening_host_particle
-        .rotational_flattening
-        .parameters
-        .output
-        .dangular_momentum_dt
-        .y = dangular_momentum_dt.y;
-    rotational_flattening_host_particle
-        .rotational_flattening
-        .parameters
-        .output
-        .dangular_momentum_dt
-        .z = dangular_momentum_dt.z;
+        .copy_from(&dangular_momentum_dt);
 }
 
 pub fn calculate_acceleration_induced_by_rotational_flattering(
@@ -427,11 +354,7 @@ pub fn calculate_acceleration_induced_by_rotational_flattering(
     let factor2 = 1. / rotational_flattening_host_particle.mass;
 
     // Calculation of the norm square of the spin for the star
-    let mut sum_force_induced_by_rotation = Axes {
-        x: 0.,
-        y: 0.,
-        z: 0.,
-    };
+    let mut sum_force_induced_by_rotation = Axes::new();
 
     for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
         if let RotationalFlatteningEffect::OrbitingBody(rotational_flattening_model) =
@@ -451,9 +374,8 @@ pub fn calculate_acceleration_induced_by_rotational_flattering(
                     )
                 }
             };
-            sum_force_induced_by_rotation.x += force_induced_by_rotation.x;
-            sum_force_induced_by_rotation.y += force_induced_by_rotation.y;
-            sum_force_induced_by_rotation.z += force_induced_by_rotation.z;
+
+            sum_force_induced_by_rotation.add(&force_induced_by_rotation);
 
             // - Equation 19 from Bolmont et al. 2015 (first term)
             let factor1 = 1. / particle.mass;
@@ -462,19 +384,13 @@ pub fn calculate_acceleration_induced_by_rotational_flattering(
                 .parameters
                 .output
                 .acceleration
-                .x = factor1 * force_induced_by_rotation.x;
+                .copy_from(&force_induced_by_rotation);
             particle
                 .rotational_flattening
                 .parameters
                 .output
                 .acceleration
-                .y = factor1 * force_induced_by_rotation.y;
-            particle
-                .rotational_flattening
-                .parameters
-                .output
-                .acceleration
-                .z = factor1 * force_induced_by_rotation.z;
+                .mul(factor1);
         }
     }
 
@@ -490,17 +406,11 @@ pub fn calculate_acceleration_induced_by_rotational_flattering(
         .parameters
         .output
         .acceleration
-        .x = -1.0 * factor2 * sum_force_induced_by_rotation.x;
+        .copy_from(&sum_force_induced_by_rotation);
     rotational_flattening_host_particle
         .rotational_flattening
         .parameters
         .output
         .acceleration
-        .y = -1.0 * factor2 * sum_force_induced_by_rotation.y;
-    rotational_flattening_host_particle
-        .rotational_flattening
-        .parameters
-        .output
-        .acceleration
-        .z = -1.0 * factor2 * sum_force_induced_by_rotation.z;
+        .mul(-1.0 * factor2);
 }

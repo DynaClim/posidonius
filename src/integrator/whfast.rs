@@ -151,21 +151,9 @@ impl WHFast {
         let particles_alternative_coordinates = [AlternativeCoordinates {
             mass: 0.,
             mass_g: 0.,
-            position: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
-            velocity: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
-            acceleration: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
+            position: Axes::new(),
+            velocity: Axes::new(),
+            acceleration: Axes::new(),
         }; MAX_PARTICLES];
 
         WHFast {
@@ -184,16 +172,8 @@ impl WHFast {
             particles_alternative_coordinates,
             alternative_coordinates_type,
             timestep_warning: 0,
-            inertial_velocity_errors: [Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            }; MAX_PARTICLES],
-            particle_angular_momentum_errors: [Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            }; MAX_PARTICLES],
+            inertial_velocity_errors: [Axes::new(); MAX_PARTICLES],
+            particle_angular_momentum_errors: [Axes::new(); MAX_PARTICLES],
         }
     }
 }
@@ -452,16 +432,8 @@ impl WHFast {
         let mut particles_orig = self.universe.particles;
         let mut particles_final: [Particle; MAX_PARTICLES] = particles_orig;
         let mut particles_prev: [Particle; MAX_PARTICLES];
-        let mut inertial_velocity_changes: [Axes; MAX_PARTICLES] = [Axes {
-            x: 0.,
-            y: 0.,
-            z: 0.,
-        }; MAX_PARTICLES];
-        let mut angular_momentum_changes: [Axes; MAX_PARTICLES] = [Axes {
-            x: 0.,
-            y: 0.,
-            z: 0.,
-        }; MAX_PARTICLES];
+        let mut inertial_velocity_changes: [Axes; MAX_PARTICLES] = [Axes::new(); MAX_PARTICLES];
+        let mut angular_momentum_changes: [Axes; MAX_PARTICLES] = [Axes::new(); MAX_PARTICLES];
         let mut converged = false;
         for i in 0..IMPLICIT_MIDPOINT_MAX_ITER {
             particles_prev = particles_final;
@@ -860,7 +832,7 @@ impl WHFast {
                                 + particle_alternative_coordinates.position.y.powi(2)
                                 + particle_alternative_coordinates.position.z.powi(2)
                                 + softening);
-                        let rji = rj2i.sqrt();
+                        let rji = sqrt!(rj2i);
                         let rj3im = rji * rj2i * G * eta;
                         let prefac = dt * rj3im;
                         particle_alternative_coordinates.velocity.x +=
@@ -1001,7 +973,7 @@ impl WHFast {
             p1_velocity = p1.velocity;
         }
 
-        let r0 = (p1_position.x.powi(2) + p1_position.y.powi(2) + p1_position.z.powi(2)).sqrt();
+        let r0 = sqrt!(p1_position.x.powi(2) + p1_position.y.powi(2) + p1_position.z.powi(2));
         let r0i = 1. / r0;
         let v2 = p1_velocity.x.powi(2) + p1_velocity.y.powi(2) + p1_velocity.z.powi(2);
         let beta = 2. * mass_g * r0i - v2;
@@ -1016,10 +988,10 @@ impl WHFast {
 
         if beta > 0. {
             //// Elliptic orbit
-            let sqrt_beta = beta.sqrt();
+            let sqrt_beta = sqrt!(beta);
             invperiod = sqrt_beta * beta / (2. * PI * mass_g);
             x_per_period = 2. * PI / sqrt_beta;
-            if dt.abs() * invperiod > 1. && self.timestep_warning == 0 {
+            if abs!(dt) * invperiod > 1. && self.timestep_warning == 0 {
                 // Ignoring const qualifiers. This warning should not have any effect on
                 // other parts of the code, nor is it vital to show it.
                 println!("[WARNING {} UTC] WHFast convergence issue. Timestep is larger than at least one orbital period.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
@@ -1048,7 +1020,7 @@ impl WHFast {
 
         // Choose solver depending on estimated step size
         // Note, for hyperbolic orbits this uses Newton's method.
-        if !x_per_period.is_nan() && (x - old_x).abs() > 0.01 * x_per_period {
+        if !x_per_period.is_nan() && abs!(x - old_x) > 0.01 * x_per_period {
             // Quartic solver
             // Linear initial guess
             x = beta * dt / mass_g;
@@ -1058,7 +1030,7 @@ impl WHFast {
                 let f = r0 * x + eta0 * gs[2] + zeta0 * gs[3] - dt;
                 let fp = r0 + eta0 * gs[1] + zeta0 * gs[2];
                 let fpp = eta0 * gs[0] + zeta0 * gs[1];
-                let denom = fp + (16. * fp * fp - 20. * f * fpp).abs().sqrt();
+                let denom = fp + sqrt!(abs!(16. * fp * fp - 20. * f * fpp));
                 x = (x * denom - 5. * f) / denom;
                 if prev_x.iter().any(|&x_prev_i| x == x_prev_i) {
                     // Converged. Exit.
@@ -1100,8 +1072,8 @@ impl WHFast {
             } else {
                 //Hyperbolic
                 let h2 = r0 * r0 * v2 - eta0 * eta0;
-                let q = h2 / mass_g / (1. + (1. - h2 * beta / (mass_g * mass_g)).sqrt());
-                let vq = (h2).sqrt() / q;
+                let q = h2 / mass_g / (1. + sqrt!(1. - h2 * beta / (mass_g * mass_g)));
+                let vq = sqrt!(h2) / q;
                 x_min = 1. / (vq + r0 / dt);
                 x_max = dt / q;
             }
@@ -1116,7 +1088,7 @@ impl WHFast {
                 }
                 x = (x_max + x_min) / 2.;
 
-                if (x_max - x_min).abs() / x_max <= 1e-15 {
+                if abs!(x_max - x_min) / x_max <= 1e-15 {
                     break;
                 }
             }
@@ -1199,7 +1171,7 @@ impl WHFast {
         ];
         let mut z = z;
         let mut n = 0;
-        while z.abs() > 0.1 {
+        while abs!(z) > 0.1 {
             z /= 4.;
             n += 1;
         }
@@ -1368,12 +1340,8 @@ impl WHFast {
             if let Some((star_alternative_coordinates, particles_alternative_coordinates_right)) =
                 particles_alternative_coordinates_right.split_first_mut()
             {
-                star_alternative_coordinates.position.x = 0.;
-                star_alternative_coordinates.position.y = 0.;
-                star_alternative_coordinates.position.z = 0.;
-                star_alternative_coordinates.velocity.x = 0.;
-                star_alternative_coordinates.velocity.y = 0.;
-                star_alternative_coordinates.velocity.z = 0.;
+                star_alternative_coordinates.position.zero();
+                star_alternative_coordinates.velocity.zero();
                 star_alternative_coordinates.mass = 0.;
                 star_alternative_coordinates.mass_g = 0.;
                 for particle in iter::once(&*star)

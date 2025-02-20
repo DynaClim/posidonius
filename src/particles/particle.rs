@@ -42,9 +42,7 @@ pub struct Particle {
     pub radius_of_gyration_2: f64, // radius of gyration square can be computed in terms of the mass moment of inertia, which
     // depends on the shape of the body and determines the torque needed for a desired angular acceleration
     pub moment_of_inertia: f64, // Spin related
-    //
-    pub reference: Reference, // Particle of reference for computing keplerian orbital parameters
-    //
+    pub reference: Reference,   // Particle of reference for computing keplerian orbital parameters
     pub tides: Tides,
     pub rotational_flattening: RotationalFlattening,
     pub general_relativity: GeneralRelativity,
@@ -78,26 +76,10 @@ impl Particle {
             mass,
             mass_g: mass * K2,
             radius,
-            inertial_position: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            }, // To be re-computed by the universe
-            inertial_velocity: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            }, // To be re-computed by the universe
-            inertial_acceleration: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
-            inertial_additional_acceleration: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
+            inertial_position: Axes::new(), // To be re-computed by the universe
+            inertial_velocity: Axes::new(), // To be re-computed by the universe
+            inertial_acceleration: Axes::new(),
+            inertial_additional_acceleration: Axes::new(),
             heliocentric_position: position,
             heliocentric_velocity: velocity,
             heliocentric_distance: 0.,
@@ -106,16 +88,12 @@ impl Particle {
             heliocentric_norm_velocity_vector_2: 0.,
             spin,
             norm_spin_vector_2: (spin.x.powi(2)) + (spin.y.powi(2)) + (spin.z.powi(2)),
-            angular_momentum: Axes {
-                x: moment_of_inertia * spin.x,
-                y: moment_of_inertia * spin.y,
-                z: moment_of_inertia * spin.z,
-            },
-            dangular_momentum_dt: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
+            angular_momentum: Axes::from(
+                moment_of_inertia * spin.x,
+                moment_of_inertia * spin.y,
+                moment_of_inertia * spin.z,
+            ),
+            dangular_momentum_dt: Axes::new(),
             radius_of_gyration_2,
             moment_of_inertia,
             reference: Reference::MostMassiveParticle,
@@ -136,56 +114,20 @@ impl Particle {
             mass: 0.,
             mass_g: 0.,
             radius: 0.,
-            inertial_position: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
-            inertial_velocity: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
-            inertial_acceleration: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
-            inertial_additional_acceleration: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
-            heliocentric_position: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
-            heliocentric_velocity: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
+            inertial_position: Axes::new(),
+            inertial_velocity: Axes::new(),
+            inertial_acceleration: Axes::new(),
+            inertial_additional_acceleration: Axes::new(),
+            heliocentric_position: Axes::new(),
+            heliocentric_velocity: Axes::new(),
             heliocentric_distance: 0.,
             heliocentric_radial_velocity: 0.,
             heliocentric_norm_velocity_vector: 0.,
             heliocentric_norm_velocity_vector_2: 0.,
-            spin: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
+            spin: Axes::new(),
             norm_spin_vector_2: 0.,
-            angular_momentum: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
-            dangular_momentum_dt: Axes {
-                x: 0.,
-                y: 0.,
-                z: 0.,
-            },
+            angular_momentum: Axes::new(),
+            dangular_momentum_dt: Axes::new(),
             radius_of_gyration_2: 0.,
             moment_of_inertia: 0.,
             reference: Reference::MostMassiveParticle,
@@ -208,9 +150,9 @@ impl Particle {
         self.check_uniform_viscosity_coefficient();
     }
 
+    // If creep coplanar tides and rotational flattening are set, both
+    // need to have the same uniform viscosity coefficient parameter
     pub fn check_uniform_viscosity_coefficient(&mut self) {
-        // If creep coplanar tides and rotational flattening are set, both need to have the same
-        // uniform viscosity coefficient parameter
         let disabled_tides = matches!(self.tides.effect, TidesEffect::Disabled);
         let disabled_rotational_flattening = matches!(
             self.rotational_flattening.effect,
@@ -248,10 +190,10 @@ impl Particle {
             {
                 panic!("[ERROR {} UTC] When using Creep Coplanar Tidal or rotational flattening effects, both effects need to be Creep Coplanar and not just one of them (e.g., it cannot be mixed with ConstantTimeLag or OblateSpheroid).", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap());
             } else if creep_coplanar_tides && creep_coplanar_rotational_flattening {
-                let diff_uniform_viscosity_coefficient =
-                    (particle_uniform_viscosity_coefficient_for_tides
-                        - particle_uniform_viscosity_coefficient_for_rotational_flattenning)
-                        .abs();
+                let diff_uniform_viscosity_coefficient = abs!(
+                    particle_uniform_viscosity_coefficient_for_tides
+                        - particle_uniform_viscosity_coefficient_for_rotational_flattenning
+                );
                 assert!(diff_uniform_viscosity_coefficient <= 1.0e-16, "[ERROR {} UTC] When using Creep Coplanar Tidal and rotational flattening effects, the uniform viscosity coefficient must be identical {:.16}.", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap(), diff_uniform_viscosity_coefficient);
             }
         }

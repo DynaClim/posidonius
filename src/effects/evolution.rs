@@ -45,23 +45,12 @@ impl Clone for Evolver {
 }
 
 impl Evolver {
-    //pub fn new_dummy() -> Evolver {
-    //Evolver{
-    //evolution: EvolutionType::NonEvolving,
-    //time: Vec::new(),
-    //radius: Vec::new(),
-    //radius_of_gyration_2: Vec::new(),
-    //love_number: Vec::new(),
-    //inverse_tidal_q_factor: Vec::new(),
-    //left_index: 0,
-    //}
-    //}
     pub fn new(evolution: EvolutionType, initial_time: f64, time_limit: f64) -> Evolver {
-        let mut time: Vec<f64> = Vec::new();
-        let mut radius: Vec<f64> = Vec::new();
-        let mut radius_of_gyration_2: Vec<f64> = Vec::new();
-        let mut love_number: Vec<f64> = Vec::new();
-        let mut inverse_tidal_q_factor: Vec<f64> = Vec::new();
+        let mut time = vec![];
+        let mut radius = vec![];
+        let mut radius_of_gyration_2 = vec![];
+        let mut love_number = vec![];
+        let mut inverse_tidal_q_factor = vec![];
 
         let filename = match evolution {
             EvolutionType::GalletBolmont2017(mass) => {
@@ -112,41 +101,41 @@ impl Evolver {
                     String::from("input/Baraffe_2015/0075_Msun.dat")
                 } else if (0.0799..=0.0801).contains(&mass) {
                     String::from("input/Baraffe_2015/0080_Msun.dat")
-                } else if (mass - 0.09).abs() < 1e-7 {
+                } else if abs!(mass - 0.09) < 1e-7 {
                     String::from("input/Baraffe_2015/0090_Msun.dat")
-                } else if (mass - 0.11).abs() < 1e-7 {
+                } else if abs!(mass - 0.11) < 1e-7 {
                     String::from("input/Baraffe_2015/0110_Msun.dat")
-                } else if (mass - 0.13).abs() < 1e-7 {
+                } else if abs!(mass - 0.13) < 1e-7 {
                     String::from("input/Baraffe_2015/0130_Msun.dat")
-                } else if (mass - 0.15).abs() < 1e-7 {
+                } else if abs!(mass - 0.15) < 1e-7 {
                     String::from("input/Baraffe_2015/0150_Msun.dat")
-                } else if (mass - 0.17).abs() < 1e-7 {
+                } else if abs!(mass - 0.17) < 1e-7 {
                     String::from("input/Baraffe_2015/0170_Msun.dat")
-                } else if (mass - 0.20).abs() < 1e-7 {
+                } else if abs!(mass - 0.20) < 1e-7 {
                     String::from("input/Baraffe_2015/0200_Msun.dat")
-                } else if (mass - 0.30).abs() < 1e-7 {
+                } else if abs!(mass - 0.30) < 1e-7 {
                     String::from("input/Baraffe_2015/0300_Msun.dat")
-                } else if (mass - 0.40).abs() < 1e-7 {
+                } else if abs!(mass - 0.40) < 1e-7 {
                     String::from("input/Baraffe_2015/0400_Msun.dat")
-                } else if (mass - 0.50).abs() < 1e-7 {
+                } else if abs!(mass - 0.50) < 1e-7 {
                     String::from("input/Baraffe_2015/0500_Msun.dat")
-                } else if (mass - 0.60).abs() < 1e-7 {
+                } else if abs!(mass - 0.60) < 1e-7 {
                     String::from("input/Baraffe_2015/0600_Msun.dat")
-                } else if (mass - 0.70).abs() < 1e-7 {
+                } else if abs!(mass - 0.70) < 1e-7 {
                     String::from("input/Baraffe_2015/0700_Msun.dat")
-                } else if (mass - 0.80).abs() < 1e-7 {
+                } else if abs!(mass - 0.80) < 1e-7 {
                     String::from("input/Baraffe_2015/0800_Msun.dat")
-                } else if (mass - 0.90).abs() < 1e-7 {
+                } else if abs!(mass - 0.90) < 1e-7 {
                     String::from("input/Baraffe_2015/0900_Msun.dat")
-                } else if (mass - 1.00).abs() < 1e-7 {
+                } else if abs!(mass - 1.00) < 1e-7 {
                     String::from("input/Baraffe_2015/1000_Msun.dat")
-                } else if (mass - 1.10).abs() < 1e-7 {
+                } else if abs!(mass - 1.10) < 1e-7 {
                     String::from("input/Baraffe_2015/1100_Msun.dat")
-                } else if (mass - 1.20).abs() < 1e-7 {
+                } else if abs!(mass - 1.20) < 1e-7 {
                     String::from("input/Baraffe_2015/1200_Msun.dat")
-                } else if (mass - 1.30).abs() < 1e-7 {
+                } else if abs!(mass - 1.30) < 1e-7 {
                     String::from("input/Baraffe_2015/1300_Msun.dat")
-                } else if (mass - 1.40).abs() < 1e-7 {
+                } else if abs!(mass - 1.40) < 1e-7 {
                     String::from("input/Baraffe_2015/1400_Msun.dat")
                 } else {
                     panic!(
@@ -188,9 +177,9 @@ impl Evolver {
                 }
             }
             EvolutionType::Baraffe1998(mass) => {
-                if (mass - 0.10).abs() <= 1.0e-7 {
+                if abs!(mass - 0.10) <= 1.0e-7 {
                     String::from("input/Baraffe_1998/01Msun.dat")
-                } else if (mass - 1.0).abs() <= 1.0e-7 {
+                } else if abs!(mass - 1.0) <= 1.0e-7 {
                     String::from("input/Baraffe_1998/SRad_Spli_M-1_0000.dat")
                 } else {
                     panic!(
@@ -260,9 +249,9 @@ impl Evolver {
             let (current_time, current_radius) = match evolution {
                 EvolutionType::Leconte2011(_) => (raw_time, raw_radius * R_SUN),
                 EvolutionType::Baraffe1998(mass) => {
-                    if (mass - 0.10).abs() <= 1.0e-7 {
+                    if abs!(mass - 0.10) <= 1.0e-7 {
                         (raw_time * 365.25 - initial_time, raw_radius * R_SUN)
-                    } else if (mass - 1.0).abs() <= 1.0e-7 {
+                    } else if abs!(mass - 1.0) <= 1.0e-7 {
                         (raw_time * 365.25 - initial_time, raw_radius * M2AU)
                     } else {
                         (0., 0.)
@@ -340,8 +329,8 @@ impl Evolver {
         // Leconte2011 have a separate file for radius of gyration with a different time sampling:
         if let EvolutionType::Leconte2011(mass) = evolution {
             // Read separate file
-            let mut aux_time: Vec<f64> = Vec::new();
-            let mut aux_radius_of_gyration_2: Vec<f64> = Vec::new();
+            let mut aux_time = vec![];
+            let mut aux_radius_of_gyration_2 = vec![];
             // The column to read from the auxiliary file depends on the mass
             let aux_column = {
                 if (0.0099..=0.0101).contains(&mass) {

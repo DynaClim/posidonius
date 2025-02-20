@@ -3,7 +3,6 @@ use super::particles::Axes;
 use std;
 use time;
 use time::{format_description, OffsetDateTime};
-//use std::cmp::Ord;
 
 pub fn calculate_inclination_orbital_equatorial_plane(
     position: Axes,
@@ -12,74 +11,54 @@ pub fn calculate_inclination_orbital_equatorial_plane(
 ) -> f64 {
     // Calculate the spin axis inclination described as
     // the inclination of the orbit plane with respect to the equatorial plane
-    // --- Input
-    let x = position.x;
-    let y = position.y;
-    let z = position.z;
-    let u = velocity.x;
-    let v = velocity.y;
-    let w = velocity.z;
-    let sx = spin.x;
-    let sy = spin.y;
-    let sz = spin.z;
-    let s = (sx.powi(2) + sy.powi(2) + sz.powi(2)).sqrt();
 
-    // --- Calculate the component of the orbital angular momentum
+    let (x, y, z) = position.unpack();
+    let (u, v, w) = velocity.unpack();
+    let (sx, sy, sz) = spin.unpack();
+    let s = sqrt!(sx.powi(2) + sy.powi(2) + sz.powi(2));
+
+    // Calculate the component of the orbital angular momentum
     let hx = y * w - z * v;
     let hy = z * u - x * w;
     let hz = x * v - y * u;
-    let h = (hx.powi(2) + hy.powi(2) + hz.powi(2)).sqrt();
+    let h = sqrt!(hx.powi(2) + hy.powi(2) + hz.powi(2));
 
     let hx_rel = hx / h;
     let hy_rel = hy / h;
     let hz_rel = hz / h;
-    let h_rel = (hx_rel.powi(2) + hy_rel.powi(2) + hz_rel.powi(2)).sqrt();
+    let h_rel = sqrt!(hx_rel.powi(2) + hy_rel.powi(2) + hz_rel.powi(2));
 
     let numerator = hx_rel * sx + hy_rel * sy + hz_rel * sz;
     let denominator = h_rel * s;
-    //
-    // println!("F1: {:?}, {:?}, {:?}", position, velocity, spin);
-    // println!("F2: {:?}, {:?}, {:?}, {:?}", hx, hy, hz, h);
-    // println!("F3: {:?}, {:?}", numerator, denominator);
 
     let cos_inclination = (numerator / denominator).clamp(-1., 1.);
 
-    cos_inclination.acos()
+    acos!(cos_inclination)
 }
 
 pub fn calculate_eccentricity_vector(gm: f64, position: Axes, velocity: Axes) -> Axes {
-    // --- Input --- //
-    let x = position.x;
-    let y = position.y;
-    let z = position.z;
-    let u = velocity.x;
-    let v = velocity.y;
-    let w = velocity.z;
+    let (x, y, z) = position.unpack();
+    let (u, v, w) = velocity.unpack();
 
-    // --- Output --- //
-    let mut eccentricity_vector = Axes {
-        x: 0.,
-        y: 0.,
-        z: 0.,
-    };
-
-    // --- Local --- //
     // Angular momentum
     let hx = y * w - z * v;
     let hy = z * u - x * w;
     let hz = x * v - y * u;
+
     // v vectorial h
     let v_vect_h_x = v * hz - w * hy;
     let v_vect_h_y = w * hx - u * hz;
     let v_vect_h_z = u * hy - v * hx;
-    // distance
-    let r = (x * x + y * y + z * z).sqrt();
-    // eccentricity componant
-    eccentricity_vector.x = (v_vect_h_x / gm) - (x / r);
-    eccentricity_vector.y = (v_vect_h_y / gm) - (y / r);
-    eccentricity_vector.z = (v_vect_h_z / gm) - (z / r);
 
-    eccentricity_vector
+    // distance
+    let r = sqrt!(x * x + y * y + z * z);
+
+    // eccentricity component
+    Axes::from(
+        (v_vect_h_x / gm) - (x / r),
+        (v_vect_h_y / gm) - (y / r),
+        (v_vect_h_z / gm) - (z / r),
+    )
 }
 
 pub fn calculate_keplerian_orbital_elements(
@@ -87,54 +66,48 @@ pub fn calculate_keplerian_orbital_elements(
     position: Axes,
     velocity: Axes,
 ) -> (f64, f64, f64, f64, f64, f64, f64, f64) {
-    // ! Based on the implementation of Chambers in Mercury
+    // Based on the implementation of Chambers in Mercury
     // Calculates Keplerian orbital elements given relative coordinates and
     // velocities, and GM = G times the sum of the masses.
 
-    // --- Input
-    let x = position.x;
-    let y = position.y;
-    let z = position.z;
-    let u = velocity.x;
-    let v = velocity.y;
-    let w = velocity.z;
+    let (x, y, z) = position.unpack();
+    let (u, v, w) = velocity.unpack();
+
     // --- Output
     // semi-major axis (in AU)
     // perihelion distance
-    let mut eccentricity: f64; // eccentricity
-    let mut i: f64 = 0.; // inclination
-    let mut _p: f64; // longitude of perihelion (NOT argument of perihelion!!)
-    let mut _n: f64; // longitude of ascending node
-    let mut _l: f64; // mean anomaly (or mean longitude if eccentricity < 1.e-8)
-                     // orbital_period (in days)
-                     // --- Local
-    let eccentricity_vector = calculate_eccentricity_vector(gm, position, velocity);
-    let ex = eccentricity_vector.x;
-    let ey = eccentricity_vector.y;
-    let ez = eccentricity_vector.z;
+    let mut eccentricity; // eccentricity
+    let mut i = 0.; // inclination
+                    // longitude of perihelion (NOT argument of perihelion!!)
+                    // longitude of ascending node
+                    // mean anomaly (or mean longitude if eccentricity < 1.e-8)
+                    // orbital_period (in days)
+
+    // --- Local
+    let (ex, ey, ez) = calculate_eccentricity_vector(gm, position, velocity).unpack();
     let e_scal_r = ex * x + ey * y + ez * z;
     let hx = y * w - z * v;
     let hy = z * u - x * w;
     let hz = x * v - y * u;
-    let h2 = hx.powf(2.) + hy.powf(2.) + hz.powf(2.);
+    let h2 = hx.powi(2) + hy.powi(2) + hz.powi(2);
     let v2 = u * u + v * v + w * w;
     let rv = x * u + y * v + z * w;
-    let r = (x * x + y * y + z * z).sqrt();
-    let h = h2.sqrt();
+    let r = sqrt!(x * x + y * y + z * z);
+    let h = sqrt!(h2);
     let s = h2 / gm;
 
     // --- Semi-major axis
-    let a: f64 = gm * r / (2.0 * gm - r * v2);
+    let a = gm * r / (2.0 * gm - r * v2);
 
     // --- Inclination and longitude of ascending node
-    let mut longitude_of_ascending_node: f64;
+    let mut longitude_of_ascending_node;
     let cos_i = (hz / h).clamp(-1., 1.);
-    if cos_i.abs() < 1. {
-        i = cos_i.acos();
+    if abs!(cos_i) < 1. {
+        i = acos!(cos_i);
         if hy > 0. {
             i = TWO_PI - i;
         }
-        //longitude_of_ascending_node = (hx / -hy).atan();
+        //longitude_of_ascending_node = atan!(hx / -hy);
         longitude_of_ascending_node = hx.atan2(-hy);
         if longitude_of_ascending_node < 0. {
             longitude_of_ascending_node += TWO_PI;
@@ -158,9 +131,9 @@ pub fn calculate_keplerian_orbital_elements(
     if temp <= 0. {
         eccentricity = 0.;
     } else {
-        eccentricity = temp.sqrt();
+        eccentricity = sqrt!(temp);
     }
-    let q: f64 = s / (1. + eccentricity);
+    let q = s / (1. + eccentricity);
     if eccentricity < 3.0e-8 {
         eccentricity = 0.;
     }
@@ -177,37 +150,37 @@ pub fn calculate_keplerian_orbital_elements(
         0.
     } else {
         let ex_rot =
-            ex * longitude_of_ascending_node.cos() + ey * longitude_of_ascending_node.sin();
+            ex * cos!(longitude_of_ascending_node) + ey * sin!(longitude_of_ascending_node);
         let ey_rot =
-            -ex * longitude_of_ascending_node.sin() + ey * longitude_of_ascending_node.cos();
+            -ex * sin!(longitude_of_ascending_node) + ey * cos!(longitude_of_ascending_node);
         let ez_rot = ez;
         let ex_rot_2 = ex_rot;
-        let ey_rot_2 = ey_rot * i.cos() + ez_rot * i.sin();
-        //let ez_rot_2 = -ey_rot*i.sin() + ez_rot*i.cos();
+        let ey_rot_2 = ey_rot * cos!(i) + ez_rot * sin!(i);
+        //let ez_rot_2 = -ey_rot * sin!(i) + ez_rot * cos!(i);
 
-        // argument_perihelion = (ey_rot_2/ex_rot_2).atan();
-        (ey_rot_2).atan2(ex_rot_2)
+        // argument_perihelion = atan!(ey_rot_2/ex_rot_2);
+        atan2!(ey_rot_2, ex_rot_2)
     };
 
     let longitude_perihelion = argument_perihelion + longitude_of_ascending_node;
 
     // --- True anomaly
-    let mut true_anomaly: f64;
-    let cos_f: f64;
+    let mut true_anomaly;
+    let cos_f;
     if eccentricity == 0. {
-        let x_rot = x * longitude_of_ascending_node.cos() + y * longitude_of_ascending_node.sin();
+        let x_rot = x * cos!(longitude_of_ascending_node) + y * sin!(longitude_of_ascending_node);
         cos_f = (x_rot / r).clamp(-1., 1.);
-        true_anomaly = cos_f.acos();
+        true_anomaly = acos!(cos_f);
     } else {
         cos_f = (e_scal_r / (eccentricity * r)).clamp(-1., 1.);
-        true_anomaly = cos_f.acos();
+        true_anomaly = acos!(cos_f);
         if rv < 0. {
             true_anomaly = TWO_PI - true_anomaly;
         }
     }
 
     // --- Mean anomaly
-    let mut mean_anomaly: f64;
+    let mut mean_anomaly;
     if eccentricity == 0. {
         mean_anomaly = true_anomaly;
     } else {
@@ -215,24 +188,24 @@ pub fn calculate_keplerian_orbital_elements(
 
         // Mean anomaly for ellipse
         if eccentricity < 1. {
-            if cos_bige.abs() > 1. {
+            if abs!(cos_bige) > 1. {
                 cos_bige = cos_bige.signum();
             }
-            let mut bige = cos_bige.acos();
+            let mut bige = acos!(cos_bige);
             if rv < 0. {
                 bige = TWO_PI - bige;
             }
-            mean_anomaly = bige - eccentricity * (bige.sin());
+            mean_anomaly = bige - eccentricity * sin!(bige);
         } else {
             // Mean anomaly for hyperbola
             if cos_bige < 1. {
                 cos_bige = 1.;
             }
-            let mut bige = (cos_bige + (cos_bige * cos_bige - 1.).sqrt()).log(std::f64::consts::E);
+            let mut bige = ln!(sqrt!(cos_bige + (cos_bige * cos_bige - 1.)));
             if rv < 0. {
                 bige = -bige;
             }
-            mean_anomaly = eccentricity * bige.sinh() - bige;
+            mean_anomaly = eccentricity * sinh!(bige) - bige;
         }
     }
 
@@ -245,7 +218,7 @@ pub fn calculate_keplerian_orbital_elements(
 
     // Given relative coordinates and velocities (of the body 1 respect to body 2),
     // and GM = G times the sum of the masses (body 1 + body 2)
-    let orbital_period: f64 = (TWO_PI / gm.sqrt()) * a.powf(3. / 2.); // in days
+    let orbital_period = (TWO_PI / sqrt!(gm)) * a.powf(3. / 2.); // in days
 
     // a Semimajor axis
     // q perihelion distance
@@ -273,33 +246,28 @@ pub fn calculate_perihelion_distance_and_eccentricity(
     position: Axes,
     velocity: Axes,
 ) -> (f64, f64) {
-    // ! Based on the implementation of Chambers in Mercury
+    //Based on the implementation of Chambers in Mercury
     // Calculates Keplerian orbital elements given relative coordinates and
     // velocities, and GM = G times the sum of the masses.
 
-    // Input
-    let x = position.x;
-    let y = position.y;
-    let z = position.z;
-    let u = velocity.x;
-    let v = velocity.y;
-    let w = velocity.z;
-    // Output
+    let (x, y, z) = position.unpack();
+    let (u, v, w) = velocity.unpack();
+
     // perihelion distance
     // Local
     let hx = y * w - z * v;
     let hy = z * u - x * w;
     let hz = x * v - y * u;
-    let h2 = hx.powf(2.) + hy.powf(2.) + hz.powf(2.);
+    let h2 = hx.powi(2) + hy.powi(2) + hz.powi(2);
     let v2 = u * u + v * v + w * w;
-    let r = (x * x + y * y + z * z).sqrt();
+    let r = sqrt!(x * x + y * y + z * z);
     let s = h2 / gm;
 
     // Eccentricity and perihelion distance
     let temp = 1. + s * (v2 / gm - 2. / r);
 
-    let eccentricity = if temp <= 0. { 0. } else { temp.sqrt() };
-    let q: f64 = s / (1. + eccentricity);
+    let eccentricity = if temp <= 0. { 0. } else { sqrt!(temp) };
+    let q = s / (1. + eccentricity);
 
     (q, eccentricity)
 }
@@ -315,7 +283,7 @@ pub fn calculate_cartesian_coordinates(
 ) -> (f64, f64, f64, f64, f64, f64) {
     // Calculates Cartesian coordinates and velocities given Keplerian orbital
     // elements (for elliptical, parabolic or hyperbolic orbits).
-    // ! Based on the implementation of Chambers in Mercury, which is
+    // Based on the implementation of Chambers in Mercury, which is
     //   based on a routine from Levison and Duncan's SWIFT integrator.
     // WARNING: It gives NaN velocities when eccentricity == 1. (also in the original implementation in mercury code)
 
@@ -340,12 +308,12 @@ pub fn calculate_cartesian_coordinates(
     let g0 = p - n0;
 
     // Rotation factors
-    let si = i0.sin();
-    let ci = i0.cos();
-    let sg = g0.sin();
-    let cg = g0.cos();
-    let sn = n0.sin();
-    let cn = n0.cos();
+    let si = sin!(i0);
+    let ci = cos!(i0);
+    let sg = sin!(g0);
+    let cg = cos!(g0);
+    let sn = sin!(n0);
+    let cn = cos!(n0);
     //let (i, si, ci) = mco_sine(i0);
     //let (g, sg, cg) = mco_sine(g0);
     //let (n, sn, cn) = mco_sine(n0);
@@ -363,19 +331,19 @@ pub fn calculate_cartesian_coordinates(
     // Semi-major axis
     let a = q / (1. - e);
 
-    let se: f64;
-    let ce: f64;
+    let se;
+    let ce;
 
     // Ellipse
     if e < 1. {
-        let romes = (1. - e * e).sqrt();
+        let romes = sqrt!(1. - e * e);
         let temp0 = kepler_solution_for_eccentrities_smaller_than_one(e, l);
-        se = temp0.sin();
-        ce = temp0.cos();
+        se = sin!(temp0);
+        ce = cos!(temp0);
         //let (_, se, ce) = mco_sine(temp0);
         z1 = a * (ce - e);
         z2 = a * romes * se;
-        let temp = (gm / a).sqrt() / (1. - e * ce);
+        let temp = sqrt!(gm / a) / (1. - e * ce);
         z3 = -se * temp;
         z4 = romes * ce * temp;
     } else {
@@ -385,34 +353,34 @@ pub fn calculate_cartesian_coordinates(
             ce = tmp.1;
             z1 = q * (1. - ce * ce);
             z2 = 2. * q * ce;
-            z4 = (2. * gm / q).sqrt() / (1. + ce * ce);
+            z4 = sqrt!(2. * gm / q) / (1. + ce * ce);
             z3 = -ce * z4;
         } else {
             // Hyperbola
-            let romes = (e * e - 1.).sqrt();
+            let romes = sqrt!(e * e - 1.);
             let mut temp = kepler_solution_for_a_hyperbola(e, l);
-            se = temp.sinh();
-            ce = temp.cosh();
+            se = sinh!(temp);
+            ce = cosh!(temp);
             z1 = a * (ce - e);
             z2 = -a * romes * se;
-            temp = (gm / a.abs()).sqrt() / (e * ce - 1.);
+            temp = sqrt!(gm / abs!(a)) / (e * ce - 1.);
             z3 = -se * temp;
             z4 = romes * ce * temp;
         }
     }
 
-    let x: f64 = d11 * z1 + d21 * z2;
-    let y: f64 = d12 * z1 + d22 * z2;
-    let z: f64 = d13 * z1 + d23 * z2;
-    let u: f64 = d11 * z3 + d21 * z4;
-    let v: f64 = d12 * z3 + d22 * z4;
-    let w: f64 = d13 * z3 + d23 * z4;
+    let x = d11 * z1 + d21 * z2;
+    let y = d12 * z1 + d22 * z2;
+    let z = d13 * z1 + d23 * z2;
+    let u = d11 * z3 + d21 * z4;
+    let v = d12 * z3 + d22 * z4;
+    let w = d13 * z3 + d23 * z4;
 
     (x, y, z, u, v, w)
 }
 
 fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
-    // ! Based on the implementation of Chambers in Mercury (mco_kep)
+    //Based on the implementation of Chambers in Mercury (mco_kep)
     // Solves Kepler's equation for eccentricities less than one.
     // Algorithm from A. Nijenhuis (1991) Cel. Mech. Dyn. Astron. 51, 319-330.
     //
@@ -426,24 +394,24 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
     //real(double_precision) :: p,q,p2,ss,cc
     //logical flag,big,bigg
 
-    let mut x: f64;
-    let mut x2: f64;
-    let mut dsn: f64;
-    let u1: f64;
-    let mut u2: f64;
-    let mut f0: f64;
-    let mut f1: f64;
-    let mut f2: f64;
+    let mut x;
+    let mut x2;
+    let mut dsn;
+    let u1;
+    let mut u2;
+    let mut f0;
+    let mut f1;
+    let mut f2;
 
-    let mut z1: f64;
-    let mut z2: f64;
-    let mut z3: f64;
-    let p: f64;
-    let p2: f64;
-    let q: f64;
-    let sn: f64;
+    let mut z1;
+    let mut z2;
+    let mut z3;
+    let p;
+    let p2;
+    let q;
+    let sn;
 
-    let mut l: f64;
+    let mut l;
     let piby2 = 0.5 * PI;
 
     // Reduce mean anomaly to lie in the range 0 < l < pi
@@ -458,7 +426,7 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
         sign = -1.;
     }
 
-    let ome: f64 = 1. - e;
+    let ome = 1. - e;
 
     if (l >= 0.45) || (e < 0.55) {
         // Regions A,B or C in Nijenhuis
@@ -499,7 +467,7 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
         p = ome / z1;
         q = 0.5 * l / z1;
         p2 = p * p;
-        z2 = (((p2 * p + q * q).sqrt() + q).log(std::f64::consts::E) / 1.5).exp();
+        z2 = ((sqrt!(p2 * p + q * q) + q).log(std::f64::consts::E) / 1.5).exp();
         u1 = 2. * q / (z2 + p + p2 / z2);
 
         // Improved value using Newton's method
@@ -529,7 +497,7 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
 
     x2 = x * x;
 
-    let ss: f64 = x * x2 / 6.
+    let ss = x * x2 / 6.
         * (1.
             - x2 / 20.
                 * (1.
@@ -540,7 +508,7 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
                                     - x2 / 110.
                                         * (1.
                                             - x2 / 156. * (1. - x2 / 210. * (1. - x2 / 272.)))))));
-    let cc: f64 = x2 / 2.
+    let cc = x2 / 2.
         * (1.
             - x2 / 12.
                 * (1.
@@ -571,93 +539,60 @@ fn kepler_solution_for_eccentrities_smaller_than_one(e: f64, oldl: f64) -> f64 {
     f0 = l - u2 * ome - e * z1;
     f1 = ome + e * z2;
     f2 = 0.5 * e * (u2 - z1);
-    let f3: f64 = e / 6. * (1. - z2);
+    let f3 = e / 6. * (1. - z2);
     z1 = f0 / f1;
     z2 = f0 / (f2 * z1 + f1);
     sign * (u2 + f0 / ((f3 * z1 + f2) * z2 + f1))
 }
 
-fn kepler_solution_for_a_parabola(q0: f64) -> (f64, f64) {
-    // ! Based on the implementation of Duncan in Mercury (orbel_zget)
+fn kepler_solution_for_a_parabola(mut q: f64) -> (f64, f64) {
+    // Based on the implementation of Duncan in Mercury (orbel_zget)
     // Solves the equivalent of Kepler's eqn. for a parabola
-    // given Q (Fitz. notation.)
+    // given the parabola mean anomaly (q) (Fitz. notation.)
     //
     // ALGORITHM: p. 70-72 of Fitzpatrick's book "Princ. of Cel. Mech."
     //
     // @remarks For a parabola we can solve analytically.
 
-    // Input:
-    // q0 = parabola mean anomaly
-
-    // Output
-    let mut eccentric_anomaly: f64; // eccentric anomaly
-
-    // We copy the input parameter to be able to modify it.
-    let mut q = q0;
-    let x: f64;
-    let tmp: f64;
-    let iflag: i32;
-
-    //----
-    if q < 0. {
-        iflag = 1;
-        q = -q;
+    let inverted = if q < 0. {
+        q = abs!(q);
+        true
     } else {
-        iflag = 0;
-    }
+        false
+    };
 
-    if q < 1.0e-3 {
-        eccentric_anomaly = q * (1. - (q * q / 3.) * (1. - q * q));
+    let eccentric_anomaly = if q < 1.0e-3 {
+        q * (1. - (q * q / 3.) * (1. - q * q))
     } else {
-        x = 0.5 * (3. * q + (9. * q.powf(2.) + 4.).sqrt());
-        tmp = x.powf(1. / 3.);
-        eccentric_anomaly = tmp - 1. / tmp;
-    }
+        let tmp = (0.5 * (3. * q + sqrt!(9. * q.powi(2) + 4.))).powf(1. / 3.);
+        tmp - 1. / tmp
+    };
 
-    if iflag == 1 {
-        eccentric_anomaly = -eccentric_anomaly;
-        q = -q;
+    if inverted {
+        (-q, -eccentric_anomaly)
+    } else {
+        (q, eccentric_anomaly)
     }
-
-    (q, eccentric_anomaly)
 }
 
-fn kepler_solution_for_a_hyperbola(e: f64, n: f64) -> f64 {
-    // ! Based on the implementation of Duncan in Mercury (orbel_fhybrid)
-    // Solves Kepler's eqn. for hyperbola using hybrid approach. \n\n
-    // ALGORITHM: For abs(N) < 0.636*ecc -0.6 , use FLON
-    //            For larger N, uses FGET
+fn kepler_solution_for_a_hyperbola(eccentricity: f64, hyperbola_mean_anomaly: f64) -> f64 {
+    // Based on the implementation of Duncan in Mercury (orbel_fhybrid)
+    // Solves Kepler's eqn. for hyperbola using hybrid approach.
 
-    // Inputs
-    // e = eccentircity
-    // n = hyperbola mean anomaly
-
-    // Output
     // orbel_fhybrid (eccentric anomaly)
-
-    //...  Internals:
-    let mut abn: f64;
-
-    //----
-    //...  Executable code
-
-    abn = n;
-    if n < 0. {
-        abn = -abn;
-    }
-
-    //// TODO:
-    // orbel_fhybrid
-    if abn < 0.636 * e - 0.6 {
-        let tmp = kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e, n);
+    if abs!(hyperbola_mean_anomaly) < 0.636 * eccentricity - 0.6 {
+        let tmp = kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(
+            eccentricity,
+            hyperbola_mean_anomaly,
+        );
         tmp.1
     } else {
-        kepler_solution_for_a_hyperbola_hybrid_approach(e, n)
+        kepler_solution_for_a_hyperbola_hybrid_approach(eccentricity, hyperbola_mean_anomaly)
     }
 }
 
 fn kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e: f64, capn0: f64) -> (f64, f64) {
-    // ! Based on the implementation of Duncan in Mercury (orbel_flon)
+    //Based on the implementation of Duncan in Mercury (orbel_flon)
     // Solves Kepler's eqn. for hyperbola using hybrid approach. \n\n
     // ALGORITHM: Uses power series for N in terms of F and Newton,s method
     // REMARKS: ONLY GOOD FOR LOW VALUES OF N (N < 0.636*e -0.6)
@@ -673,20 +608,20 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e: f64, capn0: f64)
     let mut capn = capn0;
     let mut iflag: i32;
 
-    let mut x: f64;
-    let mut x2: f64;
-    let mut f: f64;
-    let mut fp: f64;
-    let mut dx: f64;
-    let diff: f64;
+    let mut x;
+    let mut x2;
+    let mut f;
+    let mut fp;
+    let mut dx;
+    let diff;
 
     let imax: i32 = 10;
-    let tiny: f64 = 4.0e-15; // A small number
-    let a3: f64 = 1_037_836_800.;
-    let a5: f64 = 51_891_840.;
-    let a7: f64 = 1_235_520.;
-    let a9: f64 = 17_160.;
-    let a11: f64 = 156.;
+    let tiny = 4.0e-15; // A small number
+    let a3 = 1_037_836_800.;
+    let a5 = 51_891_840.;
+    let a7 = 1_235_520.;
+    let a9 = 17_160.;
+    let a11 = 156.;
 
     let b3 = 3. * a3;
     let b5 = 5. * a5;
@@ -704,19 +639,19 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e: f64, capn0: f64)
     }
 
     let a_tmp = 6_227_020_800.;
-    let a1: f64 = a_tmp * (1. - 1. / e);
-    let a0: f64 = -a_tmp * capn / e;
-    let b1: f64 = a1;
+    let a1 = a_tmp * (1. - 1. / e);
+    let a0 = -a_tmp * capn / e;
+    let b1 = a1;
 
     //  Set iflag nonzero if capn < 0., in which case solve for -capn
     //  and change the sign of the final answer for F.
     //  Begin with a reasonable guess based on solving the cubic for small F
 
-    let a: f64 = 6. * (e - 1.) / e;
-    let b: f64 = -6. * capn / e;
-    let sq: f64 = (0.25 * b * b + a * a * a / 27.).sqrt();
-    let biga: f64 = (-0.5 * b + sq).powf(1. / 3.);
-    let bigb: f64 = -(0.5 * b + sq).powf(1. / 3.);
+    let a = 6. * (e - 1.) / e;
+    let b = -6. * capn / e;
+    let sq = sqrt!(0.25 * b * b + a * a * a / 27.);
+    let biga = (-0.5 * b + sq).powf(1. / 3.);
+    let bigb = -(0.5 * b + sq).powf(1. / 3.);
     x = biga + bigb;
     //  write(6,*) 'cubic = ',x**3 +a*x +b
     orbel_flon = x;
@@ -731,7 +666,7 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e: f64, capn0: f64)
             dx = -f / fp;
             orbel_flon = x + dx;
             //   If we have converged here there's no point in going on
-            if dx.abs() < tiny {
+            if abs!(dx) < tiny {
                 converge = true;
                 break;
             }
@@ -754,7 +689,7 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e: f64, capn0: f64)
                     )
                     .unwrap()
             );
-            diff = e * orbel_flon.sinh() - orbel_flon - capn;
+            diff = e * sinh!(orbel_flon) - orbel_flon - capn;
             println!("N, F, ecc * F.sinh() - F - N : ");
             println!("{capn} {orbel_flon} {diff}");
             return (orbel_flon, capn);
@@ -771,7 +706,7 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach_for_low_n(e: f64, capn0: f64)
 }
 
 fn kepler_solution_for_a_hyperbola_hybrid_approach(e: f64, capn: f64) -> f64 {
-    // ! Based on the implementation of Duncan in Mercury (orbel_fget)
+    //Based on the implementation of Duncan in Mercury (orbel_fget)
     // Solves Kepler's eqn. for hyperbola using hybrid approach.
     // ALGORITHM: Based on pp. 70-72 of Fitzpatrick's book "Principles of
     //              Cel. Mech. ".  Quartic convergence from Danby's book.
@@ -781,23 +716,23 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach(e: f64, capn: f64) -> f64 {
     // capn = hyperbola mean anomaly
 
     // Output
-    let mut orbel_fget: f64; // eccentric anomaly
+    let mut orbel_fget; // eccentric anomaly
 
     //...  Internals:
     let imax: i32 = 10;
-    let tiny: f64 = 4.0e-15; // A small number
+    let tiny = 4.0e-15; // A small number
 
-    let tmp: f64;
-    let mut x: f64;
-    let mut shx: f64;
-    let mut chx: f64;
-    let mut esh: f64;
-    let mut ech: f64;
-    let mut f: f64;
-    let mut fp: f64;
-    let mut fpp: f64;
-    let mut fppp: f64;
-    let mut dx: f64;
+    let tmp;
+    let mut x;
+    let mut shx;
+    let mut chx;
+    let mut esh;
+    let mut ech;
+    let mut f;
+    let mut fp;
+    let mut fpp;
+    let mut fppp;
+    let mut dx;
 
     //----
     // Function to solve "Kepler's eqn" for F (here called
@@ -815,8 +750,8 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach(e: f64, capn: f64) -> f64 {
     orbel_fget = x;
 
     for _ in 1..imax {
-        shx = x.sinh();
-        chx = x.cosh();
+        shx = sinh!(x);
+        chx = cosh!(x);
         esh = e * shx;
         ech = e * chx;
         f = esh - x - capn;
@@ -828,7 +763,7 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach(e: f64, capn: f64) -> f64 {
         dx = -f / (fp + dx * fpp / 2. + dx * dx * fppp / 6.);
         orbel_fget = x + dx;
         //   If we have converged here there's no point in going on
-        if dx.abs() <= tiny {
+        if abs!(dx) <= tiny {
             return orbel_fget;
         }
         x = orbel_fget;
@@ -848,7 +783,7 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach(e: f64, capn: f64) -> f64 {
 
 #[allow(dead_code)]
 fn mco_sine(x0: f64) -> (f64, f64, f64) {
-    // ! Based on the implementation of Chambers in Mercury
+    //Based on the implementation of Chambers in Mercury
     // Calculates sin and cos of an angle X (in radians).
     // Chambers says: "x is modified by the routine. Without this part, outputs of mercury are different, don't ask me why."
 
@@ -862,9 +797,9 @@ fn mco_sine(x0: f64) -> (f64, f64, f64) {
     let cx = x.cos();
 
     let sx = if x > PI {
-        -(1.0 - cx * cx).sqrt()
+        -sqrt!(1.0 - cx.powi(2))
     } else {
-        (1.0 - cx * cx).sqrt()
+        sqrt!(1.0 - cx.powi(2))
     };
 
     (x, sx, cx)
@@ -899,7 +834,7 @@ pub fn linear_interpolation(target_x: f64, x: &[f64], y: &[f64]) -> (f64, usize)
 }
 
 pub fn cosine_interpolation(target_x: f64, x: &[f64], y: &[f64]) -> (f64, usize) {
-    let target_y: f64;
+    let target_y;
 
     // Find the nearest interval [ x(LEFT), x(RIGHT) ] to target_x.
     let (left, right) = find_indices_around_target_value(x, target_x);
@@ -913,7 +848,7 @@ pub fn cosine_interpolation(target_x: f64, x: &[f64], y: &[f64]) -> (f64, usize)
         // - Smooth around the real data points (contrary to the linear interpolation)
         let x_left = x[left];
         let mut target_percent = (target_x - x_left) / (x[right] - x_left); // Transform target to percent as in transforming x[left]..x[right] to 0..1
-        target_percent = (1. - (target_percent * PI).cos()) / 2.; // Transform target percent so that it gets smoothed when close to 0 or 1 (i.e., closer to x[left] or x[right])
+        target_percent = (1. - cos!(target_percent * PI)) / 2.; // Transform target percent so that it gets smoothed when close to 0 or 1 (i.e., closer to x[left] or x[right])
         target_y = y[left] * (1. - target_percent) + y[right] * target_percent;
     }
 
@@ -959,7 +894,7 @@ pub fn calculate_pseudo_synchronization_period(
         / (1. + 3. * eccentricity.powi(2) + 3. / 8. * eccentricity.powi(4))
         * 1.
         / (1. - eccentricity.powi(2)).powf(1.5);
-    let pseudo_rot = alpha * (G_SI * M_SUN * (star_mass + planet_mass)).sqrt();
+    let pseudo_rot = alpha * sqrt!(G_SI * M_SUN * (star_mass + planet_mass));
     let angular_frequency = pseudo_rot * (semi_major_axis * AU).powf(-3. / 2.) * HOUR * 24.; // days^-1
                                                                                              // days
     TWO_PI / (angular_frequency)
@@ -971,18 +906,12 @@ pub fn calculate_spin(
     obliquity: f64,
     longitude_ascending_node: f64,
 ) -> Axes {
-    let mut spin = Axes {
-        x: 0.,
-        y: 0.,
-        z: 0.,
-    };
     // Spin taking into consideration the inclination:
-    spin.x = angular_frequency * (obliquity + inclination).sin() * (longitude_ascending_node).sin();
-    spin.y =
-        -angular_frequency * (obliquity + inclination).sin() * (longitude_ascending_node).cos();
-    spin.z = angular_frequency * (obliquity + inclination).cos();
-
-    spin
+    Axes::from(
+        angular_frequency * sin!(obliquity + inclination) * sin!(longitude_ascending_node),
+        -angular_frequency * sin!(obliquity + inclination) * cos!(longitude_ascending_node),
+        angular_frequency * cos!(obliquity + inclination),
+    )
 }
 
 #[cfg(test)]
@@ -992,20 +921,20 @@ mod tests {
     #[test]
     fn calculate_keplerian_orbital_elements() {
         //---- Star (central body)
-        let star_mass: f64 = 0.08; // Solar masses
-        let planet_mass: f64 = 1.0 * M_EARTH; // Solar masses (3.0e-6 solar masses = 1 earth mass)
+        let star_mass = 0.08; // Solar masses
+        let planet_mass = 1.0 * M_EARTH; // Solar masses (3.0e-6 solar masses = 1 earth mass)
 
         ////////// Specify initial position and velocity for a stable orbit
         ////// Keplerian orbital elements, in the `asteroidal' format of Mercury code
-        let a: f64 = 0.018; // semi-major axis (in AU)
-        let e: f64 = 0.1; // eccentricity
-        let i: f64 = 5. * DEG2RAD; // inclination (degrees)
-        let mut p: f64 = 0.; // argument of pericentre (degrees)
-        let n: f64 = 0. * DEG2RAD; // longitude of the ascending node (degrees)
-        let l: f64 = 0. * DEG2RAD; // mean anomaly (degrees)
+        let a = 0.018; // semi-major axis (in AU)
+        let e = 0.1; // eccentricity
+        let i = 5. * DEG2RAD; // inclination (degrees)
+        let mut p = 0.; // argument of pericentre (degrees)
+        let n = 0. * DEG2RAD; // longitude of the ascending node (degrees)
+        let l = 0. * DEG2RAD; // mean anomaly (degrees)
         p = (p + n) * DEG2RAD; // Convert to longitude of perihelion !!
         let q = a * (1.0 - e); // perihelion distance
-        let gm: f64 = G * (planet_mass + star_mass);
+        let gm = G * (planet_mass + star_mass);
         let (x, y, z, vx, vy, vz) = calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
 
         assert_eq!(x, 0.0162);

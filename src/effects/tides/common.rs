@@ -123,38 +123,18 @@ impl Tides {
                     radial_component_of_the_tidal_force: 0.,
                     radial_component_of_the_tidal_force_dissipative_part_when_star_as_point_mass:
                         0.,
-                    shape: Axes {
-                        x: 0.,
-                        y: 0.,
-                        z: 0.,
-                    },
+                    shape: Axes::new(),
                     denergy_dt: 0., // Only for history output
                     lag_angle: 0.,  // It will be initialized the first time the evolver is called
                 },
                 output: TidesParticleOutputParameters {
-                    acceleration: Axes {
-                        x: 0.,
-                        y: 0.,
-                        z: 0.,
-                    },
-                    dangular_momentum_dt: Axes {
-                        x: 0.,
-                        y: 0.,
-                        z: 0.,
-                    },
+                    acceleration: Axes::new(),
+                    dangular_momentum_dt: Axes::new(),
                 },
             },
             coordinates: TidesParticleCoordinates {
-                position: Axes {
-                    x: 0.,
-                    y: 0.,
-                    z: 0.,
-                },
-                velocity: Axes {
-                    x: 0.,
-                    y: 0.,
-                    z: 0.,
-                },
+                position: Axes::new(),
+                velocity: Axes::new(),
             },
         }
     }
@@ -176,12 +156,13 @@ pub fn initialize(
             .parameters
             .internal
             .scalar_product_of_vector_position_with_planetary_spin = 0.;
-        host_particle.tides.parameters.output.acceleration.x = 0.;
-        host_particle.tides.parameters.output.acceleration.y = 0.;
-        host_particle.tides.parameters.output.acceleration.z = 0.;
-        host_particle.tides.parameters.output.dangular_momentum_dt.x = 0.;
-        host_particle.tides.parameters.output.dangular_momentum_dt.y = 0.;
-        host_particle.tides.parameters.output.dangular_momentum_dt.z = 0.;
+        host_particle.tides.parameters.output.acceleration.zero();
+        host_particle
+            .tides
+            .parameters
+            .output
+            .dangular_momentum_dt
+            .zero();
         for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
             if let TidesEffect::OrbitingBody(_) = particle.tides.effect {
                 particle
@@ -200,12 +181,8 @@ pub fn initialize(
                     particle.tides.coordinates.position.x * particle.spin.x
                         + particle.tides.coordinates.position.y * particle.spin.y
                         + particle.tides.coordinates.position.z * particle.spin.z;
-                particle.tides.parameters.output.acceleration.x = 0.;
-                particle.tides.parameters.output.acceleration.y = 0.;
-                particle.tides.parameters.output.acceleration.z = 0.;
-                particle.tides.parameters.output.dangular_momentum_dt.x = 0.;
-                particle.tides.parameters.output.dangular_momentum_dt.y = 0.;
-                particle.tides.parameters.output.dangular_momentum_dt.z = 0.;
+                particle.tides.parameters.output.acceleration.zero();
+                particle.tides.parameters.output.dangular_momentum_dt.zero();
             }
         }
     }
@@ -218,12 +195,8 @@ pub fn inertial_to_heliocentric_coordinates(
 ) {
     if let TidesEffect::CentralBody(_) = host_particle.tides.effect {
         // Inertial to Heliocentric positions/velocities
-        host_particle.tides.coordinates.position.x = 0.;
-        host_particle.tides.coordinates.position.y = 0.;
-        host_particle.tides.coordinates.position.z = 0.;
-        host_particle.tides.coordinates.velocity.x = 0.;
-        host_particle.tides.coordinates.velocity.y = 0.;
-        host_particle.tides.coordinates.velocity.z = 0.;
+        host_particle.tides.coordinates.position.zero();
+        host_particle.tides.coordinates.velocity.zero();
         host_particle.tides.parameters.internal.distance = 0.;
         host_particle.tides.parameters.internal.radial_velocity = 0.;
         for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
@@ -240,11 +213,11 @@ pub fn inertial_to_heliocentric_coordinates(
                     particle.inertial_velocity.y - host_particle.inertial_velocity.y;
                 particle.tides.coordinates.velocity.z =
                     particle.inertial_velocity.z - host_particle.inertial_velocity.z;
-                particle.tides.parameters.internal.distance =
-                    (particle.tides.coordinates.position.x.powi(2)
+                particle.tides.parameters.internal.distance = sqrt!(
+                    particle.tides.coordinates.position.x.powi(2)
                         + particle.tides.coordinates.position.y.powi(2)
-                        + particle.tides.coordinates.position.z.powi(2))
-                    .sqrt();
+                        + particle.tides.coordinates.position.z.powi(2)
+                );
                 particle.tides.parameters.internal.radial_velocity =
                     (particle.tides.coordinates.position.x * particle.tides.coordinates.velocity.x
                         + particle.tides.coordinates.position.y
@@ -263,15 +236,31 @@ pub fn copy_heliocentric_coordinates(
     more_particles: &mut [Particle],
 ) {
     if let TidesEffect::CentralBody(_) = host_particle.tides.effect {
-        host_particle.tides.coordinates.position = host_particle.heliocentric_position;
-        host_particle.tides.coordinates.velocity = host_particle.heliocentric_velocity;
+        host_particle
+            .tides
+            .coordinates
+            .position
+            .copy_from(&host_particle.heliocentric_position);
+        host_particle
+            .tides
+            .coordinates
+            .velocity
+            .copy_from(&host_particle.heliocentric_velocity);
         host_particle.tides.parameters.internal.distance = host_particle.heliocentric_distance;
         host_particle.tides.parameters.internal.radial_velocity =
             host_particle.heliocentric_radial_velocity;
         for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
             if let TidesEffect::OrbitingBody(_) = particle.tides.effect {
-                particle.tides.coordinates.position = particle.heliocentric_position;
-                particle.tides.coordinates.velocity = particle.heliocentric_velocity;
+                particle
+                    .tides
+                    .coordinates
+                    .position
+                    .copy_from(&particle.heliocentric_position);
+                particle
+                    .tides
+                    .coordinates
+                    .velocity
+                    .copy_from(&particle.heliocentric_velocity);
                 particle.tides.parameters.internal.distance = particle.heliocentric_distance;
                 particle.tides.parameters.internal.radial_velocity =
                     particle.heliocentric_radial_velocity;
@@ -313,21 +302,23 @@ pub fn calculate_dangular_momentum_dt_due_to_tides(
                 }
             };
             // Integration of the spin (total torque tides):
-            particle.tides.parameters.output.dangular_momentum_dt.x =
-                factor * torque_due_to_tides.x;
-            particle.tides.parameters.output.dangular_momentum_dt.y =
-                factor * torque_due_to_tides.y;
-            particle.tides.parameters.output.dangular_momentum_dt.z =
-                factor * torque_due_to_tides.z;
+            particle
+                .tides
+                .parameters
+                .output
+                .dangular_momentum_dt
+                .copy_from(&torque_due_to_tides);
+            particle
+                .tides
+                .parameters
+                .output
+                .dangular_momentum_dt
+                .mul(factor);
         }
     }
 
     let central_body = true;
-    let mut dangular_momentum_dt = Axes {
-        x: 0.,
-        y: 0.,
-        z: 0.,
-    };
+    let mut dangular_momentum_dt = Axes::new();
     for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
         if let TidesEffect::CentralBody(tidal_model) = &tidal_host_particle.tides.effect {
             let torque_due_to_tides = match tidal_model {
@@ -362,19 +353,7 @@ pub fn calculate_dangular_momentum_dt_due_to_tides(
         .parameters
         .output
         .dangular_momentum_dt
-        .x = dangular_momentum_dt.x;
-    tidal_host_particle
-        .tides
-        .parameters
-        .output
-        .dangular_momentum_dt
-        .y = dangular_momentum_dt.y;
-    tidal_host_particle
-        .tides
-        .parameters
-        .output
-        .dangular_momentum_dt
-        .z = dangular_momentum_dt.z;
+        .copy_from(&dangular_momentum_dt);
 }
 
 pub fn calculate_denergy_dt(particles: &mut [Particle], more_particles: &mut [Particle]) {
@@ -458,11 +437,7 @@ pub fn calculate_tidal_acceleration(
     more_particles: &mut [Particle],
 ) {
     let factor2 = 1. / tidal_host_particle.mass;
-    let mut sum_tidal_force = Axes {
-        x: 0.,
-        y: 0.,
-        z: 0.,
-    };
+    let mut sum_tidal_force = Axes::new();
 
     let central_body = false;
     for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
@@ -482,14 +457,16 @@ pub fn calculate_tidal_acceleration(
                 }
             };
             let factor1 = 1. / particle.mass;
-            sum_tidal_force.x += tidal_force.x;
-            sum_tidal_force.y += tidal_force.y;
-            sum_tidal_force.z += tidal_force.z;
+            sum_tidal_force.add(&tidal_force);
 
             // - Equation 19 from Bolmont et al. 2015 (first term)
-            particle.tides.parameters.output.acceleration.x = factor1 * tidal_force.x;
-            particle.tides.parameters.output.acceleration.y = factor1 * tidal_force.y;
-            particle.tides.parameters.output.acceleration.z = factor1 * tidal_force.z;
+            particle
+                .tides
+                .parameters
+                .output
+                .acceleration
+                .copy_from(&tidal_force);
+            particle.tides.parameters.output.acceleration.mul(factor1);
         }
     }
 
@@ -500,9 +477,18 @@ pub fn calculate_tidal_acceleration(
     //particle.tides.parameters.output.acceleration.z += factor2 * sum_tidal_force.z;
     //}
     // Instead of the previous code, keep star tidal acceleration separated:
-    tidal_host_particle.tides.parameters.output.acceleration.x = -1.0 * factor2 * sum_tidal_force.x;
-    tidal_host_particle.tides.parameters.output.acceleration.y = -1.0 * factor2 * sum_tidal_force.y;
-    tidal_host_particle.tides.parameters.output.acceleration.z = -1.0 * factor2 * sum_tidal_force.z;
+    tidal_host_particle
+        .tides
+        .parameters
+        .output
+        .acceleration
+        .copy_from(&sum_tidal_force);
+    tidal_host_particle
+        .tides
+        .parameters
+        .output
+        .acceleration
+        .mul(-1.0 * factor2);
 
     //// TODO: Reconsider how to move this stellar tides calculation into calculate_tidal_force while allowing a mixture of tidal models
     // Stellar tides begin

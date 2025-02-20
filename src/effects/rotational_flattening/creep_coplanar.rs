@@ -48,12 +48,7 @@ pub fn calculate_torque_induced_by_rotational_flattening(
     particle: &Particle,
     central_body: bool,
 ) -> Axes {
-    let torque_induced_by_rotational_flattening_x: f64 = 0.;
-    let torque_induced_by_rotational_flattening_y: f64 = 0.;
-    //let torque_induced_by_rotational_flattening_z: f64 = 0.0;
-
-    // Torque expression for studying creep tide tidal despinning (use torque = 0 as above to study stat. rotation, makes code run faster)
-
+    // Torque expression for studying creep tide tidal despinning (use torque.x = 0 instead to study stat. rotation, makes code run faster)
     let torque_induced_by_rotational_flattening_z = if central_body {
         // Host shape is planet dependent, it needs to be computed for each
         let consider_tides = false;
@@ -95,11 +90,7 @@ pub fn calculate_torque_induced_by_rotational_flattening(
                 .powi(3)
     };
 
-    Axes {
-        x: torque_induced_by_rotational_flattening_x,
-        y: torque_induced_by_rotational_flattening_y,
-        z: torque_induced_by_rotational_flattening_z,
-    }
+    Axes::from(0.0, 0.0, torque_induced_by_rotational_flattening_z)
 }
 
 pub fn calculate_acceleration_induced_by_rotational_flattering(
@@ -113,41 +104,26 @@ pub fn calculate_acceleration_induced_by_rotational_flattering(
         .distance
         .powi(4);
 
-    // Factorize common terms;
+    let factor = particle.rotational_flattening.parameters.internal.distance
+        * (-3.0
+            * K2
+            * particle.mass
+            * rotational_flattening_host_particle.mass
+            * particle.radius.powi(2)
+            / (5.0 * distance_4)
+            * particle.rotational_flattening.parameters.internal.shape.z);
 
     // Expression for ONLY rotational flattenings
     let total_force_induced_by_rotational_flattening_x =
-        particle.rotational_flattening.coordinates.position.x
-            / particle.rotational_flattening.parameters.internal.distance
-            * (-3.0
-                * K2
-                * particle.mass
-                * rotational_flattening_host_particle.mass
-                * particle.radius
-                * particle.radius
-                / (5.0 * distance_4)
-                * particle.rotational_flattening.parameters.internal.shape.z);
+        particle.rotational_flattening.coordinates.position.x / factor;
 
     // Expression for ONLY rotational flattenings
     let total_force_induced_by_rotational_flattening_y =
-        particle.rotational_flattening.coordinates.position.y
-            / particle.rotational_flattening.parameters.internal.distance
-            * (-3.0
-                * K2
-                * particle.mass
-                * rotational_flattening_host_particle.mass
-                * particle.radius
-                * particle.radius
-                / (5.0 * distance_4)
-                * particle.rotational_flattening.parameters.internal.shape.z);
+        particle.rotational_flattening.coordinates.position.y / factor;
 
-    let total_force_induced_by_rotational_flattening_z = 0.0;
-    // println!("{} {} {}", particle.rotational_flattening.parameters.internal.shape.x, particle.rotational_flattening.parameters.internal.shape.y, particle.rotational_flattening.parameters.internal.shape.z);
-    //println!("{}", total_force_induced_by_rotational_flattening_y);
-
-    Axes {
-        x: total_force_induced_by_rotational_flattening_x,
-        y: total_force_induced_by_rotational_flattening_y,
-        z: total_force_induced_by_rotational_flattening_z,
-    }
+    Axes::from(
+        total_force_induced_by_rotational_flattening_x,
+        total_force_induced_by_rotational_flattening_y,
+        0.0,
+    )
 }

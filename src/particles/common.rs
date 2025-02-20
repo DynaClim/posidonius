@@ -2,10 +2,9 @@ use super::Particle;
 
 pub fn calculate_spin(particles: &mut [Particle]) {
     for (i, particle) in particles.iter_mut().enumerate() {
-        assert!(
-            !(particle.moment_of_inertia == 0.),
-            "Moment of inertia for particle {} is zero!",
-            i
+        assert_ne!(
+            particle.moment_of_inertia, 0.,
+            "Moment of inertia for particle {i} is zero!"
         );
         particle.spin.x = particle.angular_momentum.x / particle.moment_of_inertia;
         particle.spin.y = particle.angular_momentum.y / particle.moment_of_inertia;

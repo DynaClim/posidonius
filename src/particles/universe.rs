@@ -8,6 +8,7 @@ use super::super::{GeneralRelativityEffect, GeneralRelativityImplementation};
 use super::common;
 use super::Axes;
 use super::Particle;
+use itertools::izip;
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 use std::collections::HashMap;
@@ -160,25 +161,22 @@ impl Universe {
             // Check if moment of inertia and angular momentum needs to be recomputed to match the
             // proper state of the selected evolving body model (i.e., initial radius and radius of
             // gyration are good given the initial time)
-            for (particle, evolver) in transformed_particles
-                .iter_mut()
-                .zip(particles_evolvers.iter_mut())
-            {
+            for (particle, evolver) in izip!(&mut transformed_particles, &mut particles_evolvers) {
                 if EvolutionType::NonEvolving == particle.evolution {
                     continue;
                 }
                 let mut update_angular_momentum = false;
                 let current_time = 0.;
                 let new_radius = evolver.radius(current_time, particle.radius);
-                if (new_radius - particle.radius).abs() > 1e-6 {
+                if abs!(new_radius - particle.radius) > 1e-6 {
                     println!("[WARNING {} UTC] Changed radius value from '{:.6}' to '{:.6}' to match expected state following the selected evolving body model", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap(), particle.radius, new_radius);
                     particle.radius = new_radius;
                     update_angular_momentum = true;
                 }
                 let new_radius_of_gyration_2 =
                     evolver.radius_of_gyration_2(current_time, particle.radius_of_gyration_2);
-                if (new_radius_of_gyration_2 - particle.radius_of_gyration_2).abs() > 1e-6 {
-                    println!("[WARNING {} UTC] Changed radius of gyration value from '{:.6}' to '{:.6}' to match expected state following the selected evolving body model", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap(), particle.radius_of_gyration_2.sqrt(), new_radius_of_gyration_2.sqrt());
+                if abs!(new_radius_of_gyration_2 - particle.radius_of_gyration_2) > 1e-6 {
+                    println!("[WARNING {} UTC] Changed radius of gyration value from '{:.6}' to '{:.6}' to match expected state following the selected evolving body model", OffsetDateTime::now_utc().format(&format_description::parse("[year].[month].[day] [hour]:[minute]:[second]").unwrap()).unwrap(), sqrt!(particle.radius_of_gyration_2), sqrt!(new_radius_of_gyration_2));
                     particle.radius_of_gyration_2 = new_radius_of_gyration_2;
                     update_angular_momentum = true;
                 }
@@ -248,11 +246,7 @@ impl Universe {
             .roche_radiuses
             .split_at_mut(self.n_particles * self.n_particles);
 
-        let mut newtonian_inertial_accelerations = [Axes {
-            x: 0.,
-            y: 0.,
-            z: 0.,
-        }; MAX_PARTICLES];
+        let mut newtonian_inertial_accelerations = [Axes::new(); MAX_PARTICLES];
         let (newtonian_inertial_accelerations, _) =
             newtonian_inertial_accelerations.split_at_mut(self.n_particles);
 
@@ -363,9 +357,9 @@ impl Universe {
                 //let dx = particle_a.inertial_position.x - particle_b.inertial_position.x;
                 //let dy = particle_a.inertial_position.y - particle_b.inertial_position.y;
                 //let dz = particle_a.inertial_position.z - particle_b.inertial_position.z;
-                //let r = (dx*dx + dy*dy + dz*dz).sqrt();
-                //let r = (distance_2 + softening).sqrt();
-                let distance = distance_2.sqrt();
+                //let r = sqrt!(dx*dx + dy*dy + dz*dz);
+                //let r = sqrt!(distance_2 + softening);
+                let distance = sqrt!(distance_2);
                 let prefact = -G / (distance * distance * distance) * particle_b.mass;
 
                 newtonian_inertial_acceleration.x += prefact * dx;
@@ -442,10 +436,11 @@ impl Universe {
                     particle.inertial_velocity.y - host_particle.inertial_velocity.y;
                 particle.heliocentric_velocity.z =
                     particle.inertial_velocity.z - host_particle.inertial_velocity.z;
-                particle.heliocentric_distance = (particle.heliocentric_position.x.powi(2)
-                    + particle.heliocentric_position.y.powi(2)
-                    + particle.heliocentric_position.z.powi(2))
-                .sqrt();
+                particle.heliocentric_distance = sqrt!(
+                    particle.heliocentric_position.x.powi(2)
+                        + particle.heliocentric_position.y.powi(2)
+                        + particle.heliocentric_position.z.powi(2)
+                );
                 particle.heliocentric_radial_velocity = (particle.heliocentric_position.x
                     * particle.heliocentric_velocity.x
                     + particle.heliocentric_position.y * particle.heliocentric_velocity.y
@@ -459,14 +454,10 @@ impl Universe {
                     + (particle.heliocentric_velocity.z - host_particle.heliocentric_velocity.z)
                         .powi(2);
                 particle.heliocentric_norm_velocity_vector =
-                    particle.heliocentric_norm_velocity_vector_2.sqrt();
+                    sqrt!(particle.heliocentric_norm_velocity_vector_2);
             }
-            host_particle.heliocentric_position.x = 0.;
-            host_particle.heliocentric_position.y = 0.;
-            host_particle.heliocentric_position.z = 0.;
-            host_particle.heliocentric_velocity.x = 0.;
-            host_particle.heliocentric_velocity.y = 0.;
-            host_particle.heliocentric_velocity.z = 0.;
+            host_particle.heliocentric_position.zero();
+            host_particle.heliocentric_velocity.zero();
             host_particle.heliocentric_distance = 0.;
             host_particle.heliocentric_radial_velocity = 0.;
             host_particle.heliocentric_norm_velocity_vector_2 = 0.;
@@ -612,9 +603,7 @@ impl Universe {
         }
         if accelerations {
             for particle in &mut self.particles[..self.n_particles] {
-                particle.inertial_additional_acceleration.x = 0.;
-                particle.inertial_additional_acceleration.y = 0.;
-                particle.inertial_additional_acceleration.z = 0.;
+                particle.inertial_additional_acceleration.zero();
             }
         }
     }
@@ -958,7 +947,7 @@ impl Universe {
                 let dy = particle_a.heliocentric_position.y - particle_b.heliocentric_position.y;
                 let dz = particle_a.heliocentric_position.z - particle_b.heliocentric_position.z;
                 e_pot -= particle_b.mass_g * particle_a.mass
-                    / (dx.powi(2) + dy.powi(2) + dz.powi(2)).sqrt();
+                    / sqrt!(dx.powi(2) + dy.powi(2) + dz.powi(2));
             }
         }
 
@@ -966,11 +955,7 @@ impl Universe {
     }
 
     pub fn compute_total_angular_momentum(&self) -> f64 {
-        let mut total_angular_momentum = Axes {
-            x: 0.,
-            y: 0.,
-            z: 0.,
-        }; // L
+        let mut total_angular_momentum = Axes::new(); // L
         for particle in &self.particles[..self.n_particles] {
             total_angular_momentum.x += particle.mass
                 * (particle.heliocentric_position.y * particle.heliocentric_velocity.z
@@ -983,10 +968,11 @@ impl Universe {
                     - particle.heliocentric_position.y * particle.heliocentric_velocity.x);
         }
 
-        (total_angular_momentum.x.powi(2)
-            + total_angular_momentum.y.powi(2)
-            + total_angular_momentum.z.powi(2))
-        .sqrt()
+        sqrt!(
+            total_angular_momentum.x.powi(2)
+                + total_angular_momentum.y.powi(2)
+                + total_angular_momentum.z.powi(2)
+        )
     }
 }
 
@@ -1023,16 +1009,8 @@ fn get_center_of_mass_of_pair(
 
 pub fn calculate_center_of_mass(particles: &[Particle]) -> (Axes, Axes) {
     // Compute center of mass
-    let mut center_of_mass_position = Axes {
-        x: 0.,
-        y: 0.,
-        z: 0.,
-    };
-    let mut center_of_mass_velocity = Axes {
-        x: 0.,
-        y: 0.,
-        z: 0.,
-    };
+    let mut center_of_mass_position = Axes::new();
+    let mut center_of_mass_velocity = Axes::new();
     let mut center_of_mass_mass = 0.;
 
     for particle in particles {

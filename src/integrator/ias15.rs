@@ -782,9 +782,9 @@ impl Ias15 {
             }
 
             let t_beginning = self.current_time;
-            //let mut predictor_corrector_error: f64 = 1e10;
-            let mut predictor_corrector_error: f64 = 1e300;
-            let mut predictor_corrector_error_last: f64 = 2.;
+            //let mut predictor_corrector_error = 1e10;
+            let mut predictor_corrector_error = 1e300;
+            let mut predictor_corrector_error_last = 2.;
             let mut iterations: i32 = 0;
 
             // Predictor corrector loop
@@ -842,7 +842,7 @@ impl Ias15 {
                         let k2: usize = 3 * i + 2;
 
                         // Equation 7 in paper 2015MNRAS.446.1424R
-                        let xk0: f64 = -self.csx[k0]
+                        let xk0 = -self.csx[k0]
                             + (self.s[8] * self.b_6[k0]
                                 + self.s[7] * self.b_5[k0]
                                 + self.s[6] * self.b_4[k0]
@@ -854,7 +854,7 @@ impl Ias15 {
                                 + self.s[0] * self.v0[k0]);
                         particle.inertial_position.x = xk0 + self.x0[k0];
 
-                        let xk1: f64 = -self.csx[k1]
+                        let xk1 = -self.csx[k1]
                             + (self.s[8] * self.b_6[k1]
                                 + self.s[7] * self.b_5[k1]
                                 + self.s[6] * self.b_4[k1]
@@ -866,7 +866,7 @@ impl Ias15 {
                                 + self.s[0] * self.v0[k1]);
                         particle.inertial_position.y = xk1 + self.x0[k1];
 
-                        let xk2: f64 = -self.csx[k2]
+                        let xk2 = -self.csx[k2]
                             + (self.s[8] * self.b_6[k2]
                                 + self.s[7] * self.b_5[k2]
                                 + self.s[6] * self.b_4[k2]
@@ -1324,10 +1324,10 @@ impl Ias15 {
                             }
                         }
                         7 => {
-                            let mut maxak: f64 = 0.0;
-                            let mut maxb6ktmp: f64 = 0.0;
-                            let mut max_dangular_momentum_dtk: f64 = 0.0;
-                            let mut maxb6kstmp: f64 = 0.0;
+                            let mut maxak = 0.0;
+                            let mut maxb6ktmp = 0.0;
+                            let mut max_dangular_momentum_dtk = 0.0;
+                            let mut maxb6kstmp = 0.0;
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g_6[k];
                                 let (gk, gk_cs) = add_cs(self.at[k], always_zero, -self.a0[k]);
@@ -1419,23 +1419,23 @@ impl Ias15 {
                                 // Monitor change in self.b_6[k] relative to self.at[k]. The predictor corrector scheme is converged if it is close to 0.
                                 if INTEGRATOR_EPSILON_GLOBAL {
                                     // global error estimate (equation 9)
-                                    let ak = self.at[k].abs();
+                                    let ak = abs!(self.at[k]);
                                     if ak.is_normal() && ak > maxak {
                                         maxak = ak;
                                     }
-                                    let b6ktmp = tmp.abs(); // change of b6ktmp coefficient
+                                    let b6ktmp = abs!(tmp); // change of b6ktmp coefficient
                                     if b6ktmp.is_normal() && b6ktmp > maxb6ktmp {
                                         maxb6ktmp = b6ktmp;
                                     }
                                     if integrate_spin {
                                         let dangular_momentum_dttk =
-                                            self.dangular_momentum_dtt[k].abs();
+                                            abs!(self.dangular_momentum_dtt[k]);
                                         if dangular_momentum_dttk.is_normal()
                                             && dangular_momentum_dttk > max_dangular_momentum_dtk
                                         {
                                             max_dangular_momentum_dtk = dangular_momentum_dttk;
                                         }
-                                        let b6kstmp = stmp.abs(); // change of b6ktmp coefficient
+                                        let b6kstmp = abs!(stmp); // change of b6ktmp coefficient
                                         if b6kstmp.is_normal() && b6kstmp > maxb6kstmp {
                                             maxb6kstmp = b6kstmp;
                                         }
@@ -1446,7 +1446,7 @@ impl Ias15 {
                                     let mut predictor_corrector_error_s = 0.;
                                     let ak = self.at[k];
                                     let b6ktmp = tmp;
-                                    let errork = (b6ktmp / ak).abs();
+                                    let errork = abs!(b6ktmp / ak);
                                     if errork.is_normal() && errork > predictor_corrector_error {
                                         predictor_corrector_error_a = errork;
                                     }
@@ -1454,7 +1454,7 @@ impl Ias15 {
                                     if integrate_spin {
                                         let dangular_momentum_dttk = self.dangular_momentum_dtt[k];
                                         let b6kstmp = stmp;
-                                        let errorks = (b6kstmp / dangular_momentum_dttk).abs();
+                                        let errorks = abs!(b6kstmp / dangular_momentum_dttk);
                                         if errorks.is_normal()
                                             && errorks > predictor_corrector_error
                                         {
@@ -1495,12 +1495,12 @@ impl Ias15 {
                 // INTEGRATOR_EPSILON_GLOBAL==false
                 //   Here, the fractional error is calculated for each particle individually and we use the maximum of the fractional error.
                 //   This might fail in cases where a particle does not experience any (physical) acceleration besides roundoff errors.
-                let mut integrator_error: f64 = 0.0;
+                let mut integrator_error = 0.0;
                 if INTEGRATOR_EPSILON_GLOBAL {
-                    let mut maxak: f64 = 0.0;
-                    let mut maxb6k: f64 = 0.0;
-                    let mut max_dangular_momentum_dtk: f64 = 0.0;
-                    let mut maxb6ks: f64 = 0.0;
+                    let mut maxak = 0.0;
+                    let mut maxb6k = 0.0;
+                    let mut max_dangular_momentum_dtk = 0.0;
+                    let mut maxb6ks = 0.0;
                     // Looping over all particles and all 3 components of the acceleration.
                     for (i, particle) in self.universe.particles[..self.universe.n_particles]
                         .iter()
@@ -1524,39 +1524,39 @@ impl Ias15 {
                                 + particle.angular_momentum.z * particle.angular_momentum.z;
 
                             // Skip slowly varying accelerations and angular momentums (spin)
-                            if (v2 * self.time_step * self.time_step / x2).abs() < 1e-16
-                                && (dangular_momentum_dt2 * self.time_step * self.time_step
-                                    / angular_momentum2)
-                                    .abs()
-                                    < 1e-16
+                            if abs!(v2 * self.time_step * self.time_step / x2) < 1e-16
+                                && abs!(
+                                    dangular_momentum_dt2 * self.time_step * self.time_step
+                                        / angular_momentum2
+                                ) < 1e-16
                             {
                                 continue;
                             }
                         } else {
                             // Skip slowly varying accelerations
-                            if (v2 * self.time_step * self.time_step / x2).abs() < 1e-16 {
+                            if abs!(v2 * self.time_step * self.time_step / x2) < 1e-16 {
                                 continue;
                             }
                         }
 
                         for k in 3 * i..3 * (i + 1) {
-                            let ak = self.at[k].abs();
+                            let ak = abs!(self.at[k]);
                             if ak.is_normal() && ak > maxak {
                                 maxak = ak;
                             }
-                            let b6k = self.b_6[k].abs();
+                            let b6k = abs!(self.b_6[k]);
                             if b6k.is_normal() && b6k > maxb6k {
                                 maxb6k = b6k;
                             }
                             //
                             if integrate_spin {
-                                let dangular_momentum_dttk = self.dangular_momentum_dtt[k].abs();
+                                let dangular_momentum_dttk = abs!(self.dangular_momentum_dtt[k]);
                                 if dangular_momentum_dttk.is_normal()
                                     && dangular_momentum_dttk > maxak
                                 {
                                     max_dangular_momentum_dtk = dangular_momentum_dttk;
                                 }
-                                let b6ks = self.sb_6[k].abs();
+                                let b6ks = abs!(self.sb_6[k]);
                                 if b6ks.is_normal() && b6ks > maxb6ks {
                                     maxb6ks = b6ks;
                                 }
@@ -1571,7 +1571,7 @@ impl Ias15 {
                         let mut integrator_error_s = 0.;
                         let ak = self.at[k];
                         let b6k = self.b_6[k];
-                        let errork = (b6k / ak).abs();
+                        let errork = abs!(b6k / ak);
                         if errork.is_normal() && errork > integrator_error {
                             integrator_error_a = errork;
                         }
@@ -1579,7 +1579,7 @@ impl Ias15 {
                         if integrate_spin {
                             let dangular_momentum_dttk = self.dangular_momentum_dtt[k];
                             let b6ks = self.sb_6[k];
-                            let errorks = (b6ks / dangular_momentum_dttk).abs();
+                            let errorks = abs!(b6ks / dangular_momentum_dttk);
                             if errorks.is_normal() && errorks > integrator_error {
                                 integrator_error_s = errorks;
                             }
@@ -1588,7 +1588,7 @@ impl Ias15 {
                     }
                 }
 
-                let mut dt_new: f64;
+                let mut dt_new;
                 if integrator_error.is_normal() {
                     // if error estimate is available, then increase by more educated guess
                     //dt_new = (INTEGRATOR_EPSILON/integrator_error).powf(1./7.) * dt_done;
@@ -1598,23 +1598,23 @@ impl Ias15 {
                     dt_new = dt_done / SAFETY_FACTOR; // by default, increase timestep a little
                 }
 
-                if dt_new.abs() < INTEGRATOR_MIN_DT {
+                if abs!(dt_new) < INTEGRATOR_MIN_DT {
                     //// copysignf is unstable and it cannot be used with rust 1.0
                     //unsafe {
                     //dt_new = std::intrinsics::copysignf64(INTEGRATOR_MIN_DT, dt_new);
                     //}
                     if dt_new > 0. {
-                        dt_new = INTEGRATOR_MIN_DT.abs();
+                        dt_new = abs!(INTEGRATOR_MIN_DT);
                     } else {
-                        dt_new = -1. * INTEGRATOR_MIN_DT.abs();
+                        dt_new = -1. * abs!(INTEGRATOR_MIN_DT);
                     }
                 }
 
-                if INTEGRATOR_MAX_DT > 0. && dt_new.abs() > INTEGRATOR_MAX_DT {
-                    dt_new = INTEGRATOR_MAX_DT.abs();
+                if INTEGRATOR_MAX_DT > 0. && abs!(dt_new) > INTEGRATOR_MAX_DT {
+                    dt_new = abs!(INTEGRATOR_MAX_DT);
                 }
 
-                if (dt_new / dt_done).abs() < SAFETY_FACTOR {
+                if abs!(dt_new / dt_done) < SAFETY_FACTOR {
                     // New timestep is significantly smaller.
                     // Reset particles
                     for (k, particle) in self.universe.particles[..self.universe.n_particles]
@@ -1653,7 +1653,7 @@ impl Ias15 {
                     //println!("Step rejected, repeating with new timestep {}", self.time_step);
                     continue; // Step rejected. Do again.
                 }
-                if (dt_new / dt_done).abs() > 1.0 {
+                if abs!(dt_new / dt_done) > 1.0 {
                     // New timestep is larger.
                     if dt_new / dt_done > 1. / SAFETY_FACTOR {
                         //println!("Time step is too large ({:.15}), do not increase so much", dt_new);
@@ -1956,7 +1956,7 @@ impl Ias15 {
 
 fn sqrt7(a: f64) -> f64 {
     // Machine independent implementation of powf(1./7.)
-    let mut x: f64 = 1.;
+    let mut x = 1.;
     for _k in 0..20 {
         // A smaller number should be ok too.
         let x6 = x * x * x * x * x * x;

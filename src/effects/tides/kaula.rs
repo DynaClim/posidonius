@@ -37,7 +37,7 @@ pub fn calculate_tidal_force(
     //// Planetary tide component
     //let central_body = false;
 
-    //// TODO: Reconsider how to compute teh stellar tide here instead of 'src/effects/tides/common.rs' while allowing a mixture of tidal models
+    //// TODO: Reconsider how to compute the stellar tide here instead of 'src/effects/tides/common.rs' while allowing a mixture of tidal models
     //let mut tidal_force = tidal_force_due_to_planetary_tide;
     //if matches!(tidal_host_particle.tides.effect, TidesEffect::CentralBody(TidalModel::Kaula(_))) {
     //// Stellar tide component
@@ -62,12 +62,12 @@ fn calculate_tidal_force_component(
     // The theta angle is the angle btw the radial distance vector with respect to the z axis
     // The phi angle is the angle btw the coplanar distance with respect to the x axis
     // ---
-    let radial_distance: f64;
-    let coplanar_distance: f64;
-    let cos_theta: f64;
+    let radial_distance;
+    let coplanar_distance;
+    let cos_theta;
 
-    let cos_phi: f64;
-    let sin_phi: f64;
+    let cos_phi;
+    let sin_phi;
 
     // --- The Keplerian orbital elements --- //
     let gm = G * (tidal_host_particle.mass + particle.mass);
@@ -81,9 +81,10 @@ fn calculate_tidal_force_component(
             tidal_host_particle.heliocentric_velocity,
         );
         radial_distance = tidal_host_particle.tides.parameters.internal.distance;
-        coplanar_distance = (tidal_host_particle.tides.coordinates.position.x.powi(2)
-            + tidal_host_particle.tides.coordinates.position.y.powi(2))
-        .sqrt();
+        coplanar_distance = sqrt!(
+            tidal_host_particle.tides.coordinates.position.x.powi(2)
+                + tidal_host_particle.tides.coordinates.position.y.powi(2)
+        );
         cos_theta = tidal_host_particle.tides.coordinates.position.z / radial_distance;
         cos_phi = tidal_host_particle.tides.coordinates.position.x / coplanar_distance;
         sin_phi = tidal_host_particle.tides.coordinates.position.y / coplanar_distance;
@@ -94,14 +95,15 @@ fn calculate_tidal_force_component(
             particle.heliocentric_velocity,
         );
         radial_distance = particle.tides.parameters.internal.distance;
-        coplanar_distance = (particle.tides.coordinates.position.x.powi(2)
-            + particle.tides.coordinates.position.y.powi(2))
-        .sqrt();
+        coplanar_distance = sqrt!(
+            particle.tides.coordinates.position.x.powi(2)
+                + particle.tides.coordinates.position.y.powi(2)
+        );
         cos_theta = particle.tides.coordinates.position.z / radial_distance;
         cos_phi = particle.tides.coordinates.position.x / coplanar_distance;
         sin_phi = particle.tides.coordinates.position.y / coplanar_distance;
     }
-    let sin_theta: f64 = coplanar_distance / radial_distance;
+    let sin_theta = coplanar_distance / radial_distance;
 
     // --- The spherical component of the tidal force --- //
     // The radial component is the force applicated through the radial axis
@@ -177,17 +179,11 @@ fn calculate_tidal_force_component(
                 + orthogonal_component_of_the_tidal_force_secular * cos_phi;
         params.kaula_tidal_force.z = radial_component_of_the_tidal_force_secular * cos_theta
             - normal_component_of_the_tidal_force_secular * sin_theta;
-        // dbg!(params);
-        // panic!();
     } else {
         unreachable!();
     }
 
-    Axes {
-        x: tidal_force_x,
-        y: tidal_force_y,
-        z: tidal_force_z,
-    }
+    Axes::from(tidal_force_x, tidal_force_y, tidal_force_z)
 }
 
 // ------------------------------------- //
@@ -213,8 +209,8 @@ fn calculate_radial_component_of_the_tidal_force(
         mean_anomaly,
         orbital_period,
     ) = keplerian_elements;
-    let tem_radius: f64;
-    let obliquity: f64;
+    let tem_radius;
+    let obliquity;
 
     if central_body {
         tem_radius = -tidal_host_particle.heliocentric_distance;
@@ -231,9 +227,9 @@ fn calculate_radial_component_of_the_tidal_force(
             particle.spin,
         );
     }
-    let argument_perihelion: f64 = longitude_perihelion - longitude_of_ascending_node;
-    let orbital_frequency: f64 = TWO_PI / (orbital_period * DAY); // The orbital mean motion in [rad.s^-1]
-    let spin: f64 = particle.norm_spin_vector_2.sqrt() / DAY; // The stellar/planetary spin in [rad.s^-1]
+    let argument_perihelion = longitude_perihelion - longitude_of_ascending_node;
+    let orbital_frequency = TWO_PI / (orbital_period * DAY); // The orbital mean motion in [rad.s^-1]
+    let spin = sqrt!(particle.norm_spin_vector_2) / DAY; // The stellar/planetary spin in [rad.s^-1]
 
     let (TidesEffect::CentralBody(TidalModel::Kaula(ref mut kaula_param))
     | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut kaula_param))) =
@@ -244,12 +240,12 @@ fn calculate_radial_component_of_the_tidal_force(
 
     // ---
     // --- local quantities needed --- //
-    let cste: f64 = -(G * tidal_host_particle.mass.powi(2) * particle.radius.powi(5))
+    let cste = -(G * tidal_host_particle.mass.powi(2) * particle.radius.powi(5))
         / (semi_major_axis.powi(6) * tem_radius);
 
     // --- summation --- //
-    let radial_force: f64;
-    let radial_force_secular: f64;
+    let radial_force;
+    let radial_force_secular;
     // let case_2d:bool = true;
 
     if obliquity <= 1.0e-8 {
@@ -284,8 +280,8 @@ fn calculate_radial_component_of_the_tidal_force(
             kaula_param
                 .polynomials
                 .calculate_eccentricity_function_g_21q(eccentricity);
-            let mut sum_over_q: f64 = 0.;
-            let mut sum_over_q_secular: f64 = 0.;
+            let mut sum_over_q = 0.;
+            let mut sum_over_q_secular = 0.;
 
             let order = match () {
                 // Select the order of the summation q over the eccentricity function G_lpq
@@ -329,11 +325,11 @@ fn calculate_radial_component_of_the_tidal_force(
                 let (rek2_220q, imk2_220q) =
                     calculate_kaula_numbers(frequ_220q, kaula_param, central_body, spin);
 
-                let mut sum_over_j_1: f64 = 0.;
-                let mut sum_over_j_3: f64 = 0.;
+                let mut sum_over_j_1 = 0.;
+                let mut sum_over_j_3 = 0.;
 
-                let mut sum_over_j_1_secular: f64 = 0.;
-                let mut sum_over_j_3_secular: f64 = 0.;
+                let mut sum_over_j_1_secular = 0.;
+                let mut sum_over_j_3_secular = 0.;
 
                 for (j, g_201j) in kaula_param
                     .polynomials
@@ -355,9 +351,9 @@ fn calculate_radial_component_of_the_tidal_force(
                     let (g_20j, g_21j) = g_201j;
 
                     sum_over_j_1 +=
-                        g_21j * (alpha_qj.cos() * rek2_201q - alpha_qj.sin() * imk2_201q);
+                        g_21j * (cos!(alpha_qj) * rek2_201q - sin!(alpha_qj) * imk2_201q);
                     sum_over_j_3 +=
-                        g_20j * (alpha_qj.cos() * rek2_220q - alpha_qj.sin() * imk2_220q);
+                        g_20j * (cos!(alpha_qj) * rek2_220q - sin!(alpha_qj) * imk2_220q);
                     if q == j {
                         sum_over_j_1_secular += g_21j * rek2_201q;
                         sum_over_j_3_secular += g_20j * rek2_220q;
@@ -378,8 +374,8 @@ fn calculate_radial_component_of_the_tidal_force(
         // Modification has been made but no testing has been done for 3D case (26/2)
         // let eccentricity_function_g_2pq = calculate_eccentricity_function_g_2pq(eccentricity);
         // let inclination_function_f_2mp = calculate_inclination_function_f_2mp(obliquity);
-        let heliocentric_r: f64;
-        let particle_star_2: f64;
+        let heliocentric_r;
+        let particle_star_2;
 
         if central_body {
             // inclination = tools::calculate_inclination_orbital_equatorial_plane(tidal_host_particle.heliocentric_position, tidal_host_particle.heliocentric_velocity, tidal_host_particle.spin);
@@ -390,10 +386,10 @@ fn calculate_radial_component_of_the_tidal_force(
             heliocentric_r = particle.heliocentric_distance;
             particle_star_2 = tidal_host_particle.mass.powi(2);
         }
-        let particle_radius_5: f64 = particle.radius.powi(5);
+        let particle_radius_5 = particle.radius.powi(5);
 
-        // let spin_angle: f64 = 0.;
-        let semi_major_axis_6: f64 = semi_major_axis.powi(6);
+        // let spin_angle = 0.;
+        let semi_major_axis_6 = semi_major_axis.powi(6);
 
         kaula_param
             .polynomials
@@ -421,12 +417,12 @@ fn calculate_radial_component_of_the_tidal_force(
         let q_min = 7 - order;
         let q_max = 2 * order + 1;
 
-        let mut sum_over_p_m0: f64 = 0.;
-        let mut sum_over_p_m1: f64 = 0.;
-        let mut sum_over_p_m2: f64 = 0.;
-        let mut sum_over_p_m0_s: f64 = 0.;
-        let mut sum_over_p_m1_s: f64 = 0.;
-        let mut sum_over_p_m2_s: f64 = 0.;
+        let mut sum_over_p_m0 = 0.;
+        let mut sum_over_p_m1 = 0.;
+        let mut sum_over_p_m2 = 0.;
+        let mut sum_over_p_m0_s = 0.;
+        let mut sum_over_p_m1_s = 0.;
+        let mut sum_over_p_m2_s = 0.;
         for (p, f_2mp) in kaula_param
             .polynomials
             .inclination_function_f_20p
@@ -442,39 +438,39 @@ fn calculate_radial_component_of_the_tidal_force(
         {
             let (f_20p, (f_21p, f_22p)) = f_2mp;
 
-            let tmp_p: f64 = p as f64;
+            let tmp_p = p as f64;
             let f_20p_2 = f_20p.powi(2);
             let f_21p_2 = f_21p.powi(2);
             let f_22p_2 = f_22p.powi(2);
 
-            let mut sum_over_q_m0: f64 = 0.;
-            let mut sum_over_q_m1: f64 = 0.;
-            let mut sum_over_q_m2: f64 = 0.;
-            let mut sum_over_q_m0_s: f64 = 0.;
-            let mut sum_over_q_m1_s: f64 = 0.;
-            let mut sum_over_q_m2_s: f64 = 0.;
+            let mut sum_over_q_m0 = 0.;
+            let mut sum_over_q_m1 = 0.;
+            let mut sum_over_q_m2 = 0.;
+            let mut sum_over_q_m0_s = 0.;
+            let mut sum_over_q_m1_s = 0.;
+            let mut sum_over_q_m2_s = 0.;
 
             let sum_g_2pq = kaula_param.polynomials.eccentricity_function_g_2pq[p];
 
             for (q, g_2pq) in sum_g_2pq.iter().skip(q_min).take(q_max).enumerate() {
-                let tmp_q: f64 = q as f64 - order as f64;
+                let tmp_q = q as f64 - order as f64;
                 let g_2pq_2 = g_2pq.powi(2);
 
-                let frequ_20pq: f64 = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
+                let frequ_20pq = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
                     0.,
                     tmp_p,
                     tmp_q,
                     spin,
                     orbital_frequency,
                 );
-                let frequ_21pq: f64 = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
+                let frequ_21pq = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
                     1.,
                     tmp_p,
                     tmp_q,
                     spin,
                     orbital_frequency,
                 );
-                let frequ_22pq: f64 = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
+                let frequ_22pq = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
                     2.,
                     tmp_p,
                     tmp_q,
@@ -488,9 +484,9 @@ fn calculate_radial_component_of_the_tidal_force(
                 let (rek2_22pq, imk2_22pq) =
                     calculate_kaula_numbers(frequ_22pq, kaula_param, central_body, spin);
 
-                let mut sum_over_k_m0: f64 = 0.;
-                let mut sum_over_k_m1: f64 = 0.;
-                let mut sum_over_k_m2: f64 = 0.;
+                let mut sum_over_k_m0 = 0.;
+                let mut sum_over_k_m1 = 0.;
+                let mut sum_over_k_m2 = 0.;
 
                 for (k, f_2mk) in kaula_param
                     .polynomials
@@ -507,14 +503,14 @@ fn calculate_radial_component_of_the_tidal_force(
                 {
                     let (f_20k, (f_21k, f_22k)) = f_2mk;
 
-                    let tmp_k: f64 = k as f64;
-                    let mut sum_over_j_m0: f64 = 0.;
-                    let mut sum_over_j_m1: f64 = 0.;
-                    let mut sum_over_j_m2: f64 = 0.;
+                    let tmp_k = k as f64;
+                    let mut sum_over_j_m0 = 0.;
+                    let mut sum_over_j_m1 = 0.;
+                    let mut sum_over_j_m2 = 0.;
                     let sum_g_2kj = kaula_param.polynomials.eccentricity_function_g_2pq[k];
 
                     for (j, g_2kj) in sum_g_2kj.iter().skip(q_min).take(q_max).enumerate() {
-                        let tmp_j: f64 = j as f64 - order as f64;
+                        let tmp_j = j as f64 - order as f64;
                         let phase_alpha = alpha_pqkj(
                             tmp_p,
                             tmp_q,
@@ -524,8 +520,8 @@ fn calculate_radial_component_of_the_tidal_force(
                             argument_perihelion,
                         );
 
-                        let cos_alpha: f64 = phase_alpha.cos();
-                        let sin_alpha: f64 = phase_alpha.sin();
+                        let cos_alpha = cos!(phase_alpha);
+                        let sin_alpha = sin!(phase_alpha);
 
                         sum_over_j_m0 += g_2kj * (cos_alpha * rek2_20pq - sin_alpha * imk2_20pq);
                         sum_over_j_m1 += g_2kj * (cos_alpha * rek2_21pq - sin_alpha * imk2_21pq);
@@ -605,9 +601,9 @@ fn calculate_normal_component_of_the_tidal_force(
             particle.spin,
         )
     };
-    let spin: f64 = particle.norm_spin_vector_2.sqrt() / DAY; // The planetary spin in [rad.s^-1]
-    let normal_force: f64;
-    let normal_force_secular: f64;
+    let spin = sqrt!(particle.norm_spin_vector_2) / DAY; // The planetary spin in [rad.s^-1]
+    let normal_force;
+    let normal_force_secular;
 
     if obliquity <= 1.0e-8 {
         normal_force = 0.;
@@ -615,9 +611,9 @@ fn calculate_normal_component_of_the_tidal_force(
     } else {
         // 3D case
 
-        let heliocentric_r: f64;
-        let particle_star_2: f64;
-        let particle_radius_5: f64;
+        let heliocentric_r;
+        let particle_star_2;
+        let particle_radius_5;
 
         if central_body {
             heliocentric_r = tidal_host_particle.heliocentric_distance;
@@ -630,9 +626,9 @@ fn calculate_normal_component_of_the_tidal_force(
             particle_radius_5 = particle.radius.powi(5);
         }
 
-        let heliocentric_varphi: f64 = 0.;
-        let spin_angle: f64 = 0.;
-        let semi_major_axis_6: f64 = semi_major_axis.powi(6);
+        let heliocentric_varphi = 0.;
+        let spin_angle = 0.;
+        let semi_major_axis_6 = semi_major_axis.powi(6);
 
         kaula_param
             .polynomials
@@ -661,8 +657,8 @@ fn calculate_normal_component_of_the_tidal_force(
         let q_max = 2 * order + 1;
 
         // term m = 0
-        let mut sum_over_p: f64 = 0.;
-        let mut sum_over_p_s: f64 = 0.;
+        let mut sum_over_p = 0.;
+        let mut sum_over_p_s = 0.;
         for (p, f_20p) in kaula_param
             .polynomials
             .inclination_function_f_20p
@@ -670,23 +666,23 @@ fn calculate_normal_component_of_the_tidal_force(
             .enumerate()
         {
             // println!("|\t p = {:?}", p);
-            let tmp_p: f64 = p as f64;
-            let mut sum_over_q: f64 = 0.;
-            let mut sum_over_q_s: f64 = 0.;
+            let tmp_p = p as f64;
+            let mut sum_over_q = 0.;
+            let mut sum_over_q_s = 0.;
             let sum_g_2pq = kaula_param.polynomials.eccentricity_function_g_2pq[p];
 
             for (q, g_2pq) in sum_g_2pq.iter().skip(q_min).take(q_max).enumerate() {
-                let tmp_q: f64 = q as f64 - order as f64;
+                let tmp_q = q as f64 - order as f64;
                 // println!("|\t \t q = {:?} {:?}", q, tmp_q);
-                let frequ_20pq: f64 = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
+                let frequ_20pq = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
                     0.,
                     tmp_p,
                     tmp_q,
                     spin,
                     orbital_frequency,
                 );
-                let mut sum_over_k: f64 = 0.;
-                let mut sum_over_k_s: f64 = 0.;
+                let mut sum_over_k = 0.;
+                let mut sum_over_k_s = 0.;
 
                 for (k, f_21k) in kaula_param
                     .polynomials
@@ -695,15 +691,15 @@ fn calculate_normal_component_of_the_tidal_force(
                     .enumerate()
                 {
                     // println!("|\t \t \t k = {:?}", k);
-                    let tmp_k: f64 = k as f64;
-                    let mut sum_over_j: f64 = 0.;
-                    let mut sum_over_j_s: f64 = 0.;
+                    let tmp_k = k as f64;
+                    let mut sum_over_j = 0.;
+                    let mut sum_over_j_s = 0.;
                     let sum_g_2kj = kaula_param.polynomials.eccentricity_function_g_2pq[k];
 
                     for (j, g_2kj) in sum_g_2kj.iter().skip(q_min).take(q_max).enumerate() {
-                        let tmp_j: f64 = j as f64 - order as f64;
+                        let tmp_j = j as f64 - order as f64;
                         // println!("|\t \t \t \t j = {:?} {:?}", j, tmp_j);
-                        let phase_beta: f64 = compute_phase_beta(
+                        let phase_beta = compute_phase_beta(
                             tmp_p,
                             tmp_q,
                             tmp_k,
@@ -714,7 +710,7 @@ fn calculate_normal_component_of_the_tidal_force(
                             longitude_of_ascending_node,
                             heliocentric_varphi,
                         );
-                        let phase_alpha_1: f64 = compute_phase_alpha_1(
+                        let phase_alpha_1 = compute_phase_alpha_1(
                             tmp_p,
                             tmp_q,
                             tmp_k,
@@ -729,10 +725,10 @@ fn calculate_normal_component_of_the_tidal_force(
                         let (rek2_20pq, imk2_20pq) =
                             calculate_kaula_numbers(frequ_20pq, kaula_param, central_body, spin);
 
-                        let cos_alpha_1: f64 = phase_alpha_1.cos();
-                        let sin_alpha_1: f64 = phase_alpha_1.sin();
-                        let cos_beta: f64 = phase_beta.cos();
-                        let sin_beta: f64 = phase_beta.sin();
+                        let cos_alpha_1 = cos!(phase_alpha_1);
+                        let sin_alpha_1 = sin!(phase_alpha_1);
+                        let cos_beta = cos!(phase_beta);
+                        let sin_beta = sin!(phase_beta);
 
                         sum_over_j += g_2kj
                             * (0.5_f64 * (cos_alpha_1 * rek2_20pq - sin_alpha_1 * imk2_20pq)
@@ -748,8 +744,8 @@ fn calculate_normal_component_of_the_tidal_force(
             sum_over_p += f_20p * sum_over_q;
             sum_over_p_s += f_20p * sum_over_q_s;
         }
-        let term_m0: f64 = sum_over_p;
-        let term_m0_s: f64 = sum_over_p_s;
+        let term_m0 = sum_over_p;
+        let term_m0_s = sum_over_p_s;
 
         // term m = 1
         sum_over_p = 0.;
@@ -760,14 +756,14 @@ fn calculate_normal_component_of_the_tidal_force(
             .iter()
             .enumerate()
         {
-            let tmp_p: f64 = p as f64;
-            let mut sum_over_q: f64 = 0.;
-            let mut sum_over_q_s: f64 = 0.;
+            let tmp_p = p as f64;
+            let mut sum_over_q = 0.;
+            let mut sum_over_q_s = 0.;
             let sum_g_2pq = kaula_param.polynomials.eccentricity_function_g_2pq[p];
 
             for (q, g_2pq) in sum_g_2pq.iter().skip(q_min).take(q_max).enumerate() {
-                let tmp_q: f64 = q as f64 - order as f64;
-                let frequ_21pq: f64 = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
+                let tmp_q = q as f64 - order as f64;
+                let frequ_21pq = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
                     1.,
                     tmp_p,
                     tmp_q,
@@ -775,10 +771,10 @@ fn calculate_normal_component_of_the_tidal_force(
                     orbital_frequency,
                 );
 
-                let mut sum_over_k_m2: f64 = 0.;
-                let mut sum_over_k_m0: f64 = 0.;
-                let mut sum_over_k_m2_s: f64 = 0.;
-                let mut sum_over_k_m0_s: f64 = 0.;
+                let mut sum_over_k_m2 = 0.;
+                let mut sum_over_k_m0 = 0.;
+                let mut sum_over_k_m2_s = 0.;
+                let mut sum_over_k_m0_s = 0.;
 
                 for (k, f_22_20_k) in kaula_param
                     .polynomials
@@ -789,18 +785,18 @@ fn calculate_normal_component_of_the_tidal_force(
                 {
                     let (f_22k, f_20k) = f_22_20_k; // is sum over p for each m
 
-                    let tmp_k: f64 = k as f64;
-                    let mut sum_over_j_p2: f64 = 0.;
-                    let mut sum_over_j_p0: f64 = 0.;
-                    let mut sum_over_j_p2_s: f64 = 0.;
-                    let mut sum_over_j_p0_s: f64 = 0.;
+                    let tmp_k = k as f64;
+                    let mut sum_over_j_p2 = 0.;
+                    let mut sum_over_j_p0 = 0.;
+                    let mut sum_over_j_p2_s = 0.;
+                    let mut sum_over_j_p0_s = 0.;
                     let sum_g_2kj = kaula_param.polynomials.eccentricity_function_g_2pq[k];
 
                     for (j, g_2kj) in sum_g_2kj.iter().skip(q_min).take(q_max).enumerate() {
-                        let tmp_j: f64 = j as f64 - order as f64;
+                        let tmp_j = j as f64 - order as f64;
 
                         // let phase_beta:f64 =compute_phase_beta(tmp_p, tmp_q, tmp_k, tmp_j, mean_anomaly, spin_angle, argument_perihelion, longitude_ascending_node);
-                        let phase_alpha_1: f64 = compute_phase_alpha_1(
+                        let phase_alpha_1 = compute_phase_alpha_1(
                             tmp_p,
                             tmp_q,
                             tmp_k,
@@ -811,7 +807,7 @@ fn calculate_normal_component_of_the_tidal_force(
                             longitude_of_ascending_node,
                             heliocentric_varphi,
                         );
-                        let phase_alpha_2: f64 = compute_phase_alpha_2(
+                        let phase_alpha_2 = compute_phase_alpha_2(
                             tmp_p,
                             tmp_q,
                             tmp_k,
@@ -826,10 +822,10 @@ fn calculate_normal_component_of_the_tidal_force(
                         let (rek2_21pq, imk2_21pq) =
                             calculate_kaula_numbers(frequ_21pq, kaula_param, central_body, spin);
 
-                        let cos_alpha_1: f64 = phase_alpha_1.cos();
-                        let sin_alpha_1: f64 = phase_alpha_1.sin();
-                        let cos_alpha_2: f64 = phase_alpha_2.cos();
-                        let sin_alpha_2: f64 = phase_alpha_2.sin();
+                        let cos_alpha_1 = cos!(phase_alpha_1);
+                        let sin_alpha_1 = sin!(phase_alpha_1);
+                        let cos_alpha_2 = cos!(phase_alpha_2);
+                        let sin_alpha_2 = sin!(phase_alpha_2);
 
                         sum_over_j_p2 +=
                             g_2kj * (cos_alpha_1 * rek2_21pq - sin_alpha_1 * imk2_21pq);
@@ -849,8 +845,8 @@ fn calculate_normal_component_of_the_tidal_force(
             sum_over_p += f_21p * sum_over_q;
             sum_over_p_s += f_21p * sum_over_q_s;
         }
-        let term_m1: f64 = (1_f64 / 3_f64) * sum_over_p;
-        let term_m1_s: f64 = (1_f64 / 3_f64) * sum_over_p_s;
+        let term_m1 = (1_f64 / 3_f64) * sum_over_p;
+        let term_m1_s = (1_f64 / 3_f64) * sum_over_p_s;
 
         // term m = 2
         sum_over_p = 0.;
@@ -861,14 +857,14 @@ fn calculate_normal_component_of_the_tidal_force(
             .iter()
             .enumerate()
         {
-            let tmp_p: f64 = p as f64;
-            let mut sum_over_q: f64 = 0.;
-            let mut sum_over_q_s: f64 = 0.;
+            let tmp_p = p as f64;
+            let mut sum_over_q = 0.;
+            let mut sum_over_q_s = 0.;
             let sum_g_2pq = kaula_param.polynomials.eccentricity_function_g_2pq[p];
 
             for (q, g_2pq) in sum_g_2pq.iter().skip(q_min).take(q_max).enumerate() {
-                let tmp_q: f64 = q as f64 - order as f64;
-                let frequ_22pq: f64 = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
+                let tmp_q = q as f64 - order as f64;
+                let frequ_22pq = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
                     2.,
                     tmp_p,
                     tmp_q,
@@ -876,8 +872,8 @@ fn calculate_normal_component_of_the_tidal_force(
                     orbital_frequency,
                 );
 
-                let mut sum_over_k: f64 = 0.;
-                let mut sum_over_k_s: f64 = 0.;
+                let mut sum_over_k = 0.;
+                let mut sum_over_k_s = 0.;
 
                 for (k, f_21k) in kaula_param
                     .polynomials
@@ -885,17 +881,17 @@ fn calculate_normal_component_of_the_tidal_force(
                     .iter()
                     .enumerate()
                 {
-                    let tmp_k: f64 = k as f64;
-                    let mut sum_over_j: f64 = 0.;
-                    let mut sum_over_j_s: f64 = 0.;
+                    let tmp_k = k as f64;
+                    let mut sum_over_j = 0.;
+                    let mut sum_over_j_s = 0.;
 
                     let sum_g_2kj = kaula_param.polynomials.eccentricity_function_g_2pq[k];
 
                     for (j, g_2kj) in sum_g_2kj.iter().skip(q_min).take(q_max).enumerate() {
-                        let tmp_j: f64 = j as f64 - order as f64;
+                        let tmp_j = j as f64 - order as f64;
 
                         // let phase_beta:f64 =compute_phase_beta(tmp_p, tmp_q, tmp_k, tmp_j, mean_anomaly, spin_angle, argument_perihelion, longitude_ascending_node);
-                        let phase_alpha_2: f64 = compute_phase_alpha_2(
+                        let phase_alpha_2 = compute_phase_alpha_2(
                             tmp_p,
                             tmp_q,
                             tmp_k,
@@ -910,8 +906,8 @@ fn calculate_normal_component_of_the_tidal_force(
                         let (rek2_22pq, imk2_22pq) =
                             calculate_kaula_numbers(frequ_22pq, kaula_param, central_body, spin);
 
-                        let cos_alpha_2: f64 = phase_alpha_2.cos();
-                        let sin_alpha_2: f64 = phase_alpha_2.sin();
+                        let cos_alpha_2 = cos!(phase_alpha_2);
+                        let sin_alpha_2 = sin!(phase_alpha_2);
 
                         sum_over_j += g_2kj * (cos_alpha_2 * rek2_22pq - sin_alpha_2 * imk2_22pq);
                         sum_over_j_s += g_2kj * rek2_22pq;
@@ -925,11 +921,10 @@ fn calculate_normal_component_of_the_tidal_force(
             sum_over_p += f_22p * sum_over_q;
             sum_over_p_s += f_22p * sum_over_q_s;
         }
-        let term_m2: f64 = -(1_f64 / 6_f64) * sum_over_p;
-        let term_m2_s: f64 = -(1_f64 / 6_f64) * sum_over_p_s;
+        let term_m2 = -(1_f64 / 6_f64) * sum_over_p;
+        let term_m2_s = -(1_f64 / 6_f64) * sum_over_p_s;
 
-        let cste: f64 =
-            (G * particle_star_2 * particle_radius_5) / (semi_major_axis_6 * heliocentric_r);
+        let cste = (G * particle_star_2 * particle_radius_5) / (semi_major_axis_6 * heliocentric_r);
 
         normal_force = cste * (term_m0 + term_m1 + term_m2);
         normal_force_secular = cste * (term_m0_s + term_m1_s + term_m2_s);
@@ -964,13 +959,13 @@ fn calculate_orthogonal_component_of_the_tidal_force(
     ) = keplerian_elements;
     let argument_perihelion = longitude_perihelion - longitude_of_ascending_node;
     let orbital_frequency = TWO_PI / (orbital_period * DAY); // The orbital mean motion in [rad.s^-1]
-    let tem_radius: f64;
+    let tem_radius;
 
-    let obliquity: f64;
-    let distance: f64;
-    let coplanar_distance: f64;
-    let sin_theta: f64;
-    let cste_2d: f64;
+    let obliquity;
+    let distance;
+    let coplanar_distance;
+    let sin_theta;
+    let cste_2d;
 
     if central_body {
         // inclination = tools::calculate_inclination_orbital_equatorial_plane(tidal_host_particle.heliocentric_position, tidal_host_particle.heliocentric_velocity, tidal_host_particle.spin);
@@ -980,14 +975,16 @@ fn calculate_orthogonal_component_of_the_tidal_force(
             tidal_host_particle.heliocentric_velocity,
             particle.spin,
         );
-        // spin = tidal_host_particle.norm_spin_vector_2.sqrt() / DAY; // The planetary spin in [rad.s^-1]
-        distance = (tidal_host_particle.tides.coordinates.position.x.powi(2)
-            + tidal_host_particle.tides.coordinates.position.y.powi(2)
-            + tidal_host_particle.tides.coordinates.position.z.powi(2))
-        .sqrt();
-        coplanar_distance = (tidal_host_particle.tides.coordinates.position.x.powi(2)
-            + tidal_host_particle.tides.coordinates.position.y.powi(2))
-        .sqrt();
+        // spin = sqrt!(tidal_host_particle.norm_spin_vector_2) / DAY; // The planetary spin in [rad.s^-1]
+        distance = sqrt!(
+            tidal_host_particle.tides.coordinates.position.x.powi(2)
+                + tidal_host_particle.tides.coordinates.position.y.powi(2)
+                + tidal_host_particle.tides.coordinates.position.z.powi(2)
+        );
+        coplanar_distance = sqrt!(
+            tidal_host_particle.tides.coordinates.position.x.powi(2)
+                + tidal_host_particle.tides.coordinates.position.y.powi(2)
+        );
         sin_theta = coplanar_distance / distance;
         cste_2d = -(G * particle.mass.powi(2) * tidal_host_particle.radius.powi(5))
             / (semi_major_axis.powi(6) * tem_radius * sin_theta);
@@ -999,19 +996,21 @@ fn calculate_orthogonal_component_of_the_tidal_force(
             particle.heliocentric_velocity,
             particle.spin,
         );
-        // spin = particle.norm_spin_vector_2.sqrt() / DAY; // The planetary spin in [rad.s^-1]
-        distance = (particle.tides.coordinates.position.x.powi(2)
-            + particle.tides.coordinates.position.y.powi(2)
-            + particle.tides.coordinates.position.z.powi(2))
-        .sqrt();
-        coplanar_distance = (particle.tides.coordinates.position.x.powi(2)
-            + particle.tides.coordinates.position.y.powi(2))
-        .sqrt();
+        // spin = sqrt!(particle.norm_spin_vector_2) / DAY; // The planetary spin in [rad.s^-1]
+        distance = sqrt!(
+            particle.tides.coordinates.position.x.powi(2)
+                + particle.tides.coordinates.position.y.powi(2)
+                + particle.tides.coordinates.position.z.powi(2)
+        );
+        coplanar_distance = sqrt!(
+            particle.tides.coordinates.position.x.powi(2)
+                + particle.tides.coordinates.position.y.powi(2)
+        );
         sin_theta = coplanar_distance / distance;
         cste_2d = -(G * tidal_host_particle.mass.powi(2) * particle.radius.powi(5))
             / (semi_major_axis.powi(6) * tem_radius * sin_theta);
     }
-    let spin: f64 = particle.norm_spin_vector_2.sqrt() / DAY; // The stellar/planetary spin in [rad.s^-1]
+    let spin = sqrt!(particle.norm_spin_vector_2) / DAY; // The stellar/planetary spin in [rad.s^-1]
 
     // --- local quantities needed --- //
 
@@ -1022,8 +1021,8 @@ fn calculate_orthogonal_component_of_the_tidal_force(
     // let eccentricity_function_g_2pq = calculate_eccentricity_function_g_2pq(eccentricity);
 
     // --- summation --- //
-    let orthogonal_force: f64;
-    let orthogonal_force_secular: f64;
+    let orthogonal_force;
+    let orthogonal_force_secular;
 
     if obliquity <= 1.0e-8 {
         if eccentricity == 0. {
@@ -1042,8 +1041,8 @@ fn calculate_orthogonal_component_of_the_tidal_force(
             kaula_param
                 .polynomials
                 .calculate_eccentricity_function_g_20q(eccentricity);
-            let mut sum_over_q: f64 = 0.;
-            let mut sum_over_q_secular: f64 = 0.;
+            let mut sum_over_q = 0.;
+            let mut sum_over_q_secular = 0.;
 
             let order = match () {
                 // Select the order of the summation q over the eccentricity function G_lpq
@@ -1078,8 +1077,8 @@ fn calculate_orthogonal_component_of_the_tidal_force(
                 let (rek2_220q, imk2_220q) =
                     calculate_kaula_numbers(frequ_220q, kaula_param, central_body, spin);
 
-                let mut sum_over_j_2: f64 = 0.;
-                let mut sum_over_j_2_secular: f64 = 0.;
+                let mut sum_over_j_2 = 0.;
+                let mut sum_over_j_2_secular = 0.;
                 for (j, g_20j) in kaula_param
                     .polynomials
                     .eccentricity_function_g_20q
@@ -1098,7 +1097,7 @@ fn calculate_orthogonal_component_of_the_tidal_force(
                     );
 
                     sum_over_j_2 +=
-                        g_20j * (alpha_qj.sin() * rek2_220q + alpha_qj.cos() * imk2_220q);
+                        g_20j * (sin!(alpha_qj) * rek2_220q + cos!(alpha_qj) * imk2_220q);
                     if q == j {
                         // --- the secular part of the force
                         sum_over_j_2_secular += g_20j * imk2_220q;
@@ -1112,8 +1111,8 @@ fn calculate_orthogonal_component_of_the_tidal_force(
             orthogonal_force_secular = cste_2d * sum_over_q_secular;
         }
     } else {
-        let heliocentric_varphi: f64 = 0.;
-        let spin_angle: f64 = 0.;
+        let heliocentric_varphi = 0.;
+        let spin_angle = 0.;
 
         kaula_param
             .polynomials
@@ -1153,28 +1152,27 @@ fn calculate_orthogonal_component_of_the_tidal_force(
         let q_min = 7 - order;
         let q_max = 2 * order + 1;
 
-        let mut sum_over_p: f64;
-        let mut sum_over_p_s: f64;
+        let mut sum_over_p;
+        let mut sum_over_p_s;
 
         // term m = 1
         sum_over_p = 0.;
         sum_over_p_s = 0.;
         let c1 = 1_f64 / 6_f64;
-        // let c2 = -(4_f64) / (15_f64).sqrt();
         for (p, f_21p) in kaula_param
             .polynomials
             .inclination_function_f_21p
             .iter()
             .enumerate()
         {
-            let tmp_p: f64 = p as f64;
-            let mut sum_over_q: f64 = 0.;
-            let mut sum_over_q_s: f64 = 0.;
+            let tmp_p = p as f64;
+            let mut sum_over_q = 0.;
+            let mut sum_over_q_s = 0.;
             let sum_g_2pq = kaula_param.polynomials.eccentricity_function_g_2pq[p];
 
             for (q, g_2pq) in sum_g_2pq.iter().skip(q_min).take(q_max).enumerate() {
-                let tmp_q: f64 = q as f64 - order as f64;
-                let frequ_21pq: f64 = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
+                let tmp_q = q as f64 - order as f64;
+                let frequ_21pq = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
                     1.,
                     tmp_p,
                     tmp_q,
@@ -1182,10 +1180,10 @@ fn calculate_orthogonal_component_of_the_tidal_force(
                     orbital_frequency,
                 );
 
-                let mut sum_over_kterm1: f64 = 0.;
-                let mut sum_over_kterm2: f64 = 0.;
-                let mut sum_over_kterm1_s: f64 = 0.;
-                let mut sum_over_kterm2_s: f64 = 0.;
+                let mut sum_over_kterm1 = 0.;
+                let mut sum_over_kterm2 = 0.;
+                let mut sum_over_kterm1_s = 0.;
+                let mut sum_over_kterm2_s = 0.;
 
                 for (k, f_30_32_k) in kaula_param
                     .polynomials
@@ -1197,18 +1195,18 @@ fn calculate_orthogonal_component_of_the_tidal_force(
                     // println!("|\t integer k {:?}", k);
                     let (f_30k, f_32k) = f_30_32_k; // is sum over p for each m
 
-                    let tmp_k: f64 = k as f64;
-                    let mut sum_over_jterm1: f64 = 0.;
-                    let mut sum_over_jterm2: f64 = 0.;
-                    let mut sum_over_jterm1_s: f64 = 0.;
-                    let mut sum_over_jterm2_s: f64 = 0.;
+                    let tmp_k = k as f64;
+                    let mut sum_over_jterm1 = 0.;
+                    let mut sum_over_jterm2 = 0.;
+                    let mut sum_over_jterm1_s = 0.;
+                    let mut sum_over_jterm2_s = 0.;
                     let sum_g_3kj = kaula_param.polynomials.eccentricity_function_g_3pq[k];
 
                     for (j, g_3kj) in sum_g_3kj.iter().skip(q_min).take(q_max).enumerate() {
-                        let tmp_j: f64 = j as f64 - order as f64;
+                        let tmp_j = j as f64 - order as f64;
 
                         // let phase_beta:f64 =compute_phase_beta(tmp_p, tmp_q, tmp_k, tmp_j, mean_anomaly, spin_angle, argument_perihelion, longitude_ascending_node);
-                        let phase_alpha_3: f64 = compute_phase_alpha_3(
+                        let phase_alpha_3 = compute_phase_alpha_3(
                             tmp_p,
                             tmp_q,
                             tmp_k,
@@ -1219,7 +1217,7 @@ fn calculate_orthogonal_component_of_the_tidal_force(
                             longitude_of_ascending_node,
                             heliocentric_varphi,
                         );
-                        let phase_alpha_4: f64 = compute_phase_alpha_4(
+                        let phase_alpha_4 = compute_phase_alpha_4(
                             tmp_p,
                             tmp_q,
                             tmp_k,
@@ -1234,10 +1232,10 @@ fn calculate_orthogonal_component_of_the_tidal_force(
                         let (rek2_21pq, imk2_21pq) =
                             calculate_kaula_numbers(frequ_21pq, kaula_param, central_body, spin);
 
-                        let cos_alpha_1: f64 = (phase_alpha_3).cos();
-                        let sin_alpha_1: f64 = (phase_alpha_3).sin();
-                        let cos_alpha_2: f64 = (phase_alpha_4).cos();
-                        let sin_alpha_2: f64 = (phase_alpha_4).sin();
+                        let cos_alpha_1 = cos!(phase_alpha_3);
+                        let sin_alpha_1 = sin!(phase_alpha_3);
+                        let cos_alpha_2 = cos!(phase_alpha_4);
+                        let sin_alpha_2 = sin!(phase_alpha_4);
 
                         sum_over_jterm1 +=
                             g_3kj * (sin_alpha_1 * rek2_21pq - cos_alpha_1 * imk2_21pq);
@@ -1257,28 +1255,26 @@ fn calculate_orthogonal_component_of_the_tidal_force(
             sum_over_p += f_21p * sum_over_q;
             sum_over_p_s += f_21p * sum_over_q_s;
         }
-        let term_m1: f64 = -(4_f64) / (15_f64).sqrt() * sum_over_p;
-        let term_m1_s: f64 = -(4_f64) / (15_f64).sqrt() * sum_over_p_s;
+        let term_m1 = -4. / sqrt!(15_f64) * sum_over_p;
+        let term_m1_s = -4. / sqrt!(15_f64) * sum_over_p_s;
 
         // term m = 2
         sum_over_p = 0.;
         sum_over_p_s = 0.;
-        // let c1 = -(5_f64) / (48_f64*6_f64.sqrt());
-        // let c3 = 2_f64;
         for (p, f_21p) in kaula_param
             .polynomials
             .inclination_function_f_22p
             .iter()
             .enumerate()
         {
-            let tmp_p: f64 = p as f64;
-            let mut sum_over_q: f64 = 0.;
-            let mut sum_over_q_s: f64 = 0.;
+            let tmp_p = p as f64;
+            let mut sum_over_q = 0.;
+            let mut sum_over_q_s = 0.;
             let sum_g_2pq = kaula_param.polynomials.eccentricity_function_g_2pq[p];
 
             for (q, g_2pq) in sum_g_2pq.iter().skip(q_min).take(q_max).enumerate() {
-                let tmp_q: f64 = q as f64 - order as f64;
-                let frequ_22pq: f64 = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
+                let tmp_q = q as f64 - order as f64;
+                let frequ_22pq = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
                     2.,
                     tmp_p,
                     tmp_q,
@@ -1286,10 +1282,10 @@ fn calculate_orthogonal_component_of_the_tidal_force(
                     orbital_frequency,
                 );
 
-                let mut sum_over_kterm1: f64 = 0.;
-                let mut sum_over_kterm2: f64 = 0.;
-                let mut sum_over_kterm1_s: f64 = 0.;
-                let mut sum_over_kterm2_s: f64 = 0.;
+                let mut sum_over_kterm1 = 0.;
+                let mut sum_over_kterm2 = 0.;
+                let mut sum_over_kterm1_s = 0.;
+                let mut sum_over_kterm2_s = 0.;
 
                 for (k, f_31_33_k) in kaula_param
                     .polynomials
@@ -1300,18 +1296,18 @@ fn calculate_orthogonal_component_of_the_tidal_force(
                 {
                     let (f_31k, f_33k) = f_31_33_k; // is sum over p for each m
 
-                    let tmp_k: f64 = k as f64;
-                    let mut sum_over_jterm1: f64 = 0.;
-                    let mut sum_over_jterm2: f64 = 0.;
-                    let mut sum_over_jterm1_s: f64 = 0.;
-                    let mut sum_over_jterm2_s: f64 = 0.;
+                    let tmp_k = k as f64;
+                    let mut sum_over_jterm1 = 0.;
+                    let mut sum_over_jterm2 = 0.;
+                    let mut sum_over_jterm1_s = 0.;
+                    let mut sum_over_jterm2_s = 0.;
                     let sum_g_3kj = kaula_param.polynomials.eccentricity_function_g_3pq[k];
 
                     for (j, g_3kj) in sum_g_3kj.iter().skip(q_min).take(q_max).enumerate() {
-                        let tmp_j: f64 = j as f64 - order as f64;
+                        let tmp_j = j as f64 - order as f64;
 
                         // let phase_beta:f64 =compute_phase_beta(tmp_p, tmp_q, tmp_k, tmp_j, mean_anomaly, spin_angle, argument_perihelion, longitude_ascending_node);
-                        let phase_alpha_3: f64 = compute_phase_alpha_3(
+                        let phase_alpha_3 = compute_phase_alpha_3(
                             tmp_p,
                             tmp_q,
                             tmp_k,
@@ -1322,7 +1318,7 @@ fn calculate_orthogonal_component_of_the_tidal_force(
                             longitude_of_ascending_node,
                             heliocentric_varphi,
                         );
-                        let phase_alpha_4: f64 = compute_phase_alpha_4(
+                        let phase_alpha_4 = compute_phase_alpha_4(
                             tmp_p,
                             tmp_q,
                             tmp_k,
@@ -1337,10 +1333,10 @@ fn calculate_orthogonal_component_of_the_tidal_force(
                         let (rek2_22pq, imk2_22pq) =
                             calculate_kaula_numbers(frequ_22pq, kaula_param, central_body, spin);
 
-                        let cos_alpha_1: f64 = (phase_alpha_3).cos();
-                        let sin_alpha_1: f64 = (phase_alpha_3).sin();
-                        let cos_alpha_2: f64 = (phase_alpha_4).cos();
-                        let sin_alpha_2: f64 = (phase_alpha_4).sin();
+                        let cos_alpha_1 = cos!(phase_alpha_3);
+                        let sin_alpha_1 = sin!(phase_alpha_3);
+                        let cos_alpha_2 = cos!(phase_alpha_4);
+                        let sin_alpha_2 = sin!(phase_alpha_4);
 
                         sum_over_jterm1 +=
                             g_3kj * (sin_alpha_1 * rek2_22pq - cos_alpha_1 * imk2_22pq);
@@ -1360,8 +1356,8 @@ fn calculate_orthogonal_component_of_the_tidal_force(
             sum_over_p += f_21p * sum_over_q;
             sum_over_p_s += f_21p * sum_over_q_s;
         }
-        let term_m2: f64 = -(5_f64) / (48_f64 * 6_f64.sqrt()) * sum_over_p;
-        let term_m2_s: f64 = -(5_f64) / (48_f64 * 6_f64.sqrt()) * sum_over_p_s;
+        let term_m2 = -5. / (48. * sqrt!(6_f64)) * sum_over_p;
+        let term_m2_s = -5. / (48. * sqrt!(6_f64)) * sum_over_p_s;
 
         let cste_3d = if central_body {
             // inclination = tools::calculate_inclination_orbital_equatorial_plane(tidal_host_particle.heliocentric_position, tidal_host_particle.heliocentric_velocity, tidal_host_particle.spin);
@@ -1386,12 +1382,12 @@ pub fn calculate_torque_due_to_tides(
     particle: &Particle,
     central_body: bool,
 ) -> Axes {
-    let position_x: f64;
-    let position_y: f64;
-    let position_z: f64;
-    let tidal_force_x: f64;
-    let tidal_force_y: f64;
-    let tidal_force_z: f64;
+    let position_x;
+    let position_y;
+    let position_z;
+    let tidal_force_x;
+    let tidal_force_y;
+    let tidal_force_z;
 
     if central_body {
         let kaula_tidal_force = match &tidal_host_particle.tides.effect {
@@ -1424,11 +1420,12 @@ pub fn calculate_torque_due_to_tides(
     let torque_due_to_tides_x = position_y * tidal_force_z - position_z * tidal_force_y;
     let torque_due_to_tides_y = position_z * tidal_force_x - position_x * tidal_force_z;
     let torque_due_to_tides_z = position_x * tidal_force_y - position_y * tidal_force_x;
-    Axes {
-        x: torque_due_to_tides_x,
-        y: torque_due_to_tides_y,
-        z: torque_due_to_tides_z,
-    }
+
+    Axes::from(
+        torque_due_to_tides_x,
+        torque_due_to_tides_y,
+        torque_due_to_tides_z,
+    )
 }
 
 // ------------- //
@@ -1447,7 +1444,7 @@ fn calculate_associated_legendre_polynomials_p_2m(x: f64) -> [f64; 3] {
     let x_2 = x * x;
 
     p_2m[0] = 0.5 * (3. * x_2 - 1.);
-    p_2m[1] = -3. * x * ((1. - x_2).sqrt()); //p_2m[1] = -3.*((1.-x_2).sqrt());
+    p_2m[1] = -3. * x * (sqrt!(1. - x_2));
     p_2m[2] = 3. * (1. - x_2);
 
     p_2m
@@ -1565,7 +1562,7 @@ fn calculate_kaula_numbers(
 
     let parity = !central_body & (wk2 < 0.0);
     if parity {
-        wk2 = wk2.abs();
+        wk2 = abs!(wk2);
     }
 
     // These small part of modification is only for stellar tide, kaula with a fixed spectrum
@@ -1667,9 +1664,9 @@ impl Polynomials {
     fn calculate_inclination_function_f_2mp(inclination: f64) -> [[f64; 3]; 3] {
         let mut inclination_function = [[0.; 3]; 3];
         // in this notation: 0 is q=-2, 1 is q=-1, 2 is q=0, 3 is q=1, 4 is q=2 ... cf Kaula 64 Table 3
-        let sin_incl = inclination.sin();
+        let sin_incl = sin!(inclination);
         let sin_incl_2 = sin_incl * sin_incl;
-        let cos_incl = inclination.cos();
+        let cos_incl = cos!(inclination);
 
         inclination_function[0][0] = -(3. / 8.) * sin_incl_2;
         inclination_function[0][1] = (3. / 4.) * sin_incl_2 - (1. / 2.);
@@ -1690,7 +1687,7 @@ impl Polynomials {
     // --- The inclination function of the Kaula 1961 developpement Flmp(i)
     fn calculate_inclination_function_f_20p(&mut self, inclination: f64) {
         // in this notation: 0 is q=-2, 1 is q=-1, 2 is q=0, 3 is q=1, 4 is q=2 ... cf Kaula 64 Table 3
-        let sin_incl = inclination.sin();
+        let sin_incl = sin!(inclination);
         let sin_incl_2 = sin_incl * sin_incl;
 
         self.inclination_function_f_20p[0] = -(3. / 8.) * sin_incl_2;
@@ -1699,8 +1696,8 @@ impl Polynomials {
     }
     // --- The inclination function of the Kaula 1961 developpement Flmp(i)
     fn calculate_inclination_function_f_21p(&mut self, inclination: f64) {
-        let sin_incl = inclination.sin();
-        let cos_incl = inclination.cos();
+        let sin_incl = sin!(inclination);
+        let cos_incl = cos!(inclination);
 
         self.inclination_function_f_21p[0] = (3. / 4.) * sin_incl * (1. + cos_incl);
         self.inclination_function_f_21p[1] = -(3. / 2.) * sin_incl * cos_incl;
@@ -1708,8 +1705,8 @@ impl Polynomials {
     }
     // --- The inclination function of the Kaula 1961 developpement Flmp(i)
     fn calculate_inclination_function_f_22p(&mut self, inclination: f64) {
-        let sin_incl = inclination.sin();
-        let cos_incl = inclination.cos();
+        let sin_incl = sin!(inclination);
+        let cos_incl = cos!(inclination);
 
         self.inclination_function_f_22p[0] = (3. / 4.) * (1. + cos_incl).powi(2);
         self.inclination_function_f_22p[1] = (3. / 2.) * sin_incl.powi(2);
@@ -1718,7 +1715,7 @@ impl Polynomials {
     // F3pmp
     // --- The inclination function of the Kaula 1961 developpement Flmp(i)
     fn calculate_inclination_function_f_30p(&mut self, inclination: f64) {
-        let sin_incl = inclination.sin();
+        let sin_incl = sin!(inclination);
         let sin_3_factor_1 = (5. / 16.) * sin_incl.powi(3);
         let sin_factor_2 = (3. / 4.) * sin_incl;
 
@@ -1729,10 +1726,10 @@ impl Polynomials {
     }
     // --- The inclination function of the Kaula 1961 developpement Flmp(i)
     fn calculate_inclination_function_f_31p(&mut self, inclination: f64) {
-        let sin_incl = inclination.sin();
+        let sin_incl = sin!(inclination);
         let sin_2_factor_1 = (15. / 16.) * sin_incl.powi(2);
         let sin_2_factor_43 = sin_2_factor_1 - (3. / 4.);
-        let cos_incl = inclination.cos();
+        let cos_incl = cos!(inclination);
         let cos_incl_factor_1 = 1.0 + 3.0 * cos_incl;
         let cos_incl_factor_2 = 1.0 - 3.0 * cos_incl;
 
@@ -1743,9 +1740,9 @@ impl Polynomials {
     }
     // --- The inclination function of the Kaula 1961 developpement Flmp(i)
     fn calculate_inclination_function_f_32p(&mut self, inclination: f64) {
-        let sin_incl = inclination.sin();
+        let sin_incl = sin!(inclination);
         let sin_2_factor_1 = (15. / 8.) * sin_incl.powi(2);
-        let cos_incl = inclination.cos();
+        let cos_incl = cos!(inclination);
         let cos_incl_2 = cos_incl.powi(2);
 
         self.inclination_function_f_32p[0] = sin_2_factor_1 * (1.0 + cos_incl).powi(2);
@@ -1757,9 +1754,9 @@ impl Polynomials {
     }
     // --- The inclination function of the Kaula 1961 developpement Flmp(i)
     fn calculate_inclination_function_f_33p(&mut self, inclination: f64) {
-        let sin_incl = inclination.sin();
+        let sin_incl = sin!(inclination);
         let sin_2_factor_1 = (48. / 8.) * sin_incl.powi(2);
-        let cos_incl = inclination.cos();
+        let cos_incl = cos!(inclination);
         let cos_incl_factor_1 = 1.0 + cos_incl;
         let cos_incl_factor_2 = 1.0 - cos_incl;
 
@@ -1788,13 +1785,13 @@ impl Polynomials {
         // [13] is 6
         // [14] is 7
 
-        let ecc: f64 = eccentricity;
-        let ecc_2: f64 = ecc * ecc;
-        let ecc_3: f64 = ecc_2 * ecc;
-        let ecc_4: f64 = ecc_3 * ecc;
-        let ecc_5: f64 = ecc_4 * ecc;
-        let ecc_6: f64 = ecc_5 * ecc;
-        let ecc_7: f64 = ecc_6 * ecc;
+        let ecc = eccentricity;
+        let ecc_2 = ecc * ecc;
+        let ecc_3 = ecc_2 * ecc;
+        let ecc_4 = ecc_3 * ecc;
+        let ecc_5 = ecc_4 * ecc;
+        let ecc_6 = ecc_5 * ecc;
+        let ecc_7 = ecc_6 * ecc;
 
         self.eccentricity_function_g_2pq[0][0] = (15_625. / 129_024.) * ecc_7;
         self.eccentricity_function_g_2pq[0][1] = (4. / 45.) * ecc_6;
@@ -1877,13 +1874,13 @@ impl Polynomials {
         // [13] is 6
         // [14] is 7
 
-        let ecc: f64 = eccentricity;
-        let ecc_2: f64 = ecc * ecc;
-        let ecc_3: f64 = ecc_2 * ecc;
-        let ecc_4: f64 = ecc_3 * ecc;
-        let ecc_5: f64 = ecc_4 * ecc;
-        let ecc_6: f64 = ecc_5 * ecc;
-        let ecc_7: f64 = ecc_6 * ecc;
+        let ecc = eccentricity;
+        let ecc_2 = ecc * ecc;
+        let ecc_3 = ecc_2 * ecc;
+        let ecc_4 = ecc_3 * ecc;
+        let ecc_5 = ecc_4 * ecc;
+        let ecc_6 = ecc_5 * ecc;
+        let ecc_7 = ecc_6 * ecc;
 
         self.eccentricity_function_g_20q[0] = (15_625. / 129_024.) * ecc_7;
         self.eccentricity_function_g_20q[1] = (4. / 45.) * ecc_6;
@@ -1929,13 +1926,13 @@ impl Polynomials {
         // [13] is 6
         // [14] is 7
 
-        let ecc: f64 = eccentricity;
-        let ecc_2: f64 = ecc * ecc;
-        let ecc_3: f64 = ecc_2 * ecc;
-        let ecc_4: f64 = ecc_3 * ecc;
-        let ecc_5: f64 = ecc_4 * ecc;
-        let ecc_6: f64 = ecc_5 * ecc;
-        let ecc_7: f64 = ecc_6 * ecc;
+        let ecc = eccentricity;
+        let ecc_2 = ecc * ecc;
+        let ecc_3 = ecc_2 * ecc;
+        let ecc_4 = ecc_3 * ecc;
+        let ecc_5 = ecc_4 * ecc;
+        let ecc_6 = ecc_5 * ecc;
+        let ecc_7 = ecc_6 * ecc;
 
         self.eccentricity_function_g_21q[0] = (432_091. / 30_720.) * ecc_7;
         self.eccentricity_function_g_21q[1] = (3167. / 320.) * ecc_6;
@@ -1978,13 +1975,13 @@ impl Polynomials {
         // [13] is 6
         // [14] is 7
 
-        let ecc: f64 = eccentricity;
-        let ecc_2: f64 = ecc.powi(2);
-        let ecc_3: f64 = ecc.powi(3);
-        let ecc_4: f64 = ecc.powi(4);
-        let ecc_5: f64 = ecc.powi(5);
-        let ecc_6: f64 = ecc.powi(6);
-        let ecc_7: f64 = ecc.powi(7);
+        let ecc = eccentricity;
+        let ecc_2 = ecc.powi(2);
+        let ecc_3 = ecc.powi(3);
+        let ecc_4 = ecc.powi(4);
+        let ecc_5 = ecc.powi(5);
+        let ecc_6 = ecc.powi(6);
+        let ecc_7 = ecc.powi(7);
 
         self.eccentricity_function_g_3pq[0][0] = (8. / 315.) * ecc_7;
         self.eccentricity_function_g_3pq[0][1] = (81. / 5120.) * ecc_6;
@@ -2088,13 +2085,13 @@ impl Polynomials {
         // [13] is 6
         // [14] is 7
 
-        let ecc: f64 = eccentricity;
-        let ecc_2: f64 = ecc.powi(2);
-        let ecc_3: f64 = ecc.powi(3);
-        let ecc_4: f64 = ecc.powi(4);
-        let ecc_5: f64 = ecc.powi(5);
-        let ecc_6: f64 = ecc.powi(6);
-        let ecc_7: f64 = ecc.powi(7);
+        let ecc = eccentricity;
+        let ecc_2 = ecc.powi(2);
+        let ecc_3 = ecc.powi(3);
+        let ecc_4 = ecc.powi(4);
+        let ecc_5 = ecc.powi(5);
+        let ecc_6 = ecc.powi(6);
+        let ecc_7 = ecc.powi(7);
 
         eccentricity_function[0] = (8. / 315.) * ecc_7;
         eccentricity_function[1] = (81. / 5120.) * ecc_6;
@@ -2140,13 +2137,13 @@ impl Polynomials {
         // [13] is 6
         // [14] is 7
 
-        let ecc: f64 = eccentricity;
-        let ecc_2: f64 = ecc.powi(2);
-        let ecc_3: f64 = ecc.powi(3);
-        let ecc_4: f64 = ecc.powi(4);
-        let ecc_5: f64 = ecc.powi(5);
-        let ecc_6: f64 = ecc.powi(6);
-        let ecc_7: f64 = ecc.powi(7);
+        let ecc = eccentricity;
+        let ecc_2 = ecc.powi(2);
+        let ecc_3 = ecc.powi(3);
+        let ecc_4 = ecc.powi(4);
+        let ecc_5 = ecc.powi(5);
+        let ecc_6 = ecc.powi(6);
+        let ecc_7 = ecc.powi(7);
 
         eccentricity_function[0] = (16_337. / 2240.) * ecc_7;
         eccentricity_function[1] = (48_203. / 9240.) * ecc_6;

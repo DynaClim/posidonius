@@ -178,16 +178,16 @@ pub fn write_historic_snapshot<T: Write>(
                 Reference::Particle(index) => {
                     reference_particle_index = index;
                     let reference_particle = &universe.particles[reference_particle_index];
-                    let position = Axes {
-                        x: particle.inertial_position.x - reference_particle.inertial_position.x,
-                        y: particle.inertial_position.y - reference_particle.inertial_position.y,
-                        z: particle.inertial_position.z - reference_particle.inertial_position.z,
-                    };
-                    let velocity = Axes {
-                        x: particle.inertial_velocity.x - reference_particle.inertial_velocity.x,
-                        y: particle.inertial_velocity.y - reference_particle.inertial_velocity.y,
-                        z: particle.inertial_velocity.z - reference_particle.inertial_velocity.z,
-                    };
+                    let position = Axes::from(
+                        particle.inertial_position.x - reference_particle.inertial_position.x,
+                        particle.inertial_position.y - reference_particle.inertial_position.y,
+                        particle.inertial_position.z - reference_particle.inertial_position.z,
+                    );
+                    let velocity = Axes::from(
+                        particle.inertial_velocity.x - reference_particle.inertial_velocity.x,
+                        particle.inertial_velocity.y - reference_particle.inertial_velocity.y,
+                        particle.inertial_velocity.z - reference_particle.inertial_velocity.z,
+                    );
                     calculate_keplerian_orbital_elements(
                         reference_particle.mass_g + particle.mass_g,
                         position,

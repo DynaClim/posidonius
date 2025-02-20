@@ -1,6 +1,6 @@
 // Implemented by Gabriel Oliveira Gomes
 // Described in Gomes et al (2021): https://ui.adsabs.harvard.edu/abs/2021A%26A...651A..23G/abstract
-use super::super::super::constants::{K2, PI};
+use super::super::super::constants::{K2, PI, TWO_PI};
 use super::super::super::tools;
 use super::super::super::Axes;
 use super::super::super::Particle;
@@ -18,11 +18,13 @@ pub fn calculate_torque_due_to_tides(
     particle: &Particle,
     central_body: bool,
 ) -> Axes {
-    let torque_due_to_tides_x: f64 = 0.;
-    let torque_due_to_tides_y: f64 = 0.;
-    //let torque_due_to_tides_z: f64 = 0.0;
+    // Torque expression for studying creep tide tidal despinning (use torque_z = 0 instead to study stat. rotation, makes code run faster)
 
-    // Torque expression for studying creep tide tidal despinning (use torque = 0 as above to study stat. rotation, makes code run faster)
+    let factor = 3.0 / 5.0
+        * K2
+        * particle.mass
+        * tidal_host_particle.mass
+        * tidal_host_particle.radius.powi(2);
 
     let torque_due_to_tides_z = if central_body {
         // Host shape is planet dependent, it needs to be computed for each.
@@ -40,100 +42,57 @@ pub fn calculate_torque_due_to_tides(
             consider_rotational_flattening,
             central_body,
         );
-        3.0 / 5.0
-            * K2
-            * tidal_host_particle.mass
-            * particle.mass
-            * tidal_host_particle.radius
-            * tidal_host_particle.radius
-            * tidal_host_shape.y
-            / particle.tides.parameters.internal.distance.powi(3)
+        factor * tidal_host_shape.y / particle.tides.parameters.internal.distance.powi(3)
     } else {
         // Planet shape is host dependent and it was already computed
-        3.0 / 5.0
-            * K2
-            * particle.mass
-            * tidal_host_particle.mass
-            * particle.radius
-            * particle.radius
-            * particle.tides.parameters.internal.shape.y
+        factor * particle.tides.parameters.internal.shape.y
             / particle.tides.parameters.internal.distance.powi(3)
     };
 
-    Axes {
-        x: torque_due_to_tides_x,
-        y: torque_due_to_tides_y,
-        z: torque_due_to_tides_z,
-    }
+    Axes::from(0.0, 0.0, torque_due_to_tides_z)
+}
+
+// Expression for ONLY tides
+fn tidal_force_only_tides(
+    tidal_host_particle: &Particle,
+    particle: &Particle,
+    position: f64,
+    sign: f64,
+) -> f64 {
+    let distance_4 = particle.tides.parameters.internal.distance.powi(4);
+    let factor1 = K2 * particle.mass * tidal_host_particle.mass * particle.radius.powi(2);
+
+    particle.tides.parameters.internal.distance
+        * (-0.9 * factor1 / distance_4 * particle.tides.parameters.internal.shape.x
+            - (3.0 * factor1 / (5.0 * distance_4) * particle.tides.parameters.internal.shape.z))
+        + sign
+            * (3.0 * factor1 * position
+                / (5.0 * distance_4 * particle.tides.parameters.internal.distance)
+                * particle.tides.parameters.internal.shape.y)
 }
 
 pub fn calculate_tidal_force(tidal_host_particle: &Particle, particle: &Particle) -> Axes {
-    let distance_4 = particle.tides.parameters.internal.distance.powi(4);
-    // Factorize common terms;
-
     // Expression for ONLY tides
+    let sign = -1.0;
     let total_tidal_force_x = particle.tides.coordinates.position.x
-        / particle.tides.parameters.internal.distance
-        * (-0.9
-            * K2
-            * particle.mass
-            * tidal_host_particle.mass
-            * particle.radius
-            * particle.radius
-            / distance_4
-            * particle.tides.parameters.internal.shape.x
-            - (3.0
-                * K2
-                * particle.mass
-                * tidal_host_particle.mass
-                * particle.radius
-                * particle.radius
-                / (5.0 * distance_4)
-                * particle.tides.parameters.internal.shape.z))
-        - (3.0
-            * K2
-            * particle.tides.coordinates.position.y
-            * particle.mass
-            * tidal_host_particle.mass
-            * particle.radius
-            * particle.radius
-            / (5.0 * distance_4 * particle.tides.parameters.internal.distance)
-            * particle.tides.parameters.internal.shape.y);
+        / tidal_force_only_tides(
+            tidal_host_particle,
+            particle,
+            particle.tides.coordinates.position.y,
+            sign,
+        );
 
     // Expression for ONLY tides
+    let sign = 1.0;
     let total_tidal_force_y = particle.tides.coordinates.position.y
-        / particle.tides.parameters.internal.distance
-        * (-0.9
-            * K2
-            * particle.mass
-            * tidal_host_particle.mass
-            * particle.radius
-            * particle.radius
-            / distance_4
-            * particle.tides.parameters.internal.shape.x
-            - (3.0
-                * K2
-                * particle.mass
-                * tidal_host_particle.mass
-                * particle.radius
-                * particle.radius
-                / (5.0 * distance_4)
-                * particle.tides.parameters.internal.shape.z))
-        + (3.0
-            * K2
-            * particle.tides.coordinates.position.x
-            * particle.mass
-            * tidal_host_particle.mass
-            * particle.radius
-            * particle.radius
-            / (5.0 * distance_4 * particle.tides.parameters.internal.distance)
-            * particle.tides.parameters.internal.shape.y);
+        / tidal_force_only_tides(
+            tidal_host_particle,
+            particle,
+            particle.tides.coordinates.position.x,
+            sign,
+        );
 
-    Axes {
-        x: total_tidal_force_x,
-        y: total_tidal_force_y,
-        z: 0.,
-    }
+    Axes::from(total_tidal_force_x, total_tidal_force_y, 0.)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,9 +152,6 @@ pub fn calculate_creep_coplanar_shape(
         particle.tides.coordinates.position,
         particle.tides.coordinates.velocity,
     );
-    //let true_anomaly = calculate_true_anomaly(eccentricity, mean_anomaly);
-
-    //     println!("{} {}", perihelion_longitude, true_anomaly);
 
     if central_body {
         let tidal_host_particle_uniform_viscosity_coefficient =
@@ -254,45 +210,24 @@ pub fn calculate_particle_shape(
     consider_tides: bool,
     consider_rotational_flattening: bool,
 ) -> Axes {
-    let (x_component_of_the_equatorial_prolateness, y_component_of_the_equatorial_prolateness): (
-        f64,
-        f64,
-    );
-    let alpha: f64;
-    let mean_motion_to_relaxation_factor_ratio: f64;
-    let (
-        equatorial_prolateness_constant_coefficient,
-        equatorial_prolateness_cosine_coefficient,
-        equatorial_prolateness_sine_coefficient,
-    ): (f64, f64, f64);
-    let (
-        polar_oblateness_constant_coefficient,
-        polar_oblateness_cosine_coefficient,
-        polar_oblateness_sine_coefficient,
-    ): (f64, f64, f64);
-    let (delta_constant_coefficient, delta_cosine_coefficient, delta_sine_coefficient): (
-        f64,
-        f64,
-        f64,
-    );
-    let (ep_rho, delta, delta2, epsilon_z): (f64, f64, f64, f64);
+    let x_component_of_the_equatorial_prolateness;
+    let y_component_of_the_equatorial_prolateness;
+    let epsilon_z;
 
-    let relaxation_factor: f64 = 3.0 * K2 * primary_mass * primary_mass
+    let relaxation_factor = 3.0 * K2 * primary_mass * primary_mass
         / (8.0 * PI * radius.powi(4) * uniform_viscosity_coefficient);
-    let mean_motion: f64 = 2.0 * PI / orbital_period;
+    let mean_motion = TWO_PI / orbital_period;
     let epsilon_rho_bar = if consider_tides {
         15.0 * companion_mass * radius.powi(3) / (4.0 * primary_mass * semimajor_axis.powi(3))
     } else {
         0.
     };
+
     let epsilon_z_bar = if consider_rotational_flattening {
         5.0 * primary_spin * primary_spin * radius.powi(3) / (4.0 * K2 * primary_mass)
     } else {
         0.
     };
-    let companion_mass_to_sum_of_masses_ratio: f64 =
-        companion_mass / (primary_mass + companion_mass);
-
     // This part is important, adjust properly!
 
     let pseudo_synchronization_frequency = if relaxation_factor < mean_motion {
@@ -305,89 +240,86 @@ pub fn calculate_particle_shape(
     if primary_spin < pseudo_synchronization_frequency {
         // be careful here
         // The Epsilons are taken from Equation 49 of Folonier et al. (2018)
+        let companion_mass_to_sum_of_masses_ratio =
+            companion_mass / (primary_mass + companion_mass);
 
-        alpha = 1.0 - (3.0 * companion_mass_to_sum_of_masses_ratio * epsilon_rho_bar);
-        mean_motion_to_relaxation_factor_ratio = mean_motion / relaxation_factor;
-        // mean_motion_to_relaxation_factor_ratio_2 = mean_motion_to_relaxation_factor_ratio.powi(2);
+        let alpha = 1.0 - (3.0 * companion_mass_to_sum_of_masses_ratio * epsilon_rho_bar);
+        let mean_motion_to_relaxation_factor_ratio = mean_motion / relaxation_factor;
+        let mean_motion_to_relaxation_factor_ratio_2 =
+            mean_motion_to_relaxation_factor_ratio.powi(2);
         // eccentricity_2 = eccentricity.powi(2);
         // alpha_2 = alpha.powi(2);
 
-        equatorial_prolateness_constant_coefficient = epsilon_rho_bar
+        let equatorial_prolateness_constant_coefficient = epsilon_rho_bar
             * (1.0 + 1.5 * eccentricity.powi(2)
-                - (4.0 * mean_motion_to_relaxation_factor_ratio.powi(2) * eccentricity.powi(2)
-                    / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio.powi(2))));
-        equatorial_prolateness_cosine_coefficient = 3.0 * epsilon_rho_bar * eccentricity
-            / (1.0 + mean_motion_to_relaxation_factor_ratio.powi(2));
-        equatorial_prolateness_sine_coefficient =
+                - (4.0 * mean_motion_to_relaxation_factor_ratio_2 * eccentricity.powi(2)
+                    / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio_2)));
+        let equatorial_prolateness_cosine_coefficient =
+            3.0 * epsilon_rho_bar * eccentricity / (1.0 + mean_motion_to_relaxation_factor_ratio_2);
+        let equatorial_prolateness_sine_coefficient =
             3.0 * epsilon_rho_bar * eccentricity * mean_motion_to_relaxation_factor_ratio
-                / (1.0 + mean_motion_to_relaxation_factor_ratio.powi(2));
+                / (1.0 + mean_motion_to_relaxation_factor_ratio_2);
 
-        polar_oblateness_constant_coefficient = epsilon_rho_bar
+        let polar_oblateness_constant_coefficient = epsilon_rho_bar
             * (0.5 + 0.75 * eccentricity.powi(2))
             + epsilon_z_bar
                 * (1.0
                     + 12.0
                         * eccentricity.powi(2)
-                        * (1.0 + alpha * mean_motion_to_relaxation_factor_ratio.powi(2))
-                        / ((1.0 + mean_motion_to_relaxation_factor_ratio.powi(2))
-                            * (1.0
-                                + alpha * alpha * mean_motion_to_relaxation_factor_ratio.powi(2)))
+                        * (1.0 + alpha * mean_motion_to_relaxation_factor_ratio_2)
+                        / ((1.0 + mean_motion_to_relaxation_factor_ratio_2)
+                            * (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio_2))
                     + 2.0
                         * (1.0 - alpha)
                         * (1.0 - alpha)
-                        * mean_motion_to_relaxation_factor_ratio.powi(2)
+                        * mean_motion_to_relaxation_factor_ratio_2
                         * eccentricity.powi(2)
-                        / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio.powi(2)));
-        polar_oblateness_cosine_coefficient = (1.5 * epsilon_rho_bar * eccentricity
-            / (1.0 + mean_motion_to_relaxation_factor_ratio.powi(2)))
+                        / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio_2));
+        let polar_oblateness_cosine_coefficient = (1.5 * epsilon_rho_bar * eccentricity
+            / (1.0 + mean_motion_to_relaxation_factor_ratio_2))
             * (1.0
                 - (16.0
                     * companion_mass_to_sum_of_masses_ratio
-                    * mean_motion_to_relaxation_factor_ratio.powi(2)
+                    * mean_motion_to_relaxation_factor_ratio_2
                     * epsilon_z_bar
-                    / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio.powi(2))));
-        polar_oblateness_sine_coefficient = (1.5 * epsilon_rho_bar * eccentricity
-            / (1.0 + mean_motion_to_relaxation_factor_ratio.powi(2)))
+                    / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio_2)));
+        let polar_oblateness_sine_coefficient = (1.5 * epsilon_rho_bar * eccentricity
+            / (1.0 + mean_motion_to_relaxation_factor_ratio_2))
             * (mean_motion_to_relaxation_factor_ratio
                 + (8.0
                     * companion_mass_to_sum_of_masses_ratio
                     * mean_motion_to_relaxation_factor_ratio
-                    * (1.0 - alpha * mean_motion_to_relaxation_factor_ratio.powi(2))
+                    * (1.0 - alpha * mean_motion_to_relaxation_factor_ratio_2)
                     * epsilon_z_bar
-                    / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio.powi(2))));
+                    / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio_2)));
 
-        delta_constant_coefficient =
+        let delta_constant_coefficient =
             (3.0 * mean_motion_to_relaxation_factor_ratio * eccentricity.powi(2)
-                / (1.0 + mean_motion_to_relaxation_factor_ratio.powi(2)))
-                * (2.0 + (1.0 + alpha) * mean_motion_to_relaxation_factor_ratio.powi(2))
-                / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio.powi(2));
-        delta_cosine_coefficient = -2.0 * mean_motion_to_relaxation_factor_ratio * eccentricity
-            / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio.powi(2));
-        delta_sine_coefficient =
-            -2.0 * eccentricity * mean_motion_to_relaxation_factor_ratio.powi(2) * alpha
-                / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio.powi(2));
+                / (1.0 + mean_motion_to_relaxation_factor_ratio_2))
+                * (2.0 + (1.0 + alpha) * mean_motion_to_relaxation_factor_ratio_2)
+                / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio_2);
+        let delta_cosine_coefficient = -2.0 * mean_motion_to_relaxation_factor_ratio * eccentricity
+            / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio_2);
+        let delta_sine_coefficient =
+            -2.0 * eccentricity * mean_motion_to_relaxation_factor_ratio_2 * alpha
+                / (1.0 + alpha * alpha * mean_motion_to_relaxation_factor_ratio_2);
 
-        ep_rho = equatorial_prolateness_constant_coefficient
-            + equatorial_prolateness_cosine_coefficient * mean_anomaly.cos()
-            + equatorial_prolateness_sine_coefficient * mean_anomaly.sin();
+        let ep_rho = equatorial_prolateness_constant_coefficient
+            + equatorial_prolateness_cosine_coefficient * cos!(mean_anomaly)
+            + equatorial_prolateness_sine_coefficient * sin!(mean_anomaly);
 
         epsilon_z = polar_oblateness_constant_coefficient
-            + polar_oblateness_cosine_coefficient * mean_anomaly.cos()
-            + polar_oblateness_sine_coefficient * mean_anomaly.sin();
+            + polar_oblateness_cosine_coefficient * cos!(mean_anomaly)
+            + polar_oblateness_sine_coefficient * sin!(mean_anomaly);
 
-        delta = delta_constant_coefficient
-            + delta_cosine_coefficient * mean_anomaly.cos()
-            + delta_sine_coefficient * mean_anomaly.sin();
+        let delta = delta_constant_coefficient
+            + delta_cosine_coefficient * cos!(mean_anomaly)
+            + delta_sine_coefficient * sin!(mean_anomaly);
 
-        delta2 = 2.0 * delta;
-        x_component_of_the_equatorial_prolateness = ep_rho * delta2.cos();
-        y_component_of_the_equatorial_prolateness = ep_rho * delta2.sin();
+        let delta2 = 2.0 * delta;
 
-        Axes {
-            x: x_component_of_the_equatorial_prolateness,
-            y: y_component_of_the_equatorial_prolateness,
-            z: epsilon_z,
-        }
+        x_component_of_the_equatorial_prolateness = ep_rho * cos!(delta2);
+        y_component_of_the_equatorial_prolateness = ep_rho * sin!(delta2);
     } else {
         let cayley = calculate_cayley_coefficients(eccentricity);
         let mut true_anomaly = calculate_true_anomaly(eccentricity, mean_anomaly);
@@ -395,51 +327,42 @@ pub fn calculate_particle_shape(
             true_anomaly += 2.0 * PI;
         }
 
-        let mut sum_x_component_of_the_equatorial_prolateness: f64;
-        let mut sum_y_component_of_the_equatorial_prolateness: f64;
-        let mut sum_epsilon_z: f64;
-        let mut equatorial_angles: f64;
-        let mut polar_angles: f64;
+        let mut sum_x_component_of_the_equatorial_prolateness;
+        let mut sum_y_component_of_the_equatorial_prolateness;
+        let mut sum_epsilon_z;
+        let mut equatorial_angles;
+        let mut polar_angles;
 
         sum_x_component_of_the_equatorial_prolateness = 0.0;
         sum_y_component_of_the_equatorial_prolateness = 0.0;
         sum_epsilon_z = 0.0;
 
-        let mut k: usize = 0;
-
         // for (k,factor) in cayley[1].iter().enumerate()
 
-        while k < 15 {
-            // remove
+        for j in 0..15 {
+            let k = j as f64;
+            equatorial_angles = (9.0 - k) * mean_anomaly - 2.0 * true_anomaly;
+            polar_angles = (-7.0 + k) * mean_anomaly;
 
-            let dk = k as f64;
+            // common block (relaxation_factor * cayley[1][j] / (relaxation_factor.powi(2) + (2.0*primary_spin-(9.0-k)*mean_motion).powi(2)))
 
-            equatorial_angles = (9.0 - dk) * mean_anomaly - 2.0 * true_anomaly;
-            polar_angles = (-7.0 + dk) * mean_anomaly;
-
-            // common block (relaxation_factor * cayley[1][k] / (relaxation_factor.powi(2) + (2.0*primary_spin-(9.0-dk)*mean_motion).powi(2)))
-
-            sum_x_component_of_the_equatorial_prolateness += relaxation_factor * cayley[1][k]
+            sum_x_component_of_the_equatorial_prolateness += relaxation_factor * cayley[1][j]
                 / (relaxation_factor.powi(2)
-                    + (2.0 * primary_spin - (9.0 - dk) * mean_motion).powi(2))
-                * (relaxation_factor * (equatorial_angles).cos()
-                    - (2.0 * primary_spin - (9.0 - dk) * mean_motion) * (equatorial_angles).sin());
-            sum_y_component_of_the_equatorial_prolateness += relaxation_factor * cayley[1][k]
+                    + (2.0 * primary_spin - (9.0 - k) * mean_motion).powi(2))
+                * (relaxation_factor * cos!(equatorial_angles)
+                    - (2.0 * primary_spin - (9.0 - k) * mean_motion) * sin!(equatorial_angles));
+            sum_y_component_of_the_equatorial_prolateness += relaxation_factor * cayley[1][j]
                 / (relaxation_factor.powi(2)
-                    + (2.0 * primary_spin - (9.0 - dk) * mean_motion).powi(2))
-                * (relaxation_factor * (equatorial_angles).sin()
-                    + (2.0 * primary_spin - (9.0 - dk) * mean_motion) * (equatorial_angles).cos());
-            sum_epsilon_z += cayley[0][k]
-                / ((dk - 7.0).powi(2) * mean_motion.powi(2) + relaxation_factor.powi(2))
-                * ((dk - 7.0).powi(2) * mean_motion.powi(2) * (polar_angles).sin()
-                    + relaxation_factor.powi(2) * (polar_angles).cos());
+                    + (2.0 * primary_spin - (9.0 - k) * mean_motion).powi(2))
+                * (relaxation_factor * sin!(equatorial_angles)
+                    + (2.0 * primary_spin - (9.0 - k) * mean_motion) * cos!(equatorial_angles));
+            sum_epsilon_z += cayley[0][j]
+                / ((k - 7.0).powi(2) * mean_motion.powi(2) + relaxation_factor.powi(2))
+                * ((k - 7.0).powi(2) * mean_motion.powi(2) * sin!(polar_angles)
+                    + relaxation_factor.powi(2) * cos!(polar_angles));
             //sum_x_component_of_the_equatorial_prolateness += 0.0;
             //sum_y_component_of_the_equatorial_prolateness += 0.0;
             //sum_epsilon_z += 0.0;
-
-            // println!("{} {} {}", mean_anomaly * 180.0 / PI , relaxation_factor * cayley[1][k as usize] / (relaxation_factor.powi(2) + (2.0*primary_spin-(9.0-dk)*mean_motion).powi(2)) * (relaxation_factor * (equatorial_angles).cos() - (2.0*primary_spin-(9.0-dk)*mean_motion) * (equatorial_angles).sin()) , relaxation_factor * cayley[1][k as usize] / (relaxation_factor.powi(2) + (2.0*primary_spin-(9.0-dk)*mean_motion).powi(2)) * (relaxation_factor * (equatorial_angles).sin() + (2.0*primary_spin-(9.0-dk)*mean_motion) * (equatorial_angles).cos()));
-
-            k += 1;
         }
 
         // println!("{}", 0.5 * sum_y_component_of_the_equatorial_prolateness / sum_x_component_of_the_equatorial_prolateness * 180.0 / PI);
@@ -453,13 +376,13 @@ pub fn calculate_particle_shape(
         y_component_of_the_equatorial_prolateness =
             sum_y_component_of_the_equatorial_prolateness * epsilon_rho_bar;
         epsilon_z = sum_epsilon_z;
-
-        Axes {
-            x: x_component_of_the_equatorial_prolateness,
-            y: y_component_of_the_equatorial_prolateness,
-            z: epsilon_z,
-        }
     }
+
+    Axes::from(
+        x_component_of_the_equatorial_prolateness,
+        y_component_of_the_equatorial_prolateness,
+        epsilon_z,
+    )
 }
 
 fn calculate_cayley_coefficients(e: f64) -> [[f64; 15]; 2] {
@@ -512,26 +435,21 @@ fn calculate_cayley_coefficients(e: f64) -> [[f64; 15]; 2] {
 }
 
 fn calculate_true_anomaly(eccentricity: f64, mean_anomaly: f64) -> f64 {
-    let mut difference: f64 = 10.0;
-    let precision: f64 = 1.0e-13;
-    let mut eccentric_anomaly_0: f64 = mean_anomaly;
-    let mut eccentric_anomaly_1: f64;
+    let mut difference = 10.0;
+    let precision = 1.0e-13;
+    let mut eccentric_anomaly_0 = mean_anomaly;
 
     while difference > precision {
-        eccentric_anomaly_1 = mean_anomaly + eccentricity * eccentric_anomaly_0.sin();
-        difference = (eccentric_anomaly_1 - eccentric_anomaly_0).abs();
+        let eccentric_anomaly_1 = mean_anomaly + eccentricity * sin!(eccentric_anomaly_0);
+        difference = abs!(eccentric_anomaly_1 - eccentric_anomaly_0);
         eccentric_anomaly_0 = eccentric_anomaly_1;
     }
 
-    //   println!("{}", mean_anomaly);
-    //   println!("{}", eccentric_anomaly_0);
+    
 
-    let true_anomaly: f64 = 2.0
-        * (((1.0 + eccentricity) / (1.0 - eccentricity)).powf(1.0 / 2.0)
-            * (eccentric_anomaly_0 / 2.0).tan())
-        .atan();
-
-    //   println!("{}", true_anomaly);
-
-    true_anomaly
+    2.0
+        * atan!(
+            ((1.0 + eccentricity) / (1.0 - eccentricity)).powf(1.0 / 2.0)
+                * tan!(eccentric_anomaly_0 / 2.0)
+        )
 }

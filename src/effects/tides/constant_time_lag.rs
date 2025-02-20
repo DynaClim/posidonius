@@ -46,7 +46,7 @@ fn calculate_planet_dependent_scaled_dissipation_factors(
         EvolutionType::BolmontMathis2016(_)
         | EvolutionType::GalletBolmont2017(_)
         | EvolutionType::LeconteChabrier2013(true) => {
-            let host_norm_spin_vector = tidal_host_particle.norm_spin_vector_2.sqrt();
+            let host_norm_spin_vector = sqrt!(tidal_host_particle.norm_spin_vector_2);
             for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
                 if let TidesEffect::OrbitingBody(TidalModel::ConstantTimeLag(_)) =
                     &particle.tides.effect
@@ -84,9 +84,9 @@ fn calculate_planet_dependent_scaled_dissipation_factors(
                             particle.tides.coordinates.velocity,
                         );
                     let mean_motion =
-                        gm.sqrt() * (perihelion_distance / (1.0 - eccentricity)).powf(-1.5);
+                        sqrt!(gm) * (perihelion_distance / (1.0 - eccentricity)).powf(-1.5);
                     let mut half_the_excitation_frequency =
-                        (host_norm_spin_vector - mean_motion).abs();
+                        abs!(host_norm_spin_vector - mean_motion);
                     // If the dynamical tide is excited, compute the planet-dependent stellar dissipation
                     // If the dynamical tide is not excited (i.e., equilibrium tide), do nothing since the default value corresponds to the planet scaled dissipation factor
                     if half_the_excitation_frequency < host_norm_spin_vector {
@@ -144,7 +144,7 @@ fn calculate_host_dependent_scaled_dissipation_factors(
                 if let TidesEffect::OrbitingBody(TidalModel::ConstantTimeLag(params)) =
                     &particle.tides.effect
                 {
-                    let particle_norm_spin_vector = particle.norm_spin_vector_2.sqrt();
+                    let particle_norm_spin_vector = sqrt!(particle.norm_spin_vector_2);
                     //// Excitation frequency needed by the model based on the
                     // mean frequency (using mean motion and spin).
                     //
@@ -159,9 +159,9 @@ fn calculate_host_dependent_scaled_dissipation_factors(
                             particle.tides.coordinates.velocity,
                         );
                     let mean_motion =
-                        gm.sqrt() * (perihelion_distance / (1.0 - eccentricity)).powf(-1.5);
+                        sqrt!(gm) * (perihelion_distance / (1.0 - eccentricity)).powf(-1.5);
                     let mut half_the_excitation_frequency =
-                        (particle_norm_spin_vector - mean_motion).abs();
+                        abs!(particle_norm_spin_vector - mean_motion);
                     // If the dynamical tide is excited, compute the planet-dependent stellar dissipation
                     // If the dynamical tide is not excited (i.e., equilibrium tide), do nothing since the default value corresponds to the planet scaled dissipation factor
                     if half_the_excitation_frequency < particle_norm_spin_vector {
@@ -252,12 +252,12 @@ pub fn calculate_torque_due_to_tides(
     particle: &Particle,
     central_body: bool,
 ) -> Axes {
-    let reference_spin: Axes;
-    let orthogonal_component_of_the_tidal_force: f64;
-    let reference_rscalspin: f64;
+    let mut reference_spin = Axes::new();
+    let orthogonal_component_of_the_tidal_force;
+    let reference_rscalspin;
 
     if central_body {
-        reference_spin = tidal_host_particle.spin;
+        reference_spin.copy_from(&tidal_host_particle.spin);
         reference_rscalspin = particle
             .tides
             .parameters
@@ -269,7 +269,7 @@ pub fn calculate_torque_due_to_tides(
             .internal
             .orthogonal_component_of_the_tidal_force_due_to_stellar_tide;
     } else {
-        reference_spin = particle.spin;
+        reference_spin.copy_from(&particle.spin);
         reference_rscalspin = particle
             .tides
             .parameters
@@ -287,7 +287,7 @@ pub fn calculate_torque_due_to_tides(
 
     //// Torque calculation (star)
     // - Equation 8-9 from Bolmont et al. 2015
-    let torque_due_to_tides_x: f64 = orthogonal_component_of_the_tidal_force
+    let torque_due_to_tides_x = orthogonal_component_of_the_tidal_force
         * (distance * reference_spin.x
             - reference_rscalspin * particle.tides.coordinates.position.x / distance
             - 1.0 / distance
@@ -295,7 +295,7 @@ pub fn calculate_torque_due_to_tides(
                     - particle.tides.coordinates.position.z
                         * particle.tides.coordinates.velocity.y));
 
-    let torque_due_to_tides_y: f64 = orthogonal_component_of_the_tidal_force
+    let torque_due_to_tides_y = orthogonal_component_of_the_tidal_force
         * (distance * reference_spin.y
             - reference_rscalspin * particle.tides.coordinates.position.y / distance
             - 1.0 / distance
@@ -303,7 +303,7 @@ pub fn calculate_torque_due_to_tides(
                     - particle.tides.coordinates.position.x
                         * particle.tides.coordinates.velocity.z));
 
-    let torque_due_to_tides_z: f64 = orthogonal_component_of_the_tidal_force
+    let torque_due_to_tides_z = orthogonal_component_of_the_tidal_force
         * (distance * reference_spin.z
             - reference_rscalspin * particle.tides.coordinates.position.z / distance
             - 1.0 / distance
@@ -311,11 +311,11 @@ pub fn calculate_torque_due_to_tides(
                     - particle.tides.coordinates.position.y
                         * particle.tides.coordinates.velocity.x));
 
-    Axes {
-        x: torque_due_to_tides_x,
-        y: torque_due_to_tides_y,
-        z: torque_due_to_tides_z,
-    }
+    Axes::from(
+        torque_due_to_tides_x,
+        torque_due_to_tides_y,
+        torque_due_to_tides_z,
+    )
 }
 
 pub fn calculate_orthogonal_component_of_the_tidal_force(
@@ -586,9 +586,9 @@ pub fn calculate_tidal_force(tidal_host_particle: &Particle, particle: &Particle
     //println!("factor3 {:e} {:e} {:e}", particle.tides.parameters.internal.radial_component_of_the_tidal_force, particle.tides.parameters.internal.orthogonal_component_of_the_tidal_force_due_to_stellar_tide, particle.tides.parameters.internal.orthogonal_component_of_the_tidal_force_due_to_planetary_tide);
     //println!("d {:e} vrad {:e}", particle.tides.parameters.internal., particle.tides.parameters.internal.radial_velocity);
     //println!("total {:e} {:e} {:e}", total_tidal_force_x, total_tidal_force_y, total_tidal_force_z);
-    Axes {
-        x: total_tidal_force_x,
-        y: total_tidal_force_y,
-        z: total_tidal_force_z,
-    }
+    Axes::from(
+        total_tidal_force_x,
+        total_tidal_force_y,
+        total_tidal_force_z,
+    )
 }
