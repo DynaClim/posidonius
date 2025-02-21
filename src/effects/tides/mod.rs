@@ -19,4 +19,4 @@ pub use self::constant_time_lag::calculate_radial_component_of_the_tidal_force;
 pub use self::creep_coplanar::CreepCoplanarParameters;
 pub use self::creep_coplanar::calculate_creep_coplanar_shapes;
 pub use self::kaula::KaulaParameters;
-pub use self::kaula::Polynomials;
+pub use self::kaula::polynomials::Polynomials;

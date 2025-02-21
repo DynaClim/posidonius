@@ -192,11 +192,9 @@ impl DiskProperties {
             semi_major_axis,
         );
         let disk_surface_density = self.calculate_disk_surface_density(time, distance);
-
-        let x = 1.0_f64;
         let a_dot = gas_radial_velocity
             * min!(
-                x,
+                1.0_f64,
                 2.0 * disk_surface_density * semi_major_axis.powi(2) / particle_mass
             );
 
