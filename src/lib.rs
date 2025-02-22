@@ -32,6 +32,7 @@ pub use self::effects::Tides;
 pub use self::effects::TidesEffect;
 pub use self::effects::Wind;
 pub use self::effects::WindEffect;
+pub use self::effects::tides::kaula::LoveNumber;
 
 mod integrator;
 pub use self::integrator::*;

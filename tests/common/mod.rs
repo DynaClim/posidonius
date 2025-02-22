@@ -6,6 +6,8 @@ use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
+use posidonius::LoveNumber;
+
 #[allow(dead_code)]
 pub fn simulation_properties() -> (f64, f64, f64, f64, f64) {
     let time_step: f64 = 0.08; // in days
@@ -100,17 +102,15 @@ pub fn load_kaula_parameters(
 
     // Build and return the KaulaParameters struct
     Ok(posidonius::KaulaParameters {
-        love_number_excitation_frequency,
-        real_part_love_number,
-        imaginary_part_love_number,
-        num_datapoints: num_datapoints as f64,
+        love_numbers: LoveNumber::new_from(
+            love_number_excitation_frequency,
+            real_part_love_number,
+            imaginary_part_love_number,
+        ),
+        //        num_datapoints: num_datapoints as f64,
         stellar_tide,       // Specified the type of tides
         spectrum_spin_rate, // Specified the initial spin rate of the star (stellar tide specific)
         polynomials: posidonius::Polynomials::new(),
-        kaula_tidal_force: posidonius::Axes {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-        },
+        kaula_tidal_force: posidonius::Axes::new(),
     })
 }
