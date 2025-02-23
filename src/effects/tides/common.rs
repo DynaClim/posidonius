@@ -138,6 +138,22 @@ impl Tides {
             },
         }
     }
+
+    pub fn get_kaula(&self) -> &kaula::KaulaParameters {
+        match self.effect {
+            TidesEffect::CentralBody(TidalModel::Kaula(ref kaula_param))
+            | TidesEffect::OrbitingBody(TidalModel::Kaula(ref kaula_param)) => kaula_param,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn get_kaula_mut(&mut self) -> &mut kaula::KaulaParameters {
+        match self.effect {
+            TidesEffect::CentralBody(TidalModel::Kaula(ref mut kaula_param))
+            | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut kaula_param)) => kaula_param,
+            _ => unreachable!(),
+        }
+    }
 }
 
 pub fn initialize(

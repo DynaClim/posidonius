@@ -1,6 +1,5 @@
 use super::super::super::super::Particle;
 use super::{alpha_pqkj, calculate_base_constant, select_eccentricty_order_q};
-use crate::{TidalModel, TidesEffect};
 use itertools::izip;
 
 pub fn calculate_radial_component_of_the_tidal_force_2d(
@@ -9,13 +8,7 @@ pub fn calculate_radial_component_of_the_tidal_force_2d(
     keplerian_elements: (f64, f64, f64, f64, f64, f64, f64, f64),
     central_body: bool,
 ) -> (f64, f64) {
-    // TODO pass in kaula
-    let &(TidesEffect::CentralBody(TidalModel::Kaula(ref kaula_param))
-    | TidesEffect::OrbitingBody(TidalModel::Kaula(ref kaula_param))) = &particle.tides.effect
-    else {
-        unreachable!()
-    };
-
+    let kaula = particle.tides.get_kaula();
     // keplerian elements
     let (
         semi_major_axis,
@@ -51,8 +44,8 @@ pub fn calculate_radial_component_of_the_tidal_force_2d(
     // if the inclination btw the equatorial plane and the orbital plane is negligible
     if eccentricity == 0.0 {
         // If circular coplanar orbit
-        let rek2_2010 = kaula_param.love_numbers.real(0, 1, 0);
-        let imk2_2200 = kaula_param.love_numbers.imaginary(2, 0, 0);
+        let rek2_2010 = kaula.love_numbers.real(0, 1, 0);
+        let imk2_2200 = kaula.love_numbers.imaginary(2, 0, 0);
 
         radial_force = cste * ((3. / 4.) * rek2_2010 + (9. / 4.) * imk2_2200);
         radial_force_secular = radial_force;
@@ -66,18 +59,18 @@ pub fn calculate_radial_component_of_the_tidal_force_2d(
         let q_max = 2 * order + 1;
 
         for (q, (g_20q, g_21q)) in izip!(
-            kaula_param.polynomials.eccentricity_function_g_2pq[0],
-            kaula_param.polynomials.eccentricity_function_g_2pq[1],
+            kaula.polynomials.eccentricity_function_g_2pq[0],
+            kaula.polynomials.eccentricity_function_g_2pq[1],
         )
         .skip(q_min)
         .take(q_max)
         .enumerate()
         {
             let tmp_q = q + 7 - order;
-            let rek2_201q = kaula_param.love_numbers.real(0, 1, tmp_q);
-            let imk2_201q = kaula_param.love_numbers.imaginary(0, 1, tmp_q);
-            let rek2_220q = kaula_param.love_numbers.real(2, 0, tmp_q);
-            let imk2_220q = kaula_param.love_numbers.imaginary(2, 0, tmp_q);
+            let rek2_201q = kaula.love_numbers.real(0, 1, tmp_q);
+            let imk2_201q = kaula.love_numbers.imaginary(0, 1, tmp_q);
+            let rek2_220q = kaula.love_numbers.real(2, 0, tmp_q);
+            let imk2_220q = kaula.love_numbers.imaginary(2, 0, tmp_q);
 
             let mut sum_over_j_1 = 0.;
             let mut sum_over_j_3 = 0.;
@@ -86,8 +79,8 @@ pub fn calculate_radial_component_of_the_tidal_force_2d(
             let mut sum_over_j_3_secular = 0.;
 
             for (j, (g_20j, g_21j)) in izip!(
-                kaula_param.polynomials.eccentricity_function_g_2pq[0],
-                kaula_param.polynomials.eccentricity_function_g_2pq[1]
+                kaula.polynomials.eccentricity_function_g_2pq[0],
+                kaula.polynomials.eccentricity_function_g_2pq[1]
             )
             .skip(q_min)
             .take(q_max)
@@ -127,12 +120,7 @@ pub fn calculate_radial_component_of_the_tidal_force_3d(
     keplerian_elements: (f64, f64, f64, f64, f64, f64, f64, f64),
     central_body: bool,
 ) -> (f64, f64) {
-    // TODO pass in kaula
-    let &(TidesEffect::CentralBody(TidalModel::Kaula(ref kaula_param))
-    | TidesEffect::OrbitingBody(TidalModel::Kaula(ref kaula_param))) = &particle.tides.effect
-    else {
-        unreachable!()
-    };
+    let kaula = particle.tides.get_kaula();
     // keplerian elements
     let (
         semi_major_axis,
@@ -177,9 +165,9 @@ pub fn calculate_radial_component_of_the_tidal_force_3d(
     let mut sum_over_p_m1_s = 0.;
     let mut sum_over_p_m2_s = 0.;
     for (p, (f_20p, f_21p, f_22p)) in izip!(
-        kaula_param.polynomials.inclination_function_f_20p,
-        kaula_param.polynomials.inclination_function_f_21p,
-        kaula_param.polynomials.inclination_function_f_22p
+        kaula.polynomials.inclination_function_f_2mp[0],
+        kaula.polynomials.inclination_function_f_2mp[1],
+        kaula.polynomials.inclination_function_f_2mp[2]
     )
     .enumerate()
     {
@@ -194,34 +182,34 @@ pub fn calculate_radial_component_of_the_tidal_force_3d(
         let mut sum_over_q_m1_s = 0.;
         let mut sum_over_q_m2_s = 0.;
 
-        let sum_g_2pq = kaula_param.polynomials.eccentricity_function_g_2pq[p];
+        let sum_g_2pq = kaula.polynomials.eccentricity_function_g_2pq[p];
 
         for (q, g_2pq) in sum_g_2pq.iter().skip(q_min).take(q_max).enumerate() {
             let g_2pq_2 = g_2pq.powi(2);
 
             let tmp_q = q + 7 - order;
-            let rek2_20pq = kaula_param.love_numbers.real(0, p, tmp_q);
-            let imk2_20pq = kaula_param.love_numbers.imaginary(0, p, tmp_q);
-            let rek2_21pq = kaula_param.love_numbers.real(1, p, tmp_q);
-            let imk2_21pq = kaula_param.love_numbers.imaginary(1, p, tmp_q);
-            let rek2_22pq = kaula_param.love_numbers.real(2, p, tmp_q);
-            let imk2_22pq = kaula_param.love_numbers.imaginary(2, p, tmp_q);
+            let rek2_20pq = kaula.love_numbers.real(0, p, tmp_q);
+            let imk2_20pq = kaula.love_numbers.imaginary(0, p, tmp_q);
+            let rek2_21pq = kaula.love_numbers.real(1, p, tmp_q);
+            let imk2_21pq = kaula.love_numbers.imaginary(1, p, tmp_q);
+            let rek2_22pq = kaula.love_numbers.real(2, p, tmp_q);
+            let imk2_22pq = kaula.love_numbers.imaginary(2, p, tmp_q);
 
             let mut sum_over_k_m0 = 0.;
             let mut sum_over_k_m1 = 0.;
             let mut sum_over_k_m2 = 0.;
 
             for (k, (f_20k, f_21k, f_22k)) in izip!(
-                kaula_param.polynomials.inclination_function_f_20p,
-                kaula_param.polynomials.inclination_function_f_21p,
-                kaula_param.polynomials.inclination_function_f_22p,
+                kaula.polynomials.inclination_function_f_2mp[0],
+                kaula.polynomials.inclination_function_f_2mp[1],
+                kaula.polynomials.inclination_function_f_2mp[2],
             )
             .enumerate()
             {
                 let mut sum_over_j_m0 = 0.;
                 let mut sum_over_j_m1 = 0.;
                 let mut sum_over_j_m2 = 0.;
-                let sum_g_2kj = kaula_param.polynomials.eccentricity_function_g_2pq[k];
+                let sum_g_2kj = kaula.polynomials.eccentricity_function_g_2pq[k];
 
                 for (j, g_2kj) in sum_g_2kj.iter().skip(q_min).take(q_max).enumerate() {
                     let phase_alpha = alpha_pqkj(

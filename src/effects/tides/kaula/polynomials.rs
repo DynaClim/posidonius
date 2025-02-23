@@ -4,18 +4,8 @@ use serde::{Deserialize, Serialize};
 pub struct Polynomials {
     pub eccentricity_function_g_2pq: [[f64; 15]; 3],
     pub eccentricity_function_g_3pq: [[f64; 15]; 4],
-
-    pub inclination_function_f_20p: [f64; 3],
-    pub inclination_function_f_21p: [f64; 3],
-    pub inclination_function_f_22p: [f64; 3],
-    pub inclination_function_f_30p: [f64; 4],
-    pub inclination_function_f_31p: [f64; 4],
-    pub inclination_function_f_32p: [f64; 4],
-    pub inclination_function_f_33p: [f64; 4],
-
-    // TODO deprecated
-    pub eccentricity_function_g_20q: [f64; 15],
-    pub eccentricity_function_g_21q: [f64; 15],
+    pub inclination_function_f_2mp: [[f64; 3]; 3],
+    pub inclination_function_f_3mp: [[f64; 4]; 4],
 }
 
 impl Polynomials {
@@ -25,177 +15,26 @@ impl Polynomials {
             eccentricity_function_g_2pq: [[0.0; 15]; 3],
             eccentricity_function_g_3pq: [[0.0; 15]; 4],
 
-            inclination_function_f_20p: [0.0; 3],
-            inclination_function_f_21p: [0.0; 3],
-            inclination_function_f_22p: [0.0; 3],
-            inclination_function_f_30p: [0.0; 4],
-            inclination_function_f_31p: [0.0; 4],
-            inclination_function_f_32p: [0.0; 4],
-            inclination_function_f_33p: [0.0; 4],
-
-            // TODO deprecated
-            eccentricity_function_g_20q: [0.0; 15],
-            eccentricity_function_g_21q: [0.0; 15],
+            inclination_function_f_2mp: [[0.0; 3]; 3],
+            inclination_function_f_3mp: [[0.0; 4]; 4],
         }
     }
     pub fn update_inclination(&mut self, obliquity: f64) {
-        self.calculate_inclination_function_f_21p(obliquity);
-        self.calculate_inclination_function_f_22p(obliquity);
-        self.calculate_inclination_function_f_30p(obliquity);
-        self.calculate_inclination_function_f_31p(obliquity);
-        self.calculate_inclination_function_f_32p(obliquity);
-        self.calculate_inclination_function_f_33p(obliquity);
+        self.calculate_inclination_function_f_2mp(obliquity);
+        self.calculate_inclination_function_f_3mp(obliquity);
     }
 
-    pub fn update_eccentricity(&mut self, eccentricity: f64) {
+    pub fn update_eccentricity_2d(&mut self, eccentricity: f64) {
         self.calculate_eccentricity_function_g_2pq(eccentricity);
-        self.calculate_eccentricity_function_g_20q(eccentricity);
-        /*
-                self
-                .calculate_eccentricity_function_g_21q(eccentricity);
-                self
-                .calculate_eccentricity_function_g_3pq(eccentricity);
-        */
     }
 
-    #[allow(dead_code)]
-    // The inclination function of the Kaula 1961 developpement Flmp(i)
-    pub fn calculate_inclination_function_f_2mp(inclination: f64) -> [[f64; 3]; 3] {
-        let mut inclination_function = [[0.; 3]; 3];
-        // in this notation:
-        // 0 is q=-2
-        // 1 is q=-1
-        // 2 is q=0
-        // 3 is q=1
-        //4 is q=2 ... cf Kaula 64 Table 3
-        let sin_incl = sin!(inclination);
-        let sin_incl_2 = sin_incl * sin_incl;
-        let cos_incl = cos!(inclination);
-        let borrowed_slice = &mut inclination_function[..];
-        let [first, second, third] = borrowed_slice else {
-            unreachable!()
-        };
-
-        first[0] = -(3. / 8.) * sin_incl_2;
-        first[1] = (3. / 4.) * sin_incl_2 - (1. / 2.);
-        first[2] = -(3. / 8.) * sin_incl_2;
-
-        second[0] = (3. / 4.) * sin_incl * (1. + cos_incl);
-        second[1] = -(3. / 2.) * sin_incl * cos_incl;
-        second[2] = (3. / 4.) * sin_incl * (cos_incl - 1.);
-
-        third[0] = (3. / 4.) * (1. + cos_incl).powi(2);
-        third[1] = (3. / 2.) * sin_incl.powi(2);
-        third[2] = (3. / 4.) * (1. - cos_incl).powi(2);
-
-        inclination_function
+    pub fn update_eccentricity_3d(&mut self, eccentricity: f64) {
+        self.calculate_eccentricity_function_g_3pq(eccentricity);
     }
-    // F2mp
-    // The inclination function of the Kaula 1961 developpement Flmp(i)
-    pub fn calculate_inclination_function_f_20p(&mut self, inclination: f64) {
-        // in this notation:
-        // 0 is q=-2
-        // 1 is q=-1
-        // 2 is q=0
-        // 3 is q=1
-        //4 is q=2 ... cf Kaula 64 Table 3
-        let sin_incl = sin!(inclination);
-        let sin_incl_2 = sin_incl * sin_incl;
 
-        self.inclination_function_f_20p[0] = -(3. / 8.) * sin_incl_2;
-        self.inclination_function_f_20p[1] = (3. / 4.) * sin_incl_2 - (1. / 2.);
-        self.inclination_function_f_20p[2] = -(3. / 8.) * sin_incl_2;
-    }
-    // The inclination function of the Kaula 1961 developpement Flmp(i)
-    pub fn calculate_inclination_function_f_21p(&mut self, inclination: f64) {
-        let sin_incl = sin!(inclination);
-        let cos_incl = cos!(inclination);
-
-        self.inclination_function_f_21p[0] = (3. / 4.) * sin_incl * (1. + cos_incl);
-        self.inclination_function_f_21p[1] = -(3. / 2.) * sin_incl * cos_incl;
-        self.inclination_function_f_21p[2] = (3. / 4.) * sin_incl * (cos_incl - 1.);
-    }
-    // The inclination function of the Kaula 1961 developpement Flmp(i)
-    pub fn calculate_inclination_function_f_22p(&mut self, inclination: f64) {
-        let sin_incl = sin!(inclination);
-        let cos_incl = cos!(inclination);
-
-        self.inclination_function_f_22p[0] = (3. / 4.) * (1. + cos_incl).powi(2);
-        self.inclination_function_f_22p[1] = (3. / 2.) * sin_incl.powi(2);
-        self.inclination_function_f_22p[2] = (3. / 4.) * (1. - cos_incl).powi(2);
-    }
-    // F3pmp
-    // The inclination function of the Kaula 1961 developpement Flmp(i)
-    pub fn calculate_inclination_function_f_30p(&mut self, inclination: f64) {
-        let sin_incl = sin!(inclination);
-        let sin_3_factor_1 = (5. / 16.) * sin_incl.powi(3);
-        let sin_factor_2 = (3. / 4.) * sin_incl;
-
-        self.inclination_function_f_30p[0] = -sin_3_factor_1;
-        self.inclination_function_f_30p[1] = sin_3_factor_1 - sin_factor_2;
-        self.inclination_function_f_30p[2] = -sin_3_factor_1 + sin_factor_2;
-        self.inclination_function_f_30p[3] = -self.inclination_function_f_30p[0];
-    }
-    // The inclination function of the Kaula 1961 developpement Flmp(i)
-    pub fn calculate_inclination_function_f_31p(&mut self, inclination: f64) {
-        let sin_incl = sin!(inclination);
-        let sin_2_factor_1 = (15. / 16.) * sin_incl.powi(2);
-        let sin_2_factor_43 = sin_2_factor_1 - (3. / 4.);
-        let cos_incl = cos!(inclination);
-        let cos_incl_factor_1 = 1.0 + 3.0 * cos_incl;
-        let cos_incl_factor_2 = 1.0 - 3.0 * cos_incl;
-
-        self.inclination_function_f_31p[0] = -sin_2_factor_1 * cos_incl_factor_1;
-        self.inclination_function_f_31p[1] = sin_2_factor_43 * cos_incl_factor_1;
-        self.inclination_function_f_31p[2] = sin_2_factor_43 * cos_incl_factor_2;
-        self.inclination_function_f_31p[3] = -sin_2_factor_1 * cos_incl_factor_2;
-    }
-    // The inclination function of the Kaula 1961 developpement Flmp(i)
-    pub fn calculate_inclination_function_f_32p(&mut self, inclination: f64) {
-        let sin_incl = sin!(inclination);
-        let sin_2_factor_1 = (15. / 8.) * sin_incl.powi(2);
-        let cos_incl = cos!(inclination);
-        let cos_incl_2 = cos_incl.powi(2);
-
-        self.inclination_function_f_32p[0] = sin_2_factor_1 * (1.0 + cos_incl).powi(2);
-        self.inclination_function_f_32p[1] =
-            sin_2_factor_1 * (1.0 - 2.0 * cos_incl - 3.0 * cos_incl_2);
-        self.inclination_function_f_32p[2] =
-            -sin_2_factor_1 * (1.0 + 2.0 * cos_incl - 3.0 * cos_incl_2);
-        self.inclination_function_f_32p[3] = -sin_2_factor_1 * (1.0 - cos_incl).powi(2);
-    }
-    // The inclination function of the Kaula 1961 developpement Flmp(i)
-    pub fn calculate_inclination_function_f_33p(&mut self, inclination: f64) {
-        let sin_incl = sin!(inclination);
-        let sin_2_factor_1 = (48. / 8.) * sin_incl.powi(2);
-        let cos_incl = cos!(inclination);
-        let cos_incl_factor_1 = 1.0 + cos_incl;
-        let cos_incl_factor_2 = 1.0 - cos_incl;
-
-        self.inclination_function_f_33p[0] = (15. / 8.) * cos_incl_factor_1.powi(3);
-        self.inclination_function_f_33p[1] = sin_2_factor_1 * cos_incl_factor_1;
-        self.inclination_function_f_33p[2] = sin_2_factor_1 * cos_incl_factor_2;
-        self.inclination_function_f_33p[3] = (15. / 8.) * cos_incl_factor_2.powi(3);
-    }
     // The eccentricity function of the Kaula 1961 developpement Glpq(e) from the Hensen coeff [?] (see Cayley table [?])
-    pub fn calculate_eccentricity_function_g_2pq(&mut self, eccentricity: f64) {
-        // in this notation:
-        // [0] is -7
-        // [1] is -6
-        // [2] is -5
-        // [3] is -4
-        // [4] is -3
-        // [5] is -2
-        // [6] is -1
-        // [7] is 0
-        // [8] is 1
-        // [9] is 2
-        // [10] is 3
-        // [11] is 4
-        // [12] is 5
-        // [13] is 6
-        // [14] is 7
-
+    fn calculate_eccentricity_function_g_2pq(&mut self, eccentricity: f64) {
+        // in this notation: [0, 1, 2, ..., 7, ..., 12, 13, 14] maps to [-7, -6, -5, ..., 0, ..., 5, 6, 7]
         let ecc = eccentricity;
         let ecc_2 = ecc * ecc;
         let ecc_3 = ecc_2 * ecc;
@@ -246,124 +85,10 @@ impl Polynomials {
         third.copy_from_slice(&first[..]);
         third.reverse();
     }
-    // The eccentricity function of the Kaula 1961 developpement G20q(e) from the Hensen coeff [?] (see Cayley table [?])
-    pub fn calculate_eccentricity_function_g_20q(&mut self, eccentricity: f64) {
-        // in this notation:
-        // [0] is -7
-        // [1] is -6
-        // [2] is -5
-        // [3] is -4
-        // [4] is -3
-        // [5] is -2
-        // [6] is -1
-        // [7] is 0
-        // [8] is 1
-        // [9] is 2
-        // [10] is 3
-        // [11] is 4
-        // [12] is 5
-        // [13] is 6
-        // [14] is 7
 
-        let ecc = eccentricity;
-        let ecc_2 = ecc * ecc;
-        let ecc_3 = ecc_2 * ecc;
-        let ecc_4 = ecc_3 * ecc;
-        let ecc_5 = ecc_4 * ecc;
-        let ecc_6 = ecc_5 * ecc;
-        let ecc_7 = ecc_6 * ecc;
-
-        self.eccentricity_function_g_20q[0] = (15_625. / 129_024.) * ecc_7;
-        self.eccentricity_function_g_20q[1] = (4. / 45.) * ecc_6;
-        self.eccentricity_function_g_20q[2] = (81. / 1280.) * ecc_5 + (81. / 2048.) * ecc_7;
-        self.eccentricity_function_g_20q[3] = (1. / 24.) * ecc_4 + (7. / 240.) * ecc_6;
-        self.eccentricity_function_g_20q[4] =
-            (1. / 48.) * ecc_3 + (11. / 768.) * ecc_5 + (313. / 30_720.) * ecc_7;
-        self.eccentricity_function_g_20q[5] = 0.;
-        self.eccentricity_function_g_20q[6] =
-            -0.5 * ecc + (1. / 16.) * ecc_3 - (5. / 384.) * ecc_5 - (143. / 18_432.) * ecc_7;
-        self.eccentricity_function_g_20q[7] =
-            1. - (5. / 2.) * ecc_2 + (13. / 16.) * ecc_4 - (35. / 288.) * ecc_6;
-        self.eccentricity_function_g_20q[8] = (7. / 2.) * ecc - (123. / 16.) * ecc_3
-            + (489. / 128.) * ecc_5
-            - (1763. / 2048.) * ecc_7;
-        self.eccentricity_function_g_20q[9] =
-            (17. / 2.) * ecc_2 - (115. / 16.) * ecc_4 + (601. / 48.) * ecc_6;
-        self.eccentricity_function_g_20q[10] =
-            (845. / 48.) * ecc_3 - (32_525. / 768.) * ecc_5 + (208_225. / 6144.) * ecc_7;
-        self.eccentricity_function_g_20q[11] = (533. / 16.) * ecc_4 - (13_827. / 160.) * ecc_6;
-        self.eccentricity_function_g_20q[12] =
-            (228_347. / 3840.) * ecc_5 - (3_071_075. / 18_432.) * ecc_7;
-        self.eccentricity_function_g_20q[13] = (73_369. / 720.) * ecc_6;
-        self.eccentricity_function_g_20q[14] = (12_144_273. / 71_680.) * ecc_7;
-    }
-    // The eccentricity function of the Kaula 1961 developpement G21q(e) from the Hensen coeff [?] (see Cayley table [?])
-    pub fn calculate_eccentricity_function_g_21q(&mut self, eccentricity: f64) {
-        // in this notation:
-        // [0] is -7
-        // [1] is -6
-        // [2] is -5
-        // [3] is -4
-        // [4] is -3
-        // [5] is -2
-        // [6] is -1
-        // [7] is 0
-        // [8] is 1
-        // [9] is 2
-        // [10] is 3
-        // [11] is 4
-        // [12] is 5
-        // [13] is 6
-        // [14] is 7
-
-        let ecc = eccentricity;
-        let ecc_2 = ecc * ecc;
-        let ecc_3 = ecc_2 * ecc;
-        let ecc_4 = ecc_3 * ecc;
-        let ecc_5 = ecc_4 * ecc;
-        let ecc_6 = ecc_5 * ecc;
-        let ecc_7 = ecc_6 * ecc;
-
-        self.eccentricity_function_g_21q[0] = (432_091. / 30_720.) * ecc_7;
-        self.eccentricity_function_g_21q[1] = (3167. / 320.) * ecc_6;
-        self.eccentricity_function_g_21q[2] = (1773. / 256.) * ecc_5 - (4987. / 6144.) * ecc_7;
-        self.eccentricity_function_g_21q[3] = (77. / 16.) * ecc_4 + (129. / 160.) * ecc_6;
-        self.eccentricity_function_g_21q[4] =
-            (53. / 16.) * ecc_3 + (393. / 256.) * ecc_5 + (24_753. / 10_240.) * ecc_7;
-        self.eccentricity_function_g_21q[5] =
-            (9. / 4.) * ecc_2 + (7. / 4.) * ecc_4 + (141. / 64.) * ecc_6;
-        self.eccentricity_function_g_21q[6] = (3. / 2.) * ecc
-            + (27. / 16.) * ecc_3
-            + (261. / 128.) * ecc_5
-            + (14_309. / 6144.) * ecc_7;
-        self.eccentricity_function_g_21q[7] = (1. - ecc_2).powf(-3. / 2.);
-        self.eccentricity_function_g_21q[8] = self.eccentricity_function_g_21q[6];
-        self.eccentricity_function_g_21q[9] = self.eccentricity_function_g_21q[5];
-        self.eccentricity_function_g_21q[10] = self.eccentricity_function_g_21q[4];
-        self.eccentricity_function_g_21q[11] = self.eccentricity_function_g_21q[3];
-        self.eccentricity_function_g_21q[12] = self.eccentricity_function_g_21q[2];
-        self.eccentricity_function_g_21q[13] = self.eccentricity_function_g_21q[1];
-        self.eccentricity_function_g_21q[14] = self.eccentricity_function_g_21q[0];
-    }
     // The eccentricity function of the Kaula 1961 developpement Glpq(e) from the Hensen coeff [?] (see Cayley table [?])
-    pub fn calculate_eccentricity_function_g_3pq(&mut self, eccentricity: f64) {
-        // in this notation:
-        // [0] is -7
-        // [1] is -6
-        // [2] is -5
-        // [3] is -4
-        // [4] is -3
-        // [5] is -2
-        // [6] is -1
-        // [7] is 0
-        // [8] is 1
-        // [9] is 2
-        // [10] is 3
-        // [11] is 4
-        // [12] is 5
-        // [13] is 6
-        // [14] is 7
-
+    fn calculate_eccentricity_function_g_3pq(&mut self, eccentricity: f64) {
+        // in this notation: [0, 1, 2, ..., 7, ..., 12, 13, 14] maps to [-7, -6, -5, ..., 0, ..., 5, 6, 7]
         let ecc = eccentricity;
         let ecc_2 = ecc.powi(2);
         let ecc_3 = ecc.powi(3);
@@ -416,5 +141,64 @@ impl Polynomials {
         // Copy in reverse order
         fourth.copy_from_slice(&first[..]);
         fourth.reverse();
+    }
+
+    // The inclination function of the Kaula 1961 developpement Flmp(i)
+    fn calculate_inclination_function_f_2mp(&mut self, inclination: f64) {
+        let sin_inc = sin!(inclination);
+        let cos_inc = cos!(inclination);
+        let sin_inc_2 = sin_inc * sin_inc;
+
+        let borrowed_slice = &mut self.inclination_function_f_2mp[..];
+        let [first, second, third] = borrowed_slice else {
+            unreachable!()
+        };
+
+        first[0] = -(3. / 8.) * sin_inc_2;
+        first[1] = (3. / 4.) * sin_inc_2 - (1. / 2.);
+        first[2] = -(3. / 8.) * sin_inc_2;
+
+        second[0] = (3. / 4.) * sin_inc * (1. + cos_inc);
+        second[1] = -(3. / 2.) * sin_inc * cos_inc;
+        second[2] = (3. / 4.) * sin_inc * (cos_inc - 1.);
+
+        third[0] = (3. / 4.) * (1. + cos_inc).powi(2);
+        third[1] = (3. / 2.) * sin_inc_2;
+        third[2] = (3. / 4.) * (1. - cos_inc).powi(2);
+    }
+
+    // F3pmp
+    // The inclination function of the Kaula 1961 developpement Flmp(i)
+    pub fn calculate_inclination_function_f_3mp(&mut self, inclination: f64) {
+        let sin_inc = sin!(inclination);
+        let cos_inc = cos!(inclination);
+        let cos_inc_2 = cos_inc.powi(2);
+        let sin_inc_2 = sin_inc.powi(2);
+        let sin_inc_3 = sin_inc.powi(3);
+
+        let borrowed_slice = &mut self.inclination_function_f_3mp[..];
+        let [first, second, third, fourth] = borrowed_slice else {
+            unreachable!()
+        };
+
+        first[0] = -((5. / 16.) * sin_inc_3);
+        first[1] = ((5. / 16.) * sin_inc_3) - ((3. / 4.) * sin_inc);
+        first[2] = -((5. / 16.) * sin_inc_3) + ((3. / 4.) * sin_inc);
+        first[3] = -first[0];
+
+        second[0] = -((15. / 16.) * sin_inc_2) * (1.0 + 3.0 * cos_inc);
+        second[1] = ((15. / 16.) * sin_inc_2) - (3. / 4.) * (1.0 + 3.0 * cos_inc);
+        second[2] = ((15. / 16.) * sin_inc_2) - (3. / 4.) * (1.0 - 3.0 * cos_inc);
+        second[3] = -((15. / 16.) * sin_inc_2) * (1.0 - 3.0 * cos_inc);
+
+        third[0] = ((15. / 8.) * sin_inc_2) * (1.0 + cos_inc).powi(2);
+        third[1] = ((15. / 8.) * sin_inc_2) * (1.0 - 2.0 * cos_inc - 3.0 * cos_inc_2);
+        third[2] = -((15. / 8.) * sin_inc_2) * (1.0 + 2.0 * cos_inc - 3.0 * cos_inc_2);
+        third[3] = -((15. / 8.) * sin_inc_2) * (1.0 - cos_inc).powi(2);
+
+        fourth[0] = (15. / 8.) * (1.0 + cos_inc).powi(3);
+        fourth[1] = (48. / 8.) * sin_inc_2 * (1.0 + cos_inc);
+        fourth[2] = (48. / 8.) * sin_inc_2 * (1.0 - cos_inc);
+        fourth[3] = (15. / 8.) * (1.0 - cos_inc).powi(3);
     }
 }

@@ -3,7 +3,6 @@ use super::{
     calculate_base_constant, compute_phase_alpha_1, compute_phase_alpha_2, compute_phase_beta,
     select_eccentricty_order_q,
 };
-use crate::{TidalModel, TidesEffect};
 use itertools::izip;
 
 pub fn calculate_normal_component_of_the_tidal_force_3d(
@@ -12,12 +11,7 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
     keplerian_elements: (f64, f64, f64, f64, f64, f64, f64, f64),
     central_body: bool,
 ) -> (f64, f64) {
-    // TODO pass in kaula
-    let &(TidesEffect::CentralBody(TidalModel::Kaula(ref kaula))
-    | TidesEffect::OrbitingBody(TidalModel::Kaula(ref kaula))) = &particle.tides.effect
-    else {
-        unreachable!()
-    };
+    let kaula = particle.tides.get_kaula();
 
     // Keplerian elements
     let (
@@ -42,9 +36,7 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
 
     let mut sum_over_p = 0.;
     let mut sum_over_p_s = 0.;
-    for (p, f_20p) in kaula
-        .polynomials
-        .inclination_function_f_20p
+    for (p, f_20p) in kaula.polynomials.inclination_function_f_2mp[0]
         .iter()
         .enumerate()
     {
@@ -60,9 +52,7 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
             let mut sum_over_k = 0.;
             let mut sum_over_k_s = 0.;
 
-            for (k, f_21k) in kaula
-                .polynomials
-                .inclination_function_f_21p
+            for (k, f_21k) in kaula.polynomials.inclination_function_f_2mp[1]
                 .iter()
                 .enumerate()
             {
@@ -118,9 +108,7 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
 
     sum_over_p = 0.;
     sum_over_p_s = 0.;
-    for (p, f_21p) in kaula
-        .polynomials
-        .inclination_function_f_21p
+    for (p, f_21p) in kaula.polynomials.inclination_function_f_2mp[1]
         .iter()
         .enumerate()
     {
@@ -139,8 +127,8 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
             let mut sum_over_k_m0_s = 0.;
 
             for (k, (f_20k, f_22k)) in izip!(
-                kaula.polynomials.inclination_function_f_20p,
-                kaula.polynomials.inclination_function_f_22p,
+                kaula.polynomials.inclination_function_f_2mp[0],
+                kaula.polynomials.inclination_function_f_2mp[2],
             )
             .enumerate()
             {
@@ -201,9 +189,7 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
 
     sum_over_p = 0.;
     sum_over_p_s = 0.;
-    for (p, f_22p) in kaula
-        .polynomials
-        .inclination_function_f_22p
+    for (p, f_22p) in kaula.polynomials.inclination_function_f_2mp[2]
         .iter()
         .enumerate()
     {
@@ -219,9 +205,7 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
             let mut sum_over_k = 0.;
             let mut sum_over_k_s = 0.;
 
-            for (k, f_21k) in kaula
-                .polynomials
-                .inclination_function_f_21p
+            for (k, f_21k) in kaula.polynomials.inclination_function_f_2mp[1]
                 .iter()
                 .enumerate()
             {

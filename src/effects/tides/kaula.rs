@@ -3,7 +3,6 @@ use super::super::super::Axes;
 use super::super::super::Particle;
 use super::super::super::constants::{DAY, G, TWO_PI};
 use super::super::super::tools;
-use super::common::TidalModel;
 use super::common::TidesEffect;
 use serde::{Deserialize, Serialize};
 
@@ -48,20 +47,7 @@ pub fn calculate_tidal_force(
     particle: &mut Particle,
     central_body: bool,
 ) -> Axes {
-    //// Planetary tide component
-    //let central_body = false;
-
     //// TODO: Reconsider how to compute the stellar tide here instead of 'src/effects/tides/common.rs' while allowing a mixture of tidal models
-    //let mut tidal_force = tidal_force_due_to_planetary_tide;
-    //if matches!(tidal_host_particle.tides.effect, TidesEffect::CentralBody(TidalModel::Kaula(_))) {
-    //// Stellar tide component
-    //let central_body = true;
-    //let tidal_force_due_to_stellar_tide = calculate_tidal_force_component(particle, tidal_host_particle, central_body);
-    //tidal_force.x -= tidal_force_due_to_stellar_tide.x;
-    //tidal_force.y -= tidal_force_due_to_stellar_tide.y;
-    //tidal_force.z -= tidal_force_due_to_stellar_tide.z;
-    //}
-
     let obliquity;
     let keplerian_elements;
     let gm = G * (tidal_host_particle.mass + particle.mass);
@@ -98,8 +84,6 @@ pub fn calculate_tidal_force(
         keplerian_elements,
     );
 
-    //    dbg!(tidal_force_due_to_planetary_tide);
-    //    panic!();
     calculate_tidal_force_component(
         tidal_host_particle,
         particle,
@@ -161,12 +145,7 @@ fn calculate_tidal_force_component(
         radial_component_secular,
     );
 
-    let &mut (TidesEffect::CentralBody(TidalModel::Kaula(ref mut kaula))
-    | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut kaula))) = &mut particle.tides.effect
-    else {
-        unreachable!()
-    };
-
+    let kaula = particle.tides.get_kaula_mut();
     kaula.kaula_tidal_force.copy_from(&secular_projection);
 
     components
@@ -263,22 +242,17 @@ fn calculate_2d_or_3d_tidal_force_components(
         orbital_period,
     ) = keplerian_elements;
 
-    let &mut (TidesEffect::CentralBody(TidalModel::Kaula(ref mut kaula))
-    | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut kaula))) = &mut particle.tides.effect
-    else {
-        unreachable!()
-    };
-
-    // Update the kaula eccentricity, used by both 2D and 3D
-    kaula.polynomials.update_eccentricity(eccentricity);
-
-    // Update the love number values
     // Planetary spin in [rad.s^-1]
     let spin = sqrt!(particle.norm_spin_vector_2) / DAY;
     // Orbital mean motion in [rad.s^-1]
     let orbital_frequency = TWO_PI / (orbital_period * DAY);
     // Decide if this is a 2d or 3d case
 
+    let kaula = particle.tides.get_kaula_mut();
+    // Update the kaula eccentricity, used by both 2D and 3D
+    kaula.polynomials.update_eccentricity_2d(eccentricity);
+
+    // Update the love number values and compute the components.
     if obliquity <= 1.0e-8 {
         // 2D case
         // refresh only love numbers used by 2D calculations
@@ -308,8 +282,9 @@ fn calculate_2d_or_3d_tidal_force_components(
             eccentricity,
         );
 
-        // Update the kaula inclination, used only by 3D
+        // Update the kaula inclination and 3D eccentricty, used only by 3D
         kaula.polynomials.update_inclination(obliquity);
+        kaula.polynomials.update_eccentricity_3d(eccentricity);
 
         calculate_3d_tidal_force_components(
             tidal_host_particle,
@@ -372,21 +347,19 @@ pub fn calculate_torque_due_to_tides(
 ) -> Axes {
     let mut position = particle.tides.coordinates.position;
 
-    // If this is the central body, take the kaula from the tidal host particle
     let tidal_force = if central_body {
-        match &tidal_host_particle.tides.effect {
-            TidesEffect::CentralBody(TidalModel::Kaula(params)) => {
-                // negate positions
-                position.mul(-1.);
-                params.kaula_tidal_force
-            }
-            _ => unreachable!(),
+        if matches!(
+            &tidal_host_particle.tides.effect,
+            TidesEffect::CentralBody(_)
+        ) {
+            // negate positions if the host particle is the central body
+            position.mul(-1.);
         }
+        // If this is the central body, take the kaula tidal force from the tidal host particle
+        tidal_host_particle.tides.get_kaula().kaula_tidal_force
     } else {
-        match &particle.tides.effect {
-            TidesEffect::OrbitingBody(TidalModel::Kaula(params)) => params.kaula_tidal_force,
-            _ => unreachable!(),
-        }
+        // If it is not the central body, take the kaula tidal froce from the other particle
+        particle.tides.get_kaula().kaula_tidal_force
     };
     // The negative sign of the position vector for stellar tide: Torque = r cross F
     // The r here should be the vector point from th primary (perturber) to the secondary (perturbed)
@@ -402,19 +375,6 @@ pub fn calculate_torque_due_to_tides(
         torque_due_to_tides_y,
         torque_due_to_tides_z,
     )
-}
-
-#[allow(dead_code)]
-// Calculate the associated Legendre polynomials P_{l=2}^{m}
-pub fn calculate_associated_legendre_polynomials_p_2m(x: f64) -> [f64; 3] {
-    let mut p_2m = [0.0; 3];
-    let x_2 = x.powi(2);
-
-    p_2m[0] = 0.5 * (3. * x_2 - 1.);
-    p_2m[1] = -3. * x * (sqrt!(1. - x_2));
-    p_2m[2] = 3. * (1. - x_2);
-
-    p_2m
 }
 
 // Calculate the phases of the 2-Kaula transformed tidal forces
@@ -541,7 +501,6 @@ fn calculate_base_constant(
         / (semi_major_axis.powi(6) * heliocentric_radius)
 }
 
-// TODO physicist rename
 fn calculate_2d_constant(
     particle: &Particle,
     other_particle: &Particle,
