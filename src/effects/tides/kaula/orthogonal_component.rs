@@ -1,6 +1,8 @@
 use super::super::super::super::Particle;
-use super::super::super::super::constants::G;
-use super::{alpha_pqkj, compute_phase_alpha_3, compute_phase_alpha_4, select_eccentricty_order_q};
+use super::{
+    alpha_pqkj, calculate_2d_constant, calculate_base_constant, compute_phase_alpha_3,
+    compute_phase_alpha_4, select_eccentricty_order_q,
+};
 use crate::{TidalModel, TidesEffect};
 use itertools::izip;
 
@@ -29,43 +31,21 @@ pub fn calculate_orthogonal_component_of_the_tidal_force_2d(
         _orbital_period,
     ) = keplerian_elements;
 
-    let tem_radius;
-
-    let distance;
-    let coplanar_distance;
-    let sin_theta;
-    let cste_2d;
-    if central_body {
-        // inclination = tools::calculate_inclination_orbital_equatorial_plane(tidal_host_particle.heliocentric_position, tidal_host_particle.heliocentric_velocity, tidal_host_particle.spin);
-        tem_radius = -tidal_host_particle.heliocentric_distance;
-        distance = sqrt!(
-            tidal_host_particle.tides.coordinates.position.x.powi(2)
-                + tidal_host_particle.tides.coordinates.position.y.powi(2)
-                + tidal_host_particle.tides.coordinates.position.z.powi(2)
-        );
-        coplanar_distance = sqrt!(
-            tidal_host_particle.tides.coordinates.position.x.powi(2)
-                + tidal_host_particle.tides.coordinates.position.y.powi(2)
-        );
-        sin_theta = coplanar_distance / distance;
-        cste_2d = -(G * particle.mass.powi(2) * tidal_host_particle.radius.powi(5))
-            / (semi_major_axis.powi(6) * tem_radius * sin_theta);
+    let cste_2d = if central_body {
+        calculate_2d_constant(
+            tidal_host_particle,
+            particle,
+            -tidal_host_particle.heliocentric_distance,
+            semi_major_axis,
+        )
     } else {
-        tem_radius = particle.heliocentric_distance;
-        // inclination = tools::calculate_inclination_orbital_equatorial_plane(particle.heliocentric_position, particle.heliocentric_velocity, particle.spin);
-        distance = sqrt!(
-            particle.tides.coordinates.position.x.powi(2)
-                + particle.tides.coordinates.position.y.powi(2)
-                + particle.tides.coordinates.position.z.powi(2)
-        );
-        coplanar_distance = sqrt!(
-            particle.tides.coordinates.position.x.powi(2)
-                + particle.tides.coordinates.position.y.powi(2)
-        );
-        sin_theta = coplanar_distance / distance;
-        cste_2d = -(G * tidal_host_particle.mass.powi(2) * particle.radius.powi(5))
-            / (semi_major_axis.powi(6) * tem_radius * sin_theta);
-    }
+        calculate_2d_constant(
+            particle,
+            tidal_host_particle,
+            particle.heliocentric_distance,
+            semi_major_axis,
+        )
+    };
 
     let argument_perihelion = longitude_perihelion - longitude_of_ascending_node;
 
@@ -109,10 +89,10 @@ pub fn calculate_orthogonal_component_of_the_tidal_force_2d(
                 .enumerate()
             {
                 let alpha_qj = alpha_pqkj(
-                    0.,
-                    q as f64 - order as f64,
-                    0.,
-                    j as f64 - order as f64,
+                    0,
+                    q as i32 - order as i32,
+                    0,
+                    j as i32 - order as i32,
                     mean_anomaly,
                     argument_perihelion,
                 );
@@ -209,10 +189,10 @@ pub fn calculate_orthogonal_component_of_the_tidal_force_3d(
 
                 for (j, g_3kj) in sum_g_3kj.iter().skip(q_min).take(q_max).enumerate() {
                     let phase_alpha_3 = compute_phase_alpha_3(
-                        p as f64,
-                        q as f64 - order as f64,
-                        k as f64,
-                        j as f64 - order as f64,
+                        p as i32,
+                        q as i32 - order as i32,
+                        k as i32,
+                        j as i32 - order as i32,
                         mean_anomaly,
                         spin_angle,
                         argument_perihelion,
@@ -220,10 +200,10 @@ pub fn calculate_orthogonal_component_of_the_tidal_force_3d(
                         heliocentric_varphi,
                     );
                     let phase_alpha_4 = compute_phase_alpha_4(
-                        p as f64,
-                        q as f64 - order as f64,
-                        k as f64,
-                        j as f64 - order as f64,
+                        p as i32,
+                        q as i32 - order as i32,
+                        k as i32,
+                        j as i32 - order as i32,
                         mean_anomaly,
                         spin_angle,
                         argument_perihelion,
@@ -292,10 +272,10 @@ pub fn calculate_orthogonal_component_of_the_tidal_force_3d(
 
                 for (j, g_3kj) in sum_g_3kj.iter().skip(q_min).take(q_max).enumerate() {
                     let phase_alpha_3 = compute_phase_alpha_3(
-                        p as f64,
-                        q as f64 - order as f64,
-                        k as f64,
-                        j as f64 - order as f64,
+                        p as i32,
+                        q as i32 - order as i32,
+                        k as i32,
+                        j as i32 - order as i32,
                         mean_anomaly,
                         spin_angle,
                         argument_perihelion,
@@ -303,10 +283,10 @@ pub fn calculate_orthogonal_component_of_the_tidal_force_3d(
                         heliocentric_varphi,
                     );
                     let phase_alpha_4 = compute_phase_alpha_4(
-                        p as f64,
-                        q as f64 - order as f64,
-                        k as f64,
-                        j as f64 - order as f64,
+                        p as i32,
+                        q as i32 - order as i32,
+                        k as i32,
+                        j as i32 - order as i32,
                         mean_anomaly,
                         spin_angle,
                         argument_perihelion,
@@ -339,16 +319,12 @@ pub fn calculate_orthogonal_component_of_the_tidal_force_3d(
     let term_m2_s = -5. / (48. * sqrt!(6_f64)) * sum_over_p_s;
 
     let cste_3d = if central_body {
-        // inclination = tools::calculate_inclination_orbital_equatorial_plane(tidal_host_particle.heliocentric_position, tidal_host_particle.heliocentric_velocity, tidal_host_particle.spin);
-        -(G * particle.mass.powi(2) * tidal_host_particle.radius.powi(5))
-            / (semi_major_axis.powi(7))
+        calculate_base_constant(tidal_host_particle, particle, 1.0, semi_major_axis)
     } else {
-        // inclination = tools::calculate_inclination_orbital_equatorial_plane(particle.heliocentric_position, particle.heliocentric_velocity, particle.spin);
-        -(G * tidal_host_particle.mass.powi(2) * particle.radius.powi(5))
-            / (semi_major_axis.powi(7))
+        calculate_base_constant(particle, tidal_host_particle, 1.0, semi_major_axis)
     };
 
     let orthogonal_force = cste_3d * (term_m1 + term_m2);
-    let orthogonal_force_secular = cste_3d * (term_m1_s + term_m2_s); // cste *sum_over_p_secular;
+    let orthogonal_force_secular = cste_3d * (term_m1_s + term_m2_s);
     (orthogonal_force, orthogonal_force_secular)
 }

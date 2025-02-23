@@ -1,6 +1,5 @@
 use super::super::super::super::Particle;
-use super::super::super::super::constants::G;
-use super::{alpha_pqkj, select_eccentricty_order_q};
+use super::{alpha_pqkj, calculate_base_constant, select_eccentricty_order_q};
 use crate::{TidalModel, TidesEffect};
 use itertools::izip;
 
@@ -31,14 +30,21 @@ pub fn calculate_radial_component_of_the_tidal_force_2d(
 
     let argument_perihelion = longitude_perihelion - longitude_of_ascending_node;
 
-    let tem_radius = if central_body {
-        -tidal_host_particle.heliocentric_distance
+    let cste = if central_body {
+        -calculate_base_constant(
+            particle,
+            tidal_host_particle,
+            -tidal_host_particle.heliocentric_distance,
+            semi_major_axis,
+        )
     } else {
-        particle.heliocentric_distance
+        -calculate_base_constant(
+            particle,
+            tidal_host_particle,
+            particle.heliocentric_distance,
+            semi_major_axis,
+        )
     };
-
-    let cste = -(G * tidal_host_particle.mass.powi(2) * particle.radius.powi(5))
-        / (semi_major_axis.powi(6) * tem_radius);
 
     let radial_force;
     let radial_force_secular;
@@ -88,10 +94,10 @@ pub fn calculate_radial_component_of_the_tidal_force_2d(
             .enumerate()
             {
                 let alpha_qj = alpha_pqkj(
-                    0.,
-                    q as f64 - order as f64,
-                    0.,
-                    j as f64 - order as f64,
+                    0,
+                    q as i32 - order as i32,
+                    0,
+                    j as i32 - order as i32,
                     mean_anomaly,
                     argument_perihelion,
                 );
@@ -140,25 +146,25 @@ pub fn calculate_radial_component_of_the_tidal_force_3d(
     ) = keplerian_elements;
 
     let argument_perihelion = longitude_perihelion - longitude_of_ascending_node;
-
     // if there is a non-negligible inclination (3D case)
     // Modification has been made but no testing has been done for 3D case (26/2)
     // let eccentricity_function_g_2pq = calculate_eccentricity_function_g_2pq(eccentricity);
     // let inclination_function_f_2mp = calculate_inclination_function_f_2mp(obliquity);
-    let heliocentric_r;
-    let particle_star_2;
-    if central_body {
-        // inclination = tools::calculate_inclination_orbital_equatorial_plane(tidal_host_particle.heliocentric_position, tidal_host_particle.heliocentric_velocity, tidal_host_particle.spin);
-        heliocentric_r = tidal_host_particle.heliocentric_distance;
-        particle_star_2 = particle.mass.powi(2);
+    let cste = if central_body {
+        calculate_base_constant(
+            tidal_host_particle,
+            particle,
+            tidal_host_particle.heliocentric_distance,
+            semi_major_axis,
+        )
     } else {
-        // inclination = tools::calculate_inclination_orbital_equatorial_plane(particle.heliocentric_position, particle.heliocentric_velocity, particle.spin);
-        heliocentric_r = particle.heliocentric_distance;
-        particle_star_2 = tidal_host_particle.mass.powi(2);
-    }
-
-    let particle_radius_5 = particle.radius.powi(5);
-    let semi_major_axis_6 = semi_major_axis.powi(6);
+        calculate_base_constant(
+            particle,
+            tidal_host_particle,
+            particle.heliocentric_distance,
+            semi_major_axis,
+        )
+    };
 
     let order = select_eccentricty_order_q(eccentricity);
     let q_min = 7 - order;
@@ -219,10 +225,10 @@ pub fn calculate_radial_component_of_the_tidal_force_3d(
 
                 for (j, g_2kj) in sum_g_2kj.iter().skip(q_min).take(q_max).enumerate() {
                     let phase_alpha = alpha_pqkj(
-                        p as f64,
-                        q as f64 - order as f64,
-                        k as f64,
-                        j as f64 - order as f64,
+                        p as i32,
+                        q as i32 - order as i32,
+                        k as i32,
+                        j as i32 - order as i32,
                         mean_anomaly,
                         argument_perihelion,
                     );
@@ -253,8 +259,6 @@ pub fn calculate_radial_component_of_the_tidal_force_3d(
         sum_over_p_m2_s += f_22p_2 * sum_over_q_m2_s;
     }
 
-    let cste =
-        (G * particle_star_2 * particle_radius_5 * 3.0) / (semi_major_axis_6 * heliocentric_r);
     let radial_force =
         (sum_over_p_m0 + (1. / 3.) * sum_over_p_m1 + (1. / 12.) * sum_over_p_m2) * cste;
     let radial_force_secular =

@@ -98,16 +98,15 @@ pub fn calculate_tidal_force(
         keplerian_elements,
     );
 
-    let tidal_force_due_to_planetary_tide = calculate_tidal_force_component(
+    //    dbg!(tidal_force_due_to_planetary_tide);
+    //    panic!();
+    calculate_tidal_force_component(
         tidal_host_particle,
         particle,
         central_body,
         tidal_force,
         tidal_force_secular,
-    );
-    //    dbg!(tidal_force_due_to_planetary_tide);
-    //    panic!();
-    tidal_force_due_to_planetary_tide
+    )
 }
 
 fn calculate_tidal_force_component(
@@ -163,8 +162,7 @@ fn calculate_tidal_force_component(
     );
 
     let &mut (TidesEffect::CentralBody(TidalModel::Kaula(ref mut kaula))
-    | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut kaula))) =
-        &mut particle.tides.effect
+    | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut kaula))) = &mut particle.tides.effect
     else {
         unreachable!()
     };
@@ -266,8 +264,7 @@ fn calculate_2d_or_3d_tidal_force_components(
     ) = keplerian_elements;
 
     let &mut (TidesEffect::CentralBody(TidalModel::Kaula(ref mut kaula))
-    | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut kaula))) =
-        &mut particle.tides.effect
+    | TidesEffect::OrbitingBody(TidalModel::Kaula(ref mut kaula))) = &mut particle.tides.effect
     else {
         unreachable!()
     };
@@ -422,97 +419,100 @@ pub fn calculate_associated_legendre_polynomials_p_2m(x: f64) -> [f64; 3] {
 
 // Calculate the phases of the 2-Kaula transformed tidal forces
 pub fn alpha_pqkj(
-    p: f64,
-    q: f64,
-    k: f64,
-    j: f64,
+    p: i32,
+    q: i32,
+    k: i32,
+    j: i32,
     mean_anomaly: f64,
     argument_perihelion: f64,
 ) -> f64 {
-    (2. * p - 2. * k + j - q) * mean_anomaly + 2. * (p - k) * argument_perihelion
+    f64!(2 * p - 2 * k + j - q) * mean_anomaly + f64!(2 * (p - k)) * argument_perihelion
 }
 
 // Calculate the phases of the 2-Kaula transformed tidal forces
 pub fn compute_phase_beta(
-    p: f64,
-    q: f64,
-    k: f64,
-    j: f64,
+    p: i32,
+    q: i32,
+    k: i32,
+    j: i32,
     mean_anomaly: f64,
     spin_angle: f64,
     argument_perihelion: f64,
     longitude_ascending_node: f64,
     heliocentric_varphi: f64,
 ) -> f64 {
-    (4. - 2. * p - 2. * k + q - j) * mean_anomaly
-        + (4. - 2. * (k + p)) * argument_perihelion
+    f64!(4 - 2 * p - 2 * k + q - j) * mean_anomaly
+        + f64!(4 - 2 * (k + p)) * argument_perihelion
         + spin_angle
         - longitude_ascending_node
         + heliocentric_varphi
 }
 
 pub fn compute_phase_alpha_1(
-    p: f64,
-    q: f64,
-    k: f64,
-    j: f64,
+    p: i32,
+    q: i32,
+    k: i32,
+    j: i32,
     mean_anomaly: f64,
     spin_angle: f64,
     argument_perihelion: f64,
     longitude_ascending_node: f64,
     heliocentric_varphi: f64,
 ) -> f64 {
-    (2. * k - 2. * p + q - j) * mean_anomaly + 2. * (k - p) * argument_perihelion + spin_angle
+    f64!(2 * k - 2 * p + q - j) * mean_anomaly
+        + f64!(2 * (k - p)) * argument_perihelion
+        + spin_angle
         - longitude_ascending_node
         - heliocentric_varphi
 }
 
 pub fn compute_phase_alpha_2(
-    p: f64,
-    q: f64,
-    k: f64,
-    j: f64,
+    p: i32,
+    q: i32,
+    k: i32,
+    j: i32,
     mean_anomaly: f64,
     spin_angle: f64,
     argument_perihelion: f64,
     longitude_ascending_node: f64,
     heliocentric_varphi: f64,
 ) -> f64 {
-    (2. * k - 2. * p + q - j) * mean_anomaly + 2. * (k - p) * argument_perihelion - spin_angle
+    f64!(2 * k - 2 * p + q - j) * mean_anomaly + f64!(2 * (k - p)) * argument_perihelion
+        - spin_angle
         + longitude_ascending_node
         + heliocentric_varphi
 }
 
 pub fn compute_phase_alpha_3(
-    p: f64,
-    q: f64,
-    k: f64,
-    j: f64,
+    p: i32,
+    q: i32,
+    k: i32,
+    j: i32,
     mean_anomaly: f64,
     spin_angle: f64,
     argument_perihelion: f64,
     longitude_ascending_node: f64,
     heliocentric_varphi: f64,
 ) -> f64 {
-    (2. * k - 2. * p + q - j - 1.) * mean_anomaly
-        + 2. * (k - p - 1.) * argument_perihelion
+    f64!(2 * k - 2 * p + q - j - 1) * mean_anomaly
+        + f64!(2 * (k - p - 1)) * argument_perihelion
         + spin_angle
         - longitude_ascending_node
         - heliocentric_varphi
 }
 
 pub fn compute_phase_alpha_4(
-    p: f64,
-    q: f64,
-    k: f64,
-    j: f64,
+    p: i32,
+    q: i32,
+    k: i32,
+    j: i32,
     mean_anomaly: f64,
     spin_angle: f64,
     argument_perihelion: f64,
     longitude_ascending_node: f64,
     heliocentric_varphi: f64,
 ) -> f64 {
-    (2. * k - 2. * p + q - j - 1.) * mean_anomaly + 2. * (k - p - 1.) * argument_perihelion
+    f64!(2 * k - 2 * p + q - j - 1) * mean_anomaly + f64!(2 * (k - p - 1)) * argument_perihelion
         - spin_angle
         + longitude_ascending_node
         - heliocentric_varphi
@@ -521,12 +521,42 @@ pub fn compute_phase_alpha_4(
 pub fn select_eccentricty_order_q(eccentricity: f64) -> usize {
     match () {
         // Select the order of the summation q over the eccentricity function G_lpq
-        () if (eccentricity > 0.3) => 7,  // -7 < q < 7 (0 < q < 14)
-        () if (eccentricity > 0.25) => 6, // -6 < q < 6 (1 < q < 13)
-        () if (eccentricity > 0.2) => 5,  // -5 < q < 5 (2 < q < 12)
-        () if (eccentricity > 0.15) => 4, // -4 < q < 4 (3 < q < 11)
-        () if (eccentricity > 0.1) => 3,  // -3 < q < 3 (4 < q < 10)
-        () if (eccentricity <= 0.1) => 2, // -2 < q < 2 (5 < q < 9)
+        () if (eccentricity > 0.3) => 7, // -7 <= q <= 7 index: (0 <= q <= 14)
+        () if (eccentricity > 0.25) => 6, // -6 <= q <= 6 index: (1 <= q <= 13)
+        () if (eccentricity > 0.2) => 5, // -5 <= q <= 5 index: (2 <= q <= 12)
+        () if (eccentricity > 0.15) => 4, // -4 <= q <= 4 index: (3 <= q <= 11)
+        () if (eccentricity > 0.1) => 3, // -3 <= q <= 3 index: (4 <= q <= 10)
+        () if (eccentricity <= 0.1) => 2, // -2 <= q <= 2 index: (5 <= q <= 9)
         () => 0,
     }
+}
+
+fn calculate_base_constant(
+    particle: &Particle,
+    other_particle: &Particle,
+    heliocentric_radius: f64,
+    semi_major_axis: f64,
+) -> f64 {
+    (G * other_particle.mass.powi(2) * particle.radius.powi(5))
+        / (semi_major_axis.powi(6) * heliocentric_radius)
+}
+
+// TODO physicist rename
+fn calculate_2d_constant(
+    particle: &Particle,
+    other_particle: &Particle,
+    heliocentric_radius: f64,
+    semi_major_axis: f64,
+) -> f64 {
+    let (x, y, z) = particle.tides.coordinates.position.unpack();
+    let distance = sqrt!(x.powi(2) + y.powi(2) + z.powi(2));
+    let coplanar_distance = sqrt!(x.powi(2) + y.powi(2));
+    let sin_theta = coplanar_distance / distance;
+
+    -(calculate_base_constant(
+        particle,
+        other_particle,
+        heliocentric_radius,
+        semi_major_axis,
+    ) / sin_theta)
 }

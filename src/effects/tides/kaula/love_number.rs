@@ -279,6 +279,5 @@ pub fn calculate_tidal_excitation_frequency_mode_sigma_2mpq(
     spin: f64,
     orbital_frequency: f64,
 ) -> f64 {
-    let x = f64!(2 - 2 * p + q) * orbital_frequency - f64!(m) * spin;
-    x
+    f64!(2 - 2 * p + q) * orbital_frequency - f64!(m) * spin
 }
