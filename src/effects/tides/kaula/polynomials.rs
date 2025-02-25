@@ -170,8 +170,8 @@ impl Polynomials {
     // F3pmp
     // The inclination function of the Kaula 1961 developpement Flmp(i)
     pub fn calculate_inclination_function_f_3mp(&mut self, inclination: f64) {
-        let sin_inc = sin!(inclination);
-        let cos_inc = cos!(inclination);
+        let sin_inc = f64::sin(inclination);
+        let cos_inc = f64::cos(inclination);
         let cos_inc_2 = cos_inc.powi(2);
         let sin_inc_2 = sin_inc.powi(2);
         let sin_inc_3 = sin_inc.powi(3);
@@ -181,24 +181,38 @@ impl Polynomials {
             unreachable!()
         };
 
-        first[0] = -((5. / 16.) * sin_inc_3);
-        first[1] = ((5. / 16.) * sin_inc_3) - ((3. / 4.) * sin_inc);
-        first[2] = -((5. / 16.) * sin_inc_3) + ((3. / 4.) * sin_inc);
-        first[3] = -first[0];
+        let fac_a = (5. / 16.) * sin_inc_3;
+        let fac_b = (3. / 4.) * sin_inc;
 
-        second[0] = -((15. / 16.) * sin_inc_2) * (1.0 + 3.0 * cos_inc);
-        second[1] = ((15. / 16.) * sin_inc_2) - (3. / 4.) * (1.0 + 3.0 * cos_inc);
-        second[2] = ((15. / 16.) * sin_inc_2) - (3. / 4.) * (1.0 - 3.0 * cos_inc);
-        second[3] = -((15. / 16.) * sin_inc_2) * (1.0 - 3.0 * cos_inc);
+        first[0] = -fac_a;
+        first[1] = fac_a - fac_b;
+        first[2] = fac_b - fac_a;
+        first[3] = fac_a;
 
-        third[0] = ((15. / 8.) * sin_inc_2) * (1.0 + cos_inc).powi(2);
-        third[1] = ((15. / 8.) * sin_inc_2) * (1.0 - 2.0 * cos_inc - 3.0 * cos_inc_2);
-        third[2] = -((15. / 8.) * sin_inc_2) * (1.0 + 2.0 * cos_inc - 3.0 * cos_inc_2);
-        third[3] = -((15. / 8.) * sin_inc_2) * (1.0 - cos_inc).powi(2);
+        let fac_c = (15. / 16.) * sin_inc_2;
+        let fac_d = fac_c - (3. / 4.);
+        let fac_e = 3.0 * cos_inc;
 
-        fourth[0] = (15. / 8.) * (1.0 + cos_inc).powi(3);
-        fourth[1] = (48. / 8.) * sin_inc_2 * (1.0 + cos_inc);
-        fourth[2] = (48. / 8.) * sin_inc_2 * (1.0 - cos_inc);
-        fourth[3] = (15. / 8.) * (1.0 - cos_inc).powi(3);
+        second[0] = -fac_c * (1.0 + fac_e);
+        second[1] = fac_d * (1.0 + fac_e);
+        second[2] = fac_d * (1.0 - fac_e);
+        second[3] = -fac_c * (1.0 - fac_e);
+
+        let fac_f = (15. / 8.) * sin_inc_2;
+        let fac_h = 2.0 * cos_inc;
+        let fac_k = 3.0 * cos_inc_2;
+
+        third[0] = fac_f * (1.0 + cos_inc).powi(2);
+        third[1] = fac_f * (1.0 - fac_h - fac_k);
+        third[2] = -fac_f * (1.0 + fac_h - fac_k);
+        third[3] = -fac_f * (1.0 - cos_inc).powi(2);
+
+        let fac_x = 15. / 8.;
+        let fac_y = (48. / 8.) * sin_inc_2;
+
+        fourth[0] = fac_x * (1.0 + cos_inc).powi(3);
+        fourth[1] = fac_y * (1.0 + cos_inc);
+        fourth[2] = fac_y * (1.0 - cos_inc);
+        fourth[3] = fac_x * (1.0 - cos_inc).powi(3);
     }
 }
