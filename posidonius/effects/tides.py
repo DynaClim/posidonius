@@ -112,27 +112,18 @@ class Kaula(object):
                     "spectrum_excitation_frequency": [0.] * 1024,
                     "spectrum_real_part": [0.] * 1024,
                     "spectrum_imaginary_part": [0.] * 1024,
-                    # no stellar_spectrum_spin_rate for planetary tide.
+                    # stellar_spectrum_spin_rate field only exists for stellar tide.
                 },
             },
         }
         # Update default values, ignore non-recognised keys
         for key, value in six.iteritems(input_parameters):
-            if key in self._data["Kaula"]:
-                if key == "stellar_tide":
-                    # Ensure the value is strictly a boolean
-                    if isinstance(value, bool):
-                        self._data["Kaula"][key] = value
-                    else:
-                        raise ValueError(f"Invalid value for stellar_tide: {value}. Expected a boolean (True or False).")
-                elif isinstance(value, (tuple, list)):
-                    # Convert lists or tuples to a list of floats
-                    self._data["Kaula"][key] = [float(v) for v in value]
-                else:
-                    # Convert single values to float
-                    self._data["Kaula"][key] = float(value)
+            if isinstance(value, (tuple, list)):
+                # Convert lists or tuples to a list of floats
+                self._data["Kaula"]["love_numbers"][key] = [float(v) for v in value]
             else:
-                print(f"Ignored parameter: {key}")
+                # Convert single values to float
+                self._data["Kaula"]["love_numbers"][key] = float(value)
 
         # print("Output parameters:", self._data["Kaula"])
         # sys.exit("Program terminated after printing input parameters.")
