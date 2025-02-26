@@ -253,12 +253,12 @@ def solar_like_for_kaula_1(star_mass, position, velocity, general_relativity_imp
         warnings.warn("Size mismatch: This should not happen, but continuing with code execution.")
 
         star_kaula_tidal_parameters_love_numbers = {
-            "love_number_excitation_frequency": w_lm_star.tolist(), #syntaxe tab [[32]32]
-            "imaginary_part_love_number": ImK2_star.tolist(),
-            "real_part_love_number": ReK2_star.tolist(),
-            "num_datapoints": size_star,
-            "stellar_tide": True,
-            "spectrum_spin_rate": posidonius.constants.TWO_PI / spectrum_stellar_spin_period,
+            "love_numbers": {
+                "spectrum_excitation_frequency": w_lm_star.tolist(), #syntaxe tab [1024]
+                "spectrum_real_part": ReK2_star.tolist(),
+                "spectrum_imaginary_part": ImK2_star.tolist(),
+                "stellar_spectrum_spin_rate": posidonius.constants.TWO_PI / spectrum_stellar_spin_period,
+            },
         }
 
     else:

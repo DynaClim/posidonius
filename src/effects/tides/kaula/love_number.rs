@@ -5,7 +5,7 @@ use super::select_eccentricty_order_q;
 
 // Real and imaginary love numbers calculated each timestep.
 #[derive(Serialize, Copy, Deserialize, PartialEq, Debug, Clone)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct LoveNumber {
     #[serde(with = "BigArray")]
     spectrum_excitation_frequency: [f64; 1024],
@@ -13,6 +13,10 @@ pub struct LoveNumber {
     spectrum_real_part: [f64; 1024],
     #[serde(with = "BigArray")]
     spectrum_imaginary_part: [f64; 1024],
+
+    // If we are simulating stellar tide, then we need the value of the spectrum spin rate,
+    // which was an input value of stellar spin rate from the computation of the spectrum.
+    stellar_spectrum_spin_rate: Option<f64>, // Specified the initial spin rate of the star, or `None` if planetary tide.
 
     // Cache of the tidal frequency
     #[serde(with = "BigArray")]
@@ -29,6 +33,7 @@ impl Default for LoveNumber {
             spectrum_excitation_frequency: [0.; 1024],
             spectrum_real_part: [0.; 1024],
             spectrum_imaginary_part: [0.; 1024],
+            stellar_spectrum_spin_rate: None,
             freq: [0.; 145],
             real: [0.; 145],
             imaginary: [0.; 145],
@@ -41,11 +46,13 @@ impl LoveNumber {
         spectrum_excitation_frequency: [f64; 1024],
         spectrum_real_part: [f64; 1024],
         spectrum_imaginary_part: [f64; 1024],
+        stellar_spectrum_spin_rate: Option<f64>
     ) -> Self {
         Self {
             spectrum_excitation_frequency,
             spectrum_real_part,
             spectrum_imaginary_part,
+            stellar_spectrum_spin_rate,
             ..Default::default()
         }
     }
@@ -58,21 +65,23 @@ impl LoveNumber {
     pub(crate) fn real(&self, m: usize, p: usize, q: usize) -> f64 {
         // The cached data is stored in a 1D array, so the 3D coordinates are mapped to the 1D index.
         // m_max and p_max are both 3
-        self.real[Self::map_3d_to_1d(m, 3, p, 3, q)]
+        let index = Self::map_3d_to_1d(m, 3, p, 3, q);
+        assert!(index < self.real.len());
+        self.real[index]
     }
 
     /// Fetches the imaginary love number from the cache for index of tuple (m, p, q).
     pub(crate) fn imaginary(&self, m: usize, p: usize, q: usize) -> f64 {
         // The cached data is stored in a 1D array, so the 3D coordinates are mapped to the 1D index.
         // m_max and p_max are both 3
-        self.imaginary[Self::map_3d_to_1d(m, 3, p, 3, q)]
+        let index = Self::map_3d_to_1d(m, 3, p, 3, q);
+        assert!(index < self.imaginary.len());
+        self.imaginary[index]
     }
 
     pub fn refresh_cache_full(
         &mut self,
         central_body: bool,
-        is_stellar_tide: bool,
-        spectrum_spin_rate: f64,
         spin_rate: f64,
         orbital_frequency: f64,
         eccentricity: f64,
@@ -82,8 +91,6 @@ impl LoveNumber {
         let (p_min, p_max) = (0, 3);
         self.refresh_cache(
             central_body,
-            is_stellar_tide,
-            spectrum_spin_rate,
             spin_rate,
             orbital_frequency,
             eccentricity,
@@ -96,8 +103,6 @@ impl LoveNumber {
     pub fn refresh_cache_partial(
         &mut self,
         central_body: bool,
-        is_stellar_tide: bool,
-        spectrum_spin_rate: f64,
         spin_rate: f64,
         orbital_frequency: f64,
         eccentricity: f64,
@@ -107,8 +112,6 @@ impl LoveNumber {
         let (p_min, p_max) = (1, 2);
         self.refresh_cache(
             central_body,
-            is_stellar_tide,
-            spectrum_spin_rate,
             spin_rate,
             orbital_frequency,
             eccentricity,
@@ -123,8 +126,6 @@ impl LoveNumber {
         let (p_min, p_max) = (0, 1);
         self.refresh_cache(
             central_body,
-            is_stellar_tide,
-            spectrum_spin_rate,
             spin_rate,
             orbital_frequency,
             eccentricity,
@@ -139,8 +140,6 @@ impl LoveNumber {
     fn refresh_cache(
         &mut self,
         central_body: bool,
-        is_stellar_tide: bool,
-        spectrum_spin_rate: f64,
         spin_rate: f64,
         orbital_frequency: f64,
         eccentricity: f64,
@@ -152,37 +151,36 @@ impl LoveNumber {
         let order = select_eccentricty_order_q(eccentricity);
         let q_min = 7 - order;
         let q_max = 2 * order + 1;
+        let order = order as i32;
 
-        for (q, q_idx) in (0..14).skip(q_min).take(q_max).enumerate() {
+        for q in (0_i32..14).skip(q_min).take(q_max) {
+            let q_idx = q as usize;
             for p in p_min..p_max {
+                let p_idx = p as usize;
                 for m in m_min..m_max {
+                    let m_idx = m as usize;
                     let wk2 = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
                         m,
                         p,
-                        q as i32 - (order as i32),
+                        q - order,
                         spin_rate,
                         orbital_frequency,
                     );
 
-                    let prev_wk2 =
-                        self.freq[Self::map_3d_to_1d(m as usize, 3, p as usize, 3, q_idx)];
+                    let index = Self::map_3d_to_1d(m_idx, 3, p_idx, 3, q_idx);
+                    assert!(index < self.freq.len());
                     // TODO Don't update the love numbers cache if the change in wk2 is minimal
-                    //                    if prev_wk2 != 0. && abs!(abs!(prev_wk2) - abs!(wk2)) < 1e-14 {
-                    //                        todo!();
-                    //                        continue;
-                    //                    }
                     let (real_k2, imaginary_k2) = self.get_love_numbers(
                         central_body,
-                        is_stellar_tide,
-                        spectrum_spin_rate,
                         spin_rate,
                         wk2,
                     );
 
-                    self.freq[Self::map_3d_to_1d(m as usize, 3, p as usize, 3, q_idx)] = wk2;
-                    self.real[Self::map_3d_to_1d(m as usize, 3, p as usize, 3, q_idx)] = real_k2;
-                    self.imaginary[Self::map_3d_to_1d(m as usize, 3, p as usize, 3, q_idx)] =
-                        imaginary_k2;
+                    self.freq[index] = wk2;
+                    assert!(index < self.real.len());
+                    self.real[index] = real_k2;
+                    assert!(index < self.imaginary.len());
+                    self.imaginary[index] = imaginary_k2;
                 }
             }
         }
@@ -191,8 +189,6 @@ impl LoveNumber {
     fn get_love_numbers(
         &self,
         central_body: bool,
-        is_stellar_tide: bool,
-        spectrum_spin_rate: f64,
         spin_rate: f64,
         mut wk2: f64,
     ) -> (f64, f64) {
@@ -200,7 +196,7 @@ impl LoveNumber {
         // Taking into account of the real time evolution of the stellar spin rate
         // by modifying the tidal frequency, and rescale the love number (below)
         // instead of modifying the spectrum every time step.
-        if is_stellar_tide {
+        if let Some(spectrum_spin_rate) = self.stellar_spectrum_spin_rate {
             // Days
             wk2 *= spectrum_spin_rate / spin_rate;
         }
@@ -220,7 +216,7 @@ impl LoveNumber {
         }
 
         // Rescale the love number
-        if is_stellar_tide {
+        if let Some(spectrum_spin_rate) = self.stellar_spectrum_spin_rate {
             imaginary_k2 *= (spin_rate / spectrum_spin_rate).powi(2);
         }
 
@@ -251,11 +247,15 @@ impl LoveNumber {
             {
                 Ok(i) => {
                     // Exact match found: love_number[i] == wk2
-                    im_k2 = self.spectrum_imaginary_part[i];
+                    assert!(i < self.spectrum_real_part.len());
                     re_k2 = self.spectrum_real_part[i];
+                    assert!(i < self.spectrum_imaginary_part.len());
+                    im_k2 = self.spectrum_imaginary_part[i];
                 }
                 Err(i) => {
                     // wk2 is between love_number[i - 1] and love_number[i]
+                    assert!(i < self.spectrum_real_part.len());
+                    assert!(i < self.spectrum_imaginary_part.len());
                     let prev_freq = self.spectrum_excitation_frequency[i - 1];
                     let next_freq = self.spectrum_excitation_frequency[i];
                     let delta = (wk2 - prev_freq) / (next_freq - prev_freq);

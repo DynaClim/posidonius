@@ -253,12 +253,12 @@ def trappist1_h_like(mass, position, velocity, spin, evolution):
         warnings.warn("Size mismatch: This should not happen, but continuing with code execution.")
 
         planet_kaula_tidal_parameters_love_numbers = {
-            "love_number_excitation_frequency": w_lm_planet.tolist() + [w_lm_planet[-1]] * (expected_size - len(w_lm_planet)),
-            "imaginary_part_love_number": ImK2_planet.tolist() + [ImK2_planet[-1]] * (expected_size - len(ImK2_planet)),
-            "real_part_love_number": ReK2_planet.tolist() + [ReK2_planet[-1]] * (expected_size - len(ReK2_planet)),
-            "num_datapoints": float(expected_size),
-            "stellar_tide": False,
-            "spectrum_spin_rate": 0.0,
+            "love_numbers": {
+                "spectrum_excitation_frequency": w_lm_planet.tolist() + [w_lm_planet[-1]] * (expected_size - len(w_lm_planet)),
+                "spectrum_real_part": ReK2_planet.tolist() + [ReK2_planet[-1]] * (expected_size - len(ReK2_planet)),
+                "spectrum_imaginary_part": ImK2_planet.tolist() + [ImK2_planet[-1]] * (expected_size - len(ImK2_planet)),
+                # No stellar_spectrum_spin_rate for planetary tides
+            },
         }
 
     else:

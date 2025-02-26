@@ -29,16 +29,14 @@ use orthogonal_component::{
 
 // Structure declare the intput parameters needed for the Kaula model calculation.
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct KaulaParameters {
     // The tidal Love numbers function of the excitation frequency
     #[serde(default)]
     pub love_numbers: LoveNumber,
-    // If we are simulating stellar tide, then we need the value of the spectrum spin rate,
-    // which was an input value of stellar spin rate from the computation of the spectrum.
-    pub stellar_tide: bool,      // Specified the type of tides
-    pub spectrum_spin_rate: f64, // Specified the initial spin rate of the star (stellar tide specific)
     #[serde(default)]
     pub polynomials: Polynomials,
+    #[serde(default)]
     pub kaula_tidal_force: Axes,
 }
 
@@ -258,8 +256,6 @@ fn calculate_2d_or_3d_tidal_force_components(
         // refresh only love numbers used by 2D calculations
         kaula.love_numbers.refresh_cache_partial(
             central_body,
-            kaula.stellar_tide,
-            kaula.spectrum_spin_rate,
             spin,
             orbital_frequency,
             eccentricity,
@@ -275,8 +271,6 @@ fn calculate_2d_or_3d_tidal_force_components(
         // 3D case
         kaula.love_numbers.refresh_cache_full(
             central_body,
-            kaula.stellar_tide,
-            kaula.spectrum_spin_rate,
             spin,
             orbital_frequency,
             eccentricity,

@@ -100,16 +100,21 @@ pub fn load_kaula_parameters(
     real_part_love_number.copy_from_slice(&re_k2[..expected_size]);
     imaginary_part_love_number.copy_from_slice(&im_k2[..expected_size]);
 
+    let stellar_spectrum_spin_rate = if stellar_tide {
+    // Specified the initial spin rate of the star (stellar tide specific)
+        Some(spectrum_spin_rate)
+    } else {
+        None
+    };
+
     // Build and return the KaulaParameters struct
     Ok(posidonius::KaulaParameters {
         love_numbers: LoveNumber::new_from(
             love_number_excitation_frequency,
             real_part_love_number,
             imaginary_part_love_number,
+            stellar_spectrum_spin_rate,
         ),
-        //        num_datapoints: num_datapoints as f64,
-        stellar_tide,       // Specified the type of tides
-        spectrum_spin_rate, // Specified the initial spin rate of the star (stellar tide specific)
         polynomials: posidonius::Polynomials::new(),
         kaula_tidal_force: posidonius::Axes::new(),
     })

@@ -108,13 +108,12 @@ class Kaula(object):
 
         self._data = {
             "Kaula": {
-                "love_number_excitation_frequency": [0.] * 1024,
-                "imaginary_part_love_number": [0.] * 1024,
-                "real_part_love_number": [0.] * 1024,
-                "num_datapoints": 0.0,
-                "stellar_tide": False,
-                "spectrum_spin_rate": 0.0,
-                "kaula_tidal_force": Axes( 0.0, 0.0, 0.0).get(),
+                "love_numbers": {
+                    "spectrum_excitation_frequency": [0.] * 1024,
+                    "spectrum_real_part": [0.] * 1024,
+                    "spectrum_imaginary_part": [0.] * 1024,
+                    # no stellar_spectrum_spin_rate for planetary tide.
+                },
             },
         }
         # Update default values, ignore non-recognised keys

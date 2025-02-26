@@ -313,11 +313,6 @@ fn enabled_both_tides_case() -> posidonius::WHFast {
         posidonius::TidalModel::Kaula(planet_tidal_model_params),
     ));
 
-    dbg!(
-        planet_tidal_model_params.stellar_tide,
-        planet_tidal_model_params.spectrum_spin_rate
-    );
-
     //
     if let Some((star, planets)) = particles.split_first_mut() {
         star.set_tides(star_tides);
