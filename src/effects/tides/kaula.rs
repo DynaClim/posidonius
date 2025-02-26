@@ -269,12 +269,9 @@ fn calculate_2d_or_3d_tidal_force_components(
         )
     } else {
         // 3D case
-        kaula.love_numbers.refresh_cache_full(
-            central_body,
-            spin,
-            orbital_frequency,
-            eccentricity,
-        );
+        kaula
+            .love_numbers
+            .refresh_cache_full(central_body, spin, orbital_frequency, eccentricity);
 
         // Update the kaula inclination and 3D eccentricty, used only by 3D
         kaula.polynomials.update_inclination(obliquity);
@@ -472,8 +469,8 @@ pub fn compute_phase_alpha_4(
         - heliocentric_varphi
 }
 
-pub fn select_eccentricty_order_q(eccentricity: f64) -> usize {
-    match () {
+pub fn select_eccentricty_order_q(eccentricity: f64) -> (usize, usize) {
+    let order = match () {
         // Select the order of the summation q over the eccentricity function G_lpq
         () if (eccentricity > 0.3) => 7, // -7 <= q <= 7 index: (0 <= q <= 14)
         () if (eccentricity > 0.25) => 6, // -6 <= q <= 6 index: (1 <= q <= 13)
@@ -482,7 +479,11 @@ pub fn select_eccentricty_order_q(eccentricity: f64) -> usize {
         () if (eccentricity > 0.1) => 3, // -3 <= q <= 3 index: (4 <= q <= 10)
         () if (eccentricity <= 0.1) => 2, // -2 <= q <= 2 index: (5 <= q <= 9)
         () => 0,
-    }
+    };
+    let q_min = 7 - order;
+    let q_max = 2 * order + 1;
+
+    (q_min, q_max)
 }
 
 fn calculate_base_constant(

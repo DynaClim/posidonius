@@ -30,9 +30,7 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
     let heliocentric_varphi = 0.;
     let spin_angle = 0.;
 
-    let order = select_eccentricty_order_q(eccentricity);
-    let q_min = 7 - order;
-    let q_max = 2 * order + 1;
+    let (q_min, q_max) = select_eccentricty_order_q(eccentricity);
 
     let mut sum_over_p = 0.;
     let mut sum_over_p_s = 0.;
@@ -45,7 +43,7 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
         let sum_g_2pq = kaula.polynomials.eccentricity_function_g_2pq[p];
 
         for (q, g_2pq) in sum_g_2pq.iter().skip(q_min).take(q_max).enumerate() {
-            let tmp_q = q + 7 - order;
+            let tmp_q = q_min + q;
             let rek2_20pq = kaula.love_numbers.real(0, p, tmp_q);
             let imk2_20pq = kaula.love_numbers.imaginary(0, p, tmp_q);
 
@@ -63,9 +61,9 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
                 for (j, g_2kj) in sum_g_2kj.iter().skip(q_min).take(q_max).enumerate() {
                     let phase_beta = compute_phase_beta(
                         p as i32,
-                        q as i32 - order as i32,
+                        (q_min + q) as i32,
                         k as i32,
-                        j as i32 - order as i32,
+                        (q_min + j) as i32,
                         mean_anomaly,
                         spin_angle, // 0.0
                         argument_perihelion,
@@ -74,9 +72,9 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
                     );
                     let phase_alpha_1 = compute_phase_alpha_1(
                         p as i32,
-                        q as i32 - order as i32,
+                        (q_min + q) as i32,
                         k as i32,
-                        j as i32 - order as i32,
+                        (q_min + j) as i32,
                         mean_anomaly,
                         spin_angle, // 0.0
                         argument_perihelion,
@@ -117,7 +115,7 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
         let sum_g_2pq = kaula.polynomials.eccentricity_function_g_2pq[p];
 
         for (q, g_2pq) in sum_g_2pq.iter().skip(q_min).take(q_max).enumerate() {
-            let tmp_q = q + 7 - order;
+            let tmp_q = q_min + q;
             let rek2_21pq = kaula.love_numbers.real(1, p, tmp_q);
             let imk2_21pq = kaula.love_numbers.imaginary(1, p, tmp_q);
 
@@ -142,9 +140,9 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
                 for (j, g_2kj) in sum_g_2kj.iter().skip(q_min).take(q_max).enumerate() {
                     let phase_alpha_1 = compute_phase_alpha_1(
                         p as i32,
-                        q as i32 - order as i32,
+                        (q_min + q) as i32,
                         k as i32,
-                        j as i32 - order as i32,
+                        (q_min + j) as i32,
                         mean_anomaly,
                         spin_angle,
                         argument_perihelion,
@@ -153,9 +151,9 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
                     );
                     let phase_alpha_2 = compute_phase_alpha_2(
                         p as i32,
-                        q as i32 - order as i32,
+                        (q_min + q) as i32,
                         k as i32,
-                        j as i32 - order as i32,
+                        (q_min + j) as i32,
                         mean_anomaly,
                         spin_angle,
                         argument_perihelion,
@@ -198,7 +196,7 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
         let sum_g_2pq = kaula.polynomials.eccentricity_function_g_2pq[p];
 
         for (q, g_2pq) in sum_g_2pq.iter().skip(q_min).take(q_max).enumerate() {
-            let tmp_q = q + 7 - order;
+            let tmp_q = q_min + q;
             let rek2_22pq = kaula.love_numbers.real(2, p, tmp_q);
             let imk2_22pq = kaula.love_numbers.imaginary(2, p, tmp_q);
 
@@ -217,9 +215,9 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
                 for (j, g_2kj) in sum_g_2kj.iter().skip(q_min).take(q_max).enumerate() {
                     let phase_alpha_2 = compute_phase_alpha_2(
                         p as i32,
-                        q as i32 - order as i32,
+                        (q_min + q) as i32,
                         k as i32,
-                        j as i32 - order as i32,
+                        (q_min + j) as i32,
                         mean_anomaly,
                         spin_angle,
                         argument_perihelion,

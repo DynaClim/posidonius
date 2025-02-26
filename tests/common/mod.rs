@@ -101,7 +101,7 @@ pub fn load_kaula_parameters(
     imaginary_part_love_number.copy_from_slice(&im_k2[..expected_size]);
 
     let stellar_spectrum_spin_rate = if stellar_tide {
-    // Specified the initial spin rate of the star (stellar tide specific)
+        // Specified the initial spin rate of the star (stellar tide specific)
         Some(spectrum_spin_rate)
     } else {
         None

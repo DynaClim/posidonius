@@ -54,9 +54,7 @@ pub fn calculate_radial_component_of_the_tidal_force_2d(
         let mut sum_over_q = 0.;
         let mut sum_over_q_secular = 0.;
 
-        let order = select_eccentricty_order_q(eccentricity);
-        let q_min = 7 - order;
-        let q_max = 2 * order + 1;
+        let (q_min, q_max) = select_eccentricty_order_q(eccentricity);
 
         for (q, (g_20q, g_21q)) in izip!(
             kaula.polynomials.eccentricity_function_g_2pq[0],
@@ -66,7 +64,7 @@ pub fn calculate_radial_component_of_the_tidal_force_2d(
         .take(q_max)
         .enumerate()
         {
-            let tmp_q = q + 7 - order;
+            let tmp_q = q_min + q;
             let rek2_201q = kaula.love_numbers.real(0, 1, tmp_q);
             let imk2_201q = kaula.love_numbers.imaginary(0, 1, tmp_q);
             let rek2_220q = kaula.love_numbers.real(2, 0, tmp_q);
@@ -88,9 +86,9 @@ pub fn calculate_radial_component_of_the_tidal_force_2d(
             {
                 let alpha_qj = alpha_pqkj(
                     0,
-                    q as i32 - order as i32,
+                    (q_min + q) as i32,
                     0,
-                    j as i32 - order as i32,
+                    (q_min + j) as i32,
                     mean_anomaly,
                     argument_perihelion,
                 );
@@ -154,10 +152,7 @@ pub fn calculate_radial_component_of_the_tidal_force_3d(
         )
     };
 
-    let order = select_eccentricty_order_q(eccentricity);
-    let q_min = 7 - order;
-    let q_max = 2 * order + 1;
-
+    let (q_min, q_max) = select_eccentricty_order_q(eccentricity);
     let mut sum_over_p_m0 = 0.;
     let mut sum_over_p_m1 = 0.;
     let mut sum_over_p_m2 = 0.;
@@ -187,7 +182,7 @@ pub fn calculate_radial_component_of_the_tidal_force_3d(
         for (q, g_2pq) in sum_g_2pq.iter().skip(q_min).take(q_max).enumerate() {
             let g_2pq_2 = g_2pq.powi(2);
 
-            let tmp_q = q + 7 - order;
+            let tmp_q = q_min + q;
             let rek2_20pq = kaula.love_numbers.real(0, p, tmp_q);
             let imk2_20pq = kaula.love_numbers.imaginary(0, p, tmp_q);
             let rek2_21pq = kaula.love_numbers.real(1, p, tmp_q);
@@ -214,9 +209,9 @@ pub fn calculate_radial_component_of_the_tidal_force_3d(
                 for (j, g_2kj) in sum_g_2kj.iter().skip(q_min).take(q_max).enumerate() {
                     let phase_alpha = alpha_pqkj(
                         p as i32,
-                        q as i32 - order as i32,
+                        (q_min + q) as i32,
                         k as i32,
-                        j as i32 - order as i32,
+                        (q_min + j) as i32,
                         mean_anomaly,
                         argument_perihelion,
                     );

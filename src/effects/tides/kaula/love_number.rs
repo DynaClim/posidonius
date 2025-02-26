@@ -46,7 +46,7 @@ impl LoveNumber {
         spectrum_excitation_frequency: [f64; 1024],
         spectrum_real_part: [f64; 1024],
         spectrum_imaginary_part: [f64; 1024],
-        stellar_spectrum_spin_rate: Option<f64>
+        stellar_spectrum_spin_rate: Option<f64>,
     ) -> Self {
         Self {
             spectrum_excitation_frequency,
@@ -143,38 +143,28 @@ impl LoveNumber {
         spin_rate: f64,
         orbital_frequency: f64,
         eccentricity: f64,
-        m_min: i32,
-        m_max: i32,
-        p_min: i32,
-        p_max: i32,
+        m_min: usize,
+        m_max: usize,
+        p_min: usize,
+        p_max: usize,
     ) {
-        let order = select_eccentricty_order_q(eccentricity);
-        let q_min = 7 - order;
-        let q_max = 2 * order + 1;
-        let order = order as i32;
-
-        for q in (0_i32..14).skip(q_min).take(q_max) {
-            let q_idx = q as usize;
+        let (q_min, q_max) = select_eccentricty_order_q(eccentricity);
+        for q in (0..14).skip(q_min).take(q_max) {
             for p in p_min..p_max {
-                let p_idx = p as usize;
                 for m in m_min..m_max {
-                    let m_idx = m as usize;
                     let wk2 = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
                         m,
                         p,
-                        q - order,
+                        q,
                         spin_rate,
                         orbital_frequency,
                     );
 
-                    let index = Self::map_3d_to_1d(m_idx, 3, p_idx, 3, q_idx);
+                    let index = Self::map_3d_to_1d(m as usize, 3, p as usize, 3, q as usize);
                     assert!(index < self.freq.len());
                     // TODO Don't update the love numbers cache if the change in wk2 is minimal
-                    let (real_k2, imaginary_k2) = self.get_love_numbers(
-                        central_body,
-                        spin_rate,
-                        wk2,
-                    );
+                    let (real_k2, imaginary_k2) =
+                        self.get_love_numbers(central_body, spin_rate, wk2);
 
                     self.freq[index] = wk2;
                     assert!(index < self.real.len());
@@ -186,12 +176,7 @@ impl LoveNumber {
         }
     }
 
-    fn get_love_numbers(
-        &self,
-        central_body: bool,
-        spin_rate: f64,
-        mut wk2: f64,
-    ) -> (f64, f64) {
+    fn get_love_numbers(&self, central_body: bool, spin_rate: f64, mut wk2: f64) -> (f64, f64) {
         // Only for kaula stellar tide with a fixed spectrum
         // Taking into account of the real time evolution of the stellar spin rate
         // by modifying the tidal frequency, and rescale the love number (below)
@@ -273,11 +258,12 @@ impl LoveNumber {
 
 // Calculate the tidal excitation frequency mode \sigma_{2mpq}
 pub fn calculate_tidal_excitation_frequency_mode_sigma_2mpq(
-    m: i32,
-    p: i32,
-    q: i32,
+    m: usize,
+    p: usize,
+    q: usize,
     spin: f64,
     orbital_frequency: f64,
 ) -> f64 {
+    let (m, p, q) = (m as i32, p as i32, q as i32 - 7);
     f64!(2 - 2 * p + q) * orbital_frequency - f64!(m) * spin
 }
