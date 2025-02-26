@@ -116,6 +116,6 @@ pub fn load_kaula_parameters(
             stellar_spectrum_spin_rate,
         ),
         polynomials: posidonius::Polynomials::new(),
-        kaula_tidal_force: posidonius::Axes::new(),
+        tidal_force: posidonius::Axes::new(),
     })
 }

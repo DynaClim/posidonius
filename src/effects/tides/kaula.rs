@@ -31,13 +31,15 @@ use orthogonal_component::{
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct KaulaParameters {
-    // The tidal Love numbers function of the excitation frequency
+    // Externally provided spectrum for excitation frequency, real and imaginary part.
     #[serde(default)]
     pub love_numbers: LoveNumber,
     #[serde(default)]
+    pub tidal_force: Axes,
+
+    // Internally calculated kaula polynomials for mpq.
+    #[serde(skip)]
     pub polynomials: Polynomials,
-    #[serde(default)]
-    pub kaula_tidal_force: Axes,
 }
 
 pub fn calculate_tidal_force(
@@ -144,7 +146,7 @@ fn calculate_tidal_force_component(
     );
 
     let kaula = particle.tides.get_kaula_mut();
-    kaula.kaula_tidal_force.copy_from(&secular_projection);
+    kaula.tidal_force.copy_from(&secular_projection);
 
     components
 }
@@ -347,10 +349,10 @@ pub fn calculate_torque_due_to_tides(
             position.mul(-1.);
         }
         // If this is the central body, take the kaula tidal force from the tidal host particle
-        tidal_host_particle.tides.get_kaula().kaula_tidal_force
+        tidal_host_particle.tides.get_kaula().tidal_force
     } else {
         // If it is not the central body, take the kaula tidal froce from the other particle
-        particle.tides.get_kaula().kaula_tidal_force
+        particle.tides.get_kaula().tidal_force
     };
     // The negative sign of the position vector for stellar tide: Torque = r cross F
     // The r here should be the vector point from th primary (perturber) to the secondary (perturbed)
@@ -370,28 +372,30 @@ pub fn calculate_torque_due_to_tides(
 
 // Calculate the phases of the 2-Kaula transformed tidal forces
 pub fn alpha_pqkj(
-    p: i32,
-    q: i32,
-    k: i32,
-    j: i32,
+    p: usize,
+    q: usize,
+    k: usize,
+    j: usize,
     mean_anomaly: f64,
     argument_perihelion: f64,
 ) -> f64 {
+    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
     f64!(2 * p - 2 * k + j - q) * mean_anomaly + f64!(2 * (p - k)) * argument_perihelion
 }
 
 // Calculate the phases of the 2-Kaula transformed tidal forces
 pub fn compute_phase_beta(
-    p: i32,
-    q: i32,
-    k: i32,
-    j: i32,
+    p: usize,
+    q: usize,
+    k: usize,
+    j: usize,
     mean_anomaly: f64,
     spin_angle: f64,
     argument_perihelion: f64,
     longitude_ascending_node: f64,
     heliocentric_varphi: f64,
 ) -> f64 {
+    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
     f64!(4 - 2 * p - 2 * k + q - j) * mean_anomaly
         + f64!(4 - 2 * (k + p)) * argument_perihelion
         + spin_angle
@@ -400,16 +404,17 @@ pub fn compute_phase_beta(
 }
 
 pub fn compute_phase_alpha_1(
-    p: i32,
-    q: i32,
-    k: i32,
-    j: i32,
+    p: usize,
+    q: usize,
+    k: usize,
+    j: usize,
     mean_anomaly: f64,
     spin_angle: f64,
     argument_perihelion: f64,
     longitude_ascending_node: f64,
     heliocentric_varphi: f64,
 ) -> f64 {
+    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
     f64!(2 * k - 2 * p + q - j) * mean_anomaly
         + f64!(2 * (k - p)) * argument_perihelion
         + spin_angle
@@ -418,16 +423,17 @@ pub fn compute_phase_alpha_1(
 }
 
 pub fn compute_phase_alpha_2(
-    p: i32,
-    q: i32,
-    k: i32,
-    j: i32,
+    p: usize,
+    q: usize,
+    k: usize,
+    j: usize,
     mean_anomaly: f64,
     spin_angle: f64,
     argument_perihelion: f64,
     longitude_ascending_node: f64,
     heliocentric_varphi: f64,
 ) -> f64 {
+    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
     f64!(2 * k - 2 * p + q - j) * mean_anomaly + f64!(2 * (k - p)) * argument_perihelion
         - spin_angle
         + longitude_ascending_node
@@ -435,16 +441,17 @@ pub fn compute_phase_alpha_2(
 }
 
 pub fn compute_phase_alpha_3(
-    p: i32,
-    q: i32,
-    k: i32,
-    j: i32,
+    p: usize,
+    q: usize,
+    k: usize,
+    j: usize,
     mean_anomaly: f64,
     spin_angle: f64,
     argument_perihelion: f64,
     longitude_ascending_node: f64,
     heliocentric_varphi: f64,
 ) -> f64 {
+    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
     f64!(2 * k - 2 * p + q - j - 1) * mean_anomaly
         + f64!(2 * (k - p - 1)) * argument_perihelion
         + spin_angle
@@ -453,16 +460,17 @@ pub fn compute_phase_alpha_3(
 }
 
 pub fn compute_phase_alpha_4(
-    p: i32,
-    q: i32,
-    k: i32,
-    j: i32,
+    p: usize,
+    q: usize,
+    k: usize,
+    j: usize,
     mean_anomaly: f64,
     spin_angle: f64,
     argument_perihelion: f64,
     longitude_ascending_node: f64,
     heliocentric_varphi: f64,
 ) -> f64 {
+    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
     f64!(2 * k - 2 * p + q - j - 1) * mean_anomaly + f64!(2 * (k - p - 1)) * argument_perihelion
         - spin_angle
         + longitude_ascending_node
@@ -470,20 +478,16 @@ pub fn compute_phase_alpha_4(
 }
 
 pub fn select_eccentricty_order_q(eccentricity: f64) -> (usize, usize) {
-    let order = match () {
+    match () {
         // Select the order of the summation q over the eccentricity function G_lpq
-        () if (eccentricity > 0.3) => 7, // -7 <= q <= 7 index: (0 <= q <= 14)
-        () if (eccentricity > 0.25) => 6, // -6 <= q <= 6 index: (1 <= q <= 13)
-        () if (eccentricity > 0.2) => 5, // -5 <= q <= 5 index: (2 <= q <= 12)
-        () if (eccentricity > 0.15) => 4, // -4 <= q <= 4 index: (3 <= q <= 11)
-        () if (eccentricity > 0.1) => 3, // -3 <= q <= 3 index: (4 <= q <= 10)
-        () if (eccentricity <= 0.1) => 2, // -2 <= q <= 2 index: (5 <= q <= 9)
-        () => 0,
-    };
-    let q_min = 7 - order;
-    let q_max = 2 * order + 1;
-
-    (q_min, q_max)
+        () if (eccentricity > 0.30) => (0, 15), // q: -7 <= q <= 7
+        () if (eccentricity > 0.25) => (1, 14), // q: -6 <= q <= 6
+        () if (eccentricity > 0.20) => (2, 13), // q: -5 <= q <= 5
+        () if (eccentricity > 0.15) => (3, 12), // q: -4 <= q <= 4
+        () if (eccentricity > 0.10) => (4, 11), // q: -3 <= q <= 3
+        () if (eccentricity <= 0.1) => (5, 10), // q: -2 <= q <= 2
+        () => unreachable!(),
+    }
 }
 
 fn calculate_base_constant(

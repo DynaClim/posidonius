@@ -60,8 +60,8 @@ pub fn calculate_radial_component_of_the_tidal_force_2d(
             kaula.polynomials.eccentricity_function_g_2pq[0],
             kaula.polynomials.eccentricity_function_g_2pq[1],
         )
-        .skip(q_min)
         .take(q_max)
+        .skip(q_min)
         .enumerate()
         {
             let tmp_q = q_min + q;
@@ -80,15 +80,15 @@ pub fn calculate_radial_component_of_the_tidal_force_2d(
                 kaula.polynomials.eccentricity_function_g_2pq[0],
                 kaula.polynomials.eccentricity_function_g_2pq[1]
             )
-            .skip(q_min)
             .take(q_max)
+            .skip(q_min)
             .enumerate()
             {
                 let alpha_qj = alpha_pqkj(
                     0,
-                    (q_min + q) as i32,
+                    q_min + q,
                     0,
-                    (q_min + j) as i32,
+                    q_min + j,
                     mean_anomaly,
                     argument_perihelion,
                 );
@@ -179,7 +179,7 @@ pub fn calculate_radial_component_of_the_tidal_force_3d(
 
         let sum_g_2pq = kaula.polynomials.eccentricity_function_g_2pq[p];
 
-        for (q, g_2pq) in sum_g_2pq.iter().skip(q_min).take(q_max).enumerate() {
+        for (q, g_2pq) in sum_g_2pq.iter().take(q_max).skip(q_min).enumerate() {
             let g_2pq_2 = g_2pq.powi(2);
 
             let tmp_q = q_min + q;
@@ -206,12 +206,12 @@ pub fn calculate_radial_component_of_the_tidal_force_3d(
                 let mut sum_over_j_m2 = 0.;
                 let sum_g_2kj = kaula.polynomials.eccentricity_function_g_2pq[k];
 
-                for (j, g_2kj) in sum_g_2kj.iter().skip(q_min).take(q_max).enumerate() {
+                for (j, g_2kj) in sum_g_2kj.iter().take(q_max).skip(q_min).enumerate() {
                     let phase_alpha = alpha_pqkj(
-                        p as i32,
-                        (q_min + q) as i32,
-                        k as i32,
-                        (q_min + j) as i32,
+                        p,
+                        q_min + q,
+                        k,
+                        q_min + j,
                         mean_anomaly,
                         argument_perihelion,
                     );

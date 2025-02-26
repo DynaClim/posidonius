@@ -160,7 +160,7 @@ impl LoveNumber {
                         orbital_frequency,
                     );
 
-                    let index = Self::map_3d_to_1d(m as usize, 3, p as usize, 3, q as usize);
+                    let index = Self::map_3d_to_1d(m, 3, p, 3, q);
                     assert!(index < self.freq.len());
                     // TODO Don't update the love numbers cache if the change in wk2 is minimal
                     let (real_k2, imaginary_k2) =
