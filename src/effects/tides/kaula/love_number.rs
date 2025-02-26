@@ -3,7 +3,49 @@ use serde_big_array::BigArray;
 
 use super::select_eccentricty_order_q;
 
-// Real and imaginary love numbers calculated each timestep.
+// Tidal frequency, real and imaginary love numbers calculated each timestep.
+#[derive(Copy, PartialEq, Debug, Clone)]
+struct Cache {
+    freq: [f64; 145],
+    real: [f64; 145],
+    imag: [f64; 145],
+}
+
+impl Cache {
+    // Maps a set of 3D coordinates into a 1D index.
+    fn map_3d_to_1d(m: usize, m_max: usize, p: usize, p_max: usize, q: usize) -> usize {
+        (q * m_max * p_max) + (p * m_max) + m
+    }
+
+    /// Fetches the real love number from the cache for index of tuple (m, p, q).
+    fn real(&self, m: usize, p: usize, q: usize) -> f64 {
+        // The cached data is stored in a 1D array, so the 3D coordinates are mapped to the 1D index.
+        // m_max and p_max are both 3
+        let index = Self::map_3d_to_1d(m, 3, p, 3, q);
+        assert!(index < self.real.len());
+        self.real[index]
+    }
+
+    /// Fetches the imaginary love number from the cache for index of tuple (m, p, q).
+    fn imaginary(&self, m: usize, p: usize, q: usize) -> f64 {
+        // The cached data is stored in a 1D array, so the 3D coordinates are mapped to the 1D index.
+        // m_max and p_max are both 3
+        let index = Self::map_3d_to_1d(m, 3, p, 3, q);
+        assert!(index < self.imag.len());
+        self.imag[index]
+    }
+
+    fn set_all(&mut self, m: usize, p: usize, q: usize, frequency: f64, real: f64, imaginary: f64) {
+        let index = Self::map_3d_to_1d(m, 3, p, 3, q);
+        assert!(index < self.freq.len());
+        self.freq[index] = frequency;
+        assert!(index < self.real.len());
+        self.real[index] = real;
+        assert!(index < self.imag.len());
+        self.imag[index] = imaginary;
+    }
+}
+
 #[derive(Serialize, Copy, Deserialize, PartialEq, Debug, Clone)]
 #[serde(default, deny_unknown_fields)]
 pub struct LoveNumber {
@@ -19,12 +61,8 @@ pub struct LoveNumber {
     stellar_spectrum_spin_rate: Option<f64>, // Specified the initial spin rate of the star, or `None` if planetary tide.
 
     // Cache of the tidal frequency
-    #[serde(with = "BigArray")]
-    freq: [f64; 145],
-    #[serde(with = "BigArray")]
-    real: [f64; 145],
-    #[serde(with = "BigArray")]
-    imaginary: [f64; 145],
+    #[serde(skip)]
+    cache: Cache,
 }
 
 impl Default for LoveNumber {
@@ -34,9 +72,11 @@ impl Default for LoveNumber {
             spectrum_real_part: [0.; 1024],
             spectrum_imaginary_part: [0.; 1024],
             stellar_spectrum_spin_rate: None,
-            freq: [0.; 145],
-            real: [0.; 145],
-            imaginary: [0.; 145],
+            cache: Cache {
+                freq: [0.; 145],
+                real: [0.; 145],
+                imag: [0.; 145],
+            },
         }
     }
 }
@@ -56,27 +96,15 @@ impl LoveNumber {
             ..Default::default()
         }
     }
-    // Maps a set of 3D coordinates into a 1D index.
-    fn map_3d_to_1d(m: usize, m_max: usize, p: usize, p_max: usize, q: usize) -> usize {
-        (q * m_max * p_max) + (p * m_max) + m
-    }
 
     /// Fetches the real love number from the cache for index of tuple (m, p, q).
     pub(crate) fn real(&self, m: usize, p: usize, q: usize) -> f64 {
-        // The cached data is stored in a 1D array, so the 3D coordinates are mapped to the 1D index.
-        // m_max and p_max are both 3
-        let index = Self::map_3d_to_1d(m, 3, p, 3, q);
-        assert!(index < self.real.len());
-        self.real[index]
+        self.cache.real(m, p, q)
     }
 
     /// Fetches the imaginary love number from the cache for index of tuple (m, p, q).
     pub(crate) fn imaginary(&self, m: usize, p: usize, q: usize) -> f64 {
-        // The cached data is stored in a 1D array, so the 3D coordinates are mapped to the 1D index.
-        // m_max and p_max are both 3
-        let index = Self::map_3d_to_1d(m, 3, p, 3, q);
-        assert!(index < self.imaginary.len());
-        self.imaginary[index]
+        self.cache.imaginary(m, p, q)
     }
 
     pub fn refresh_cache_full(
@@ -152,7 +180,7 @@ impl LoveNumber {
         for q in (0..14).skip(q_min).take(q_max) {
             for p in p_min..p_max {
                 for m in m_min..m_max {
-                    let wk2 = calculate_tidal_excitation_frequency_mode_sigma_2mpq(
+                    let wk2 = Self::calculate_tidal_excitation_frequency_mode_sigma_2mpq(
                         m,
                         p,
                         q,
@@ -160,20 +188,26 @@ impl LoveNumber {
                         orbital_frequency,
                     );
 
-                    let index = Self::map_3d_to_1d(m, 3, p, 3, q);
-                    assert!(index < self.freq.len());
                     // TODO Don't update the love numbers cache if the change in wk2 is minimal
                     let (real_k2, imaginary_k2) =
                         self.get_love_numbers(central_body, spin_rate, wk2);
 
-                    self.freq[index] = wk2;
-                    assert!(index < self.real.len());
-                    self.real[index] = real_k2;
-                    assert!(index < self.imaginary.len());
-                    self.imaginary[index] = imaginary_k2;
+                    self.cache
+                        .set_all(m, p, q, wk2, real_k2, imaginary_k2);
                 }
             }
         }
+    }
+
+    fn calculate_tidal_excitation_frequency_mode_sigma_2mpq(
+        m: usize,
+        p: usize,
+        q: usize,
+        spin: f64,
+        orbital_frequency: f64,
+    ) -> f64 {
+        let (m, p, q) = (m as i32, p as i32, q as i32 - 7);
+        f64!(2 - 2 * p + q) * orbital_frequency - f64!(m) * spin
     }
 
     fn get_love_numbers(&self, central_body: bool, spin_rate: f64, mut wk2: f64) -> (f64, f64) {
@@ -196,6 +230,7 @@ impl LoveNumber {
 
         real_k2 *= -1.;
 
+        // Reverse the parity inversion
         if parity {
             imaginary_k2 *= -1.;
         }
@@ -254,16 +289,4 @@ impl LoveNumber {
 
         (re_k2, im_k2)
     }
-}
-
-// Calculate the tidal excitation frequency mode \sigma_{2mpq}
-pub fn calculate_tidal_excitation_frequency_mode_sigma_2mpq(
-    m: usize,
-    p: usize,
-    q: usize,
-    spin: f64,
-    orbital_frequency: f64,
-) -> f64 {
-    let (m, p, q) = (m as i32, p as i32, q as i32 - 7);
-    f64!(2 - 2 * p + q) * orbital_frequency - f64!(m) * spin
 }
