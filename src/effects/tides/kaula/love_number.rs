@@ -19,6 +19,8 @@ pub struct LoveNumber {
     stellar_spectrum_spin_rate: Option<f64>, // Specified the initial spin rate of the star, or `None` if planetary tide.
 
     // Cache of the tidal frequency
+    left: f64,
+    right: f64,
     #[serde(with = "BigArray")]
     freq: [f64; 145],
     #[serde(with = "BigArray")]
@@ -34,6 +36,8 @@ impl Default for LoveNumber {
             spectrum_real_part: [0.; 1024],
             spectrum_imaginary_part: [0.; 1024],
             stellar_spectrum_spin_rate: None,
+            left: 0.,
+            right: 0.,
             freq: [0.; 145],
             real: [0.; 145],
             imaginary: [0.; 145],
@@ -169,13 +173,20 @@ impl LoveNumber {
 
                     let index = Self::map_3d_to_1d(m_idx, 3, p_idx, 3, q_idx);
                     assert!(index < self.freq.len());
-                    // TODO Don't update the love numbers cache if the change in wk2 is minimal
-                    let (real_k2, imaginary_k2) = self.get_love_numbers(
+                    // Don't update the love numbers cache if the change in wk2 is minimal
+
+                    if self.left < wk2 && wk2 < self.right {
+                        continue;
+                    }
+
+                    let (real_k2, imaginary_k2, left, right) = self.get_love_numbers(
                         central_body,
                         spin_rate,
                         wk2,
                     );
 
+                    self.left = left;
+                    self.right = right;
                     self.freq[index] = wk2;
                     assert!(index < self.real.len());
                     self.real[index] = real_k2;
@@ -191,7 +202,7 @@ impl LoveNumber {
         central_body: bool,
         spin_rate: f64,
         mut wk2: f64,
-    ) -> (f64, f64) {
+    ) -> (f64, f64, f64, f64) {
         // Only for kaula stellar tide with a fixed spectrum
         // Taking into account of the real time evolution of the stellar spin rate
         // by modifying the tidal frequency, and rescale the love number (below)
@@ -207,7 +218,7 @@ impl LoveNumber {
             wk2 = abs!(wk2);
         }
 
-        let (mut real_k2, mut imaginary_k2) = self.interpolate_love_numbers(wk2);
+        let (mut real_k2, mut imaginary_k2, left, right) = self.interpolate_love_numbers(wk2);
 
         real_k2 *= -1.;
 
@@ -220,22 +231,28 @@ impl LoveNumber {
             imaginary_k2 *= (spin_rate / spectrum_spin_rate).powi(2);
         }
 
-        (real_k2, imaginary_k2)
+        (real_k2, imaginary_k2, left, right)
     }
 
     // Find the real part and the imaginary part of the Love number associated with
     // the excitation frequenccy wk2
-    fn interpolate_love_numbers(&self, wk2: f64) -> (f64, f64) {
+    fn interpolate_love_numbers(&self, wk2: f64) -> (f64, f64, f64, f64) {
         let im_k2;
         let re_k2;
+        let left;
+        let right;
         // Find the index of the closest match to use for the interpolation
         if wk2 <= self.spectrum_excitation_frequency[0] {
+            left =  self.spectrum_excitation_frequency[0];
+            right =  self.spectrum_excitation_frequency[1];
             // If wk2 is less than or equal to the first element, take the first value
             im_k2 = self.spectrum_imaginary_part[0];
             re_k2 = self.spectrum_real_part[0];
         } else if wk2
             >= self.spectrum_excitation_frequency[self.spectrum_excitation_frequency.len() - 1]
         {
+            left =  self.spectrum_excitation_frequency[self.spectrum_excitation_frequency.len() - 2];
+            right =  self.spectrum_excitation_frequency[self.spectrum_excitation_frequency.len() - 1];
             // If wk2 is greater than or equal to the last element, take the last value
             im_k2 = self.spectrum_imaginary_part[self.spectrum_excitation_frequency.len() - 1];
             re_k2 = self.spectrum_real_part[self.spectrum_excitation_frequency.len() - 1];
@@ -246,6 +263,8 @@ impl LoveNumber {
                 .binary_search_by(|val| val.total_cmp(&wk2))
             {
                 Ok(i) => {
+                    left = self.spectrum_excitation_frequency[i - 1];
+                    right = self.spectrum_excitation_frequency[i + 1];
                     // Exact match found: love_number[i] == wk2
                     assert!(i < self.spectrum_real_part.len());
                     re_k2 = self.spectrum_real_part[i];
@@ -253,6 +272,8 @@ impl LoveNumber {
                     im_k2 = self.spectrum_imaginary_part[i];
                 }
                 Err(i) => {
+                    left = self.spectrum_excitation_frequency[i - 1];
+                    right = self.spectrum_excitation_frequency[i];
                     // wk2 is between love_number[i - 1] and love_number[i]
                     assert!(i < self.spectrum_real_part.len());
                     assert!(i < self.spectrum_imaginary_part.len());
@@ -267,7 +288,7 @@ impl LoveNumber {
             }
         }
 
-        (re_k2, im_k2)
+        (re_k2, im_k2, left, right)
     }
 }
 
