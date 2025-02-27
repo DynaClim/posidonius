@@ -1,4 +1,4 @@
-use super::common::{TidalModel, TidesEffect};
+use super::{TidalModel, TidesEffect};
 use crate::EvolutionType;
 use crate::Particle;
 use crate::constants::{K2, MAX_PARTICLES, SMOOTHING_FACTOR_DYN_TIDE_COROTATION};

@@ -1,5 +1,5 @@
 // Implemented by Alexandre Revol alexandre.revol@unige.ch
-use super::common::TidesEffect;
+use super::TidesEffect;
 use crate::constants::{DAY, G, TWO_PI};
 use crate::tools;
 use crate::tools::KeplerianElements;

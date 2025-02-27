@@ -1,8 +1,8 @@
+use super::{Axes, calculate_spin};
 use crate::Particle;
 use crate::constants::{G, MAX_DISTANCE_2, MAX_PARTICLES};
 use crate::effects::{DiskEffect, RotationalFlatteningEffect, TidesEffect, WindEffect};
 use crate::effects::{disk, evolution, general_relativity, rotational_flattening, tides, wind};
-use crate::particles::{Axes, common};
 use evolution::{EvolutionType, Evolver};
 use general_relativity::{GeneralRelativityEffect, GeneralRelativityImplementation};
 
@@ -451,7 +451,7 @@ impl Universe {
                 &mut self.particles_evolvers,
             );
         }
-        common::calculate_spin(particles); // uses moment of inertia to compute spin
+        calculate_spin(particles); // uses moment of inertia to compute spin
         if evolution && self.consider_effects.evolution {
             // Evolve quantities that require a computed spin
             evolution::calculate_particles_spin_dependent_evolving_quantities(

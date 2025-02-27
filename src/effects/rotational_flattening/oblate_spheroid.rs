@@ -1,4 +1,4 @@
-use super::common::{RotationalFlatteningEffect, RotationalFlatteningModel};
+use super::{RotationalFlatteningEffect, RotationalFlatteningModel};
 use crate::{Axes, Particle};
 use serde::{Deserialize, Serialize};
 

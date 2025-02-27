@@ -1,6 +1,6 @@
 // Implemented by Gabriel Oliveira Gomes
 // Described in Gomes et al (2021): https://ui.adsabs.harvard.edu/abs/2021A%26A...651A..23G/abstract
-use super::common::{TidalModel, TidesEffect};
+use super::{TidalModel, TidesEffect};
 use crate::constants::{K2, PI, TWO_PI};
 use crate::tools;
 use crate::{Axes, Particle};
