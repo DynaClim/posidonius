@@ -1,4 +1,6 @@
 use super::super::super::super::Particle;
+use crate::tools::KeplerianElements;
+
 use super::{
     calculate_base_constant, compute_phase_alpha_1, compute_phase_alpha_2, compute_phase_beta,
     select_eccentricty_order_q,
@@ -8,7 +10,7 @@ use itertools::izip;
 pub fn calculate_normal_component_of_the_tidal_force_3d(
     tidal_host_particle: &Particle,
     particle: &Particle,
-    keplerian_elements: (f64, f64, f64, f64, f64, f64, f64, f64),
+    keplerian_elements: &KeplerianElements,
     central_body: bool,
 ) -> (f64, f64) {
     let kaula = particle.tides.get_kaula();
@@ -23,7 +25,7 @@ pub fn calculate_normal_component_of_the_tidal_force_3d(
         longitude_of_ascending_node,
         mean_anomaly,
         _orbital_period,
-    ) = keplerian_elements;
+    ) = keplerian_elements.unpack();
     let argument_perihelion = longitude_perihelion - longitude_of_ascending_node;
 
     // 3D case

@@ -192,8 +192,7 @@ impl LoveNumber {
                     let (real_k2, imaginary_k2) =
                         self.get_love_numbers(central_body, spin_rate, wk2);
 
-                    self.cache
-                        .set_all(m, p, q, wk2, real_k2, imaginary_k2);
+                    self.cache.set_all(m, p, q, wk2, real_k2, imaginary_k2);
                 }
             }
         }

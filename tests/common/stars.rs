@@ -772,25 +772,14 @@ pub fn solar_like_secondary(
     p += n; // Convert to longitude of perihelion !!
     let q = a * (1.0 - e); // perihelion distance
     let gm: f64 = posidonius::constants::G * (primary_star.mass + secondary_star_mass);
-    let (x, y, z, vx, vy, vz) =
-        posidonius::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
-
-    let secondary_star_position = posidonius::Axes { x, y, z };
-    let secondary_star_velocity = posidonius::Axes {
-        x: vx,
-        y: vy,
-        z: vz,
-    };
+    let (secondary_star_position, secondary_star_velocity) =
+        super::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
 
     // Initialization of stellar spin
     let secondary_star_rotation_period: f64 = 8.; // hours
     let secondary_star_angular_frequency =
         posidonius::constants::TWO_PI / (secondary_star_rotation_period / 24.); // days^-1
-    let secondary_star_spin = posidonius::Axes {
-        x: 0.,
-        y: 0.,
-        z: secondary_star_angular_frequency,
-    };
+    let secondary_star_spin = posidonius::Axes::from(0., 0., secondary_star_angular_frequency);
 
     let secondary_star_love_number: f64 = 0.03; // Sun
     // Disipation factor (sigma)

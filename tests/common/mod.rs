@@ -1,5 +1,6 @@
 pub mod planets;
 pub mod stars;
+pub mod tools;
 pub mod universe;
 
 use std::error::Error;
@@ -8,7 +9,6 @@ use std::io::{BufRead, BufReader};
 
 use posidonius::LoveNumber;
 
-#[allow(dead_code)]
 pub fn simulation_properties() -> (f64, f64, f64, f64, f64) {
     let time_step: f64 = 0.08; // in days
     let time_limit: f64 = time_step * 200.; // days
@@ -24,7 +24,6 @@ pub fn simulation_properties() -> (f64, f64, f64, f64, f64) {
     )
 }
 
-#[allow(dead_code)]
 pub fn get_data_dirname(test_name: &String) -> (String, String) {
     let rust_data_dirname = format!("tests/data/{test_name}/");
     let python_data_dirname = format!("posidonius/tests/data/{test_name}/");

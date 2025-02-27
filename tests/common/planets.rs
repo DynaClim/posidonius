@@ -144,15 +144,8 @@ pub fn super_earth_like(
     p += n; // Convert to longitude of perihelion !!
     let q = a * (1.0 - e); // perihelion distance
     let gm: f64 = posidonius::constants::G * (planet_mass + star.mass);
-    let (x, y, z, vx, vy, vz) =
-        posidonius::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
-
-    let planet_position = posidonius::Axes { x, y, z };
-    let planet_velocity = posidonius::Axes {
-        x: vx,
-        y: vy,
-        z: vz,
-    };
+    let (planet_position, planet_velocity) =
+        super::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
 
     ////// Initialization of planetary spin
     let orbital_period = posidonius::constants::TWO_PI
@@ -171,9 +164,9 @@ pub fn super_earth_like(
         planet_position,
         planet_velocity,
     );
-    let planet_inclination = planet_keplerian_orbital_elements.3;
+    let planet_inclination = planet_keplerian_orbital_elements.inclination;
     let planet_longitude_ascending_node = 0.;
-    let planet_spin = posidonius::tools::calculate_spin(
+    let planet_spin = super::tools::calculate_spin(
         planet_angular_frequency,
         planet_inclination,
         planet_obliquity,
@@ -248,16 +241,8 @@ pub fn trappist1_h_like(
     p += n; // Convert to longitude of perihelion !!
     let q = a * (1.0 - e); // perihelion distance
     let gm: f64 = posidonius::constants::G * (planet_mass + star.mass);
-    let (x, y, z, vx, vy, vz) =
-        posidonius::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
-
-    let planet_position = posidonius::Axes { x, y, z };
-    let planet_velocity = posidonius::Axes {
-        x: vx,
-        y: vy,
-        z: vz,
-    };
-
+    let (planet_position, planet_velocity) =
+        super::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
     ////// Initialization of planetary spin
     let orbital_period = posidonius::constants::TWO_PI
         * (((a * posidonius::constants::AU).powi(3))
@@ -277,9 +262,9 @@ pub fn trappist1_h_like(
         planet_position,
         planet_velocity,
     );
-    let planet_inclination = planet_keplerian_orbital_elements.3;
+    let planet_inclination = planet_keplerian_orbital_elements.inclination;
     let planet_longitude_ascending_node = 0.;
-    let planet_spin = posidonius::tools::calculate_spin(
+    let planet_spin = super::tools::calculate_spin(
         planet_angular_frequency,
         planet_inclination,
         planet_obliquity,
@@ -365,24 +350,8 @@ pub fn earth_like(
     p += n; // Convert to longitude of perihelion !!
     let q = a * (1.0 - e); // perihelion distance
     let gm: f64 = posidonius::constants::G * (planet_mass + star.mass);
-    let (x, y, z, vx, vy, vz) =
-        posidonius::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
-
-    //////// Cartesian coordinates
-    //let gm: f64 = posidonius::constants::G*(planet_mass+star.mass);
-    //let x: f64 = 0.1;
-    //let y: f64 = 0.;
-    //let z: f64 = 0.;
-    //let vx: f64 = 0.;
-    //let vy: f64 = core::num::Float::sqrt(gm/x); // Stable orbit
-    //let vz: f64 = 0.;
-
-    let planet_position = posidonius::Axes { x, y, z };
-    let planet_velocity = posidonius::Axes {
-        x: vx,
-        y: vy,
-        z: vz,
-    };
+    let (planet_position, planet_velocity) =
+        super::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
 
     ////// Initialization of planetary spin
     //let planet_obliquity: f64 = 11.459156 * posidonius::constants::DEG2RAD; // 0.2 rad
@@ -394,9 +363,9 @@ pub fn earth_like(
         planet_position,
         planet_velocity,
     );
-    let planet_inclination = planet_keplerian_orbital_elements.3;
+    let planet_inclination = planet_keplerian_orbital_elements.inclination;
     let planet_longitude_ascending_node = 0.;
-    let planet_spin = posidonius::tools::calculate_spin(
+    let planet_spin = super::tools::calculate_spin(
         planet_angular_frequency,
         planet_inclination,
         planet_obliquity,
@@ -501,24 +470,8 @@ pub fn jupiter_like(
     p += n; // Convert to longitude of perihelion !!
     let q = a * (1.0 - e); // perihelion distance
     let gm: f64 = posidonius::constants::G * (planet_mass + star.mass);
-    let (x, y, z, vx, vy, vz) =
-        posidonius::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
-
-    //////// Cartesian coordinates
-    //let gm: f64 = posidonius::constants::G*(planet_mass+star.mass);
-    //let x: f64 = 0.1;
-    //let y: f64 = 0.;
-    //let z: f64 = 0.;
-    //let vx: f64 = 0.;
-    //let vy: f64 = core::num::Float::sqrt(gm/x); // Stable orbit
-    //let vz: f64 = 0.;
-
-    let planet_position = posidonius::Axes { x, y, z };
-    let planet_velocity = posidonius::Axes {
-        x: vx,
-        y: vy,
-        z: vz,
-    };
+    let (planet_position, planet_velocity) =
+        super::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
 
     ////// Initialization of planetary spin
     //let planet_obliquity: f64 = 11.459156 * posidonius::constants::DEG2RAD; // 0.2 rad
@@ -530,9 +483,9 @@ pub fn jupiter_like(
         planet_position,
         planet_velocity,
     );
-    let planet_inclination = planet_keplerian_orbital_elements.3;
+    let planet_inclination = planet_keplerian_orbital_elements.inclination;
     let planet_longitude_ascending_node = 0.;
-    let planet_spin = posidonius::tools::calculate_spin(
+    let planet_spin = super::tools::calculate_spin(
         planet_angular_frequency,
         planet_inclination,
         planet_obliquity,

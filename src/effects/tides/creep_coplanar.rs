@@ -138,16 +138,7 @@ pub fn calculate_creep_coplanar_shape(
     central_body: bool,
 ) -> Axes {
     let gm = tidal_host_particle.mass_g + particle.mass_g;
-    let (
-        semimajor_axis,
-        _perihelion_distance,
-        eccentricity,
-        _inclination,
-        _perihelion_longitude,
-        _longitude_of_ascending_node,
-        mean_anomaly,
-        orbital_period,
-    ) = tools::calculate_keplerian_orbital_elements(
+    let keplerian_elements = tools::calculate_keplerian_orbital_elements(
         gm,
         particle.tides.coordinates.position,
         particle.tides.coordinates.velocity,
@@ -162,10 +153,10 @@ pub fn calculate_creep_coplanar_shape(
                 _ => 0.,
             };
         calculate_particle_shape(
-            semimajor_axis,
-            eccentricity,
-            mean_anomaly,
-            orbital_period,
+            keplerian_elements.semi_major_axis,
+            keplerian_elements.eccentricity,
+            keplerian_elements.mean_anomaly,
+            keplerian_elements.orbital_period,
             tidal_host_particle.mass,
             particle.mass,
             tidal_host_particle.radius,
@@ -182,10 +173,10 @@ pub fn calculate_creep_coplanar_shape(
             _ => 0.,
         };
         calculate_particle_shape(
-            semimajor_axis,
-            eccentricity,
-            mean_anomaly,
-            orbital_period,
+            keplerian_elements.semi_major_axis,
+            keplerian_elements.eccentricity,
+            keplerian_elements.mean_anomaly,
+            keplerian_elements.orbital_period,
             particle.mass,
             tidal_host_particle.mass,
             particle.radius,
@@ -198,7 +189,7 @@ pub fn calculate_creep_coplanar_shape(
 }
 
 pub fn calculate_particle_shape(
-    semimajor_axis: f64,
+    semi_major_axis: f64,
     eccentricity: f64,
     mean_anomaly: f64,
     orbital_period: f64,
@@ -218,7 +209,7 @@ pub fn calculate_particle_shape(
         / (8.0 * PI * radius.powi(4) * uniform_viscosity_coefficient);
     let mean_motion = TWO_PI / orbital_period;
     let epsilon_rho_bar = if consider_tides {
-        15.0 * companion_mass * radius.powi(3) / (4.0 * primary_mass * semimajor_axis.powi(3))
+        15.0 * companion_mass * radius.powi(3) / (4.0 * primary_mass * semi_major_axis.powi(3))
     } else {
         0.
     };

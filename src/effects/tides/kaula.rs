@@ -4,6 +4,7 @@ use super::super::super::Particle;
 use super::super::super::constants::{DAY, G, TWO_PI};
 use super::super::super::tools;
 use super::common::TidesEffect;
+use crate::tools::KeplerianElements;
 use serde::{Deserialize, Serialize};
 
 mod polynomials;
@@ -81,7 +82,7 @@ pub fn calculate_tidal_force(
         particle,
         central_body,
         obliquity,
-        keplerian_elements,
+        &keplerian_elements,
     );
 
     calculate_tidal_force_component(
@@ -155,7 +156,7 @@ fn calculate_2d_tidal_force_components(
     tidal_host_particle: &Particle,
     particle: &Particle,
     central_body: bool,
-    keplerian_elements: (f64, f64, f64, f64, f64, f64, f64, f64),
+    keplerian_elements: &KeplerianElements,
 ) -> ((f64, f64, f64), (f64, f64, f64)) {
     let (orthogonal_component, orthogonal_component_secular) =
         calculate_orthogonal_component_of_the_tidal_force_2d(
@@ -187,7 +188,7 @@ fn calculate_3d_tidal_force_components(
     tidal_host_particle: &Particle,
     particle: &Particle,
     central_body: bool,
-    keplerian_elements: (f64, f64, f64, f64, f64, f64, f64, f64),
+    keplerian_elements: &KeplerianElements,
 ) -> ((f64, f64, f64), (f64, f64, f64)) {
     let (orthogonal_component, orthogonal_component_secular) =
         calculate_orthogonal_component_of_the_tidal_force_3d(
@@ -226,21 +227,13 @@ fn calculate_2d_or_3d_tidal_force_components(
     particle: &mut Particle,
     central_body: bool,
     obliquity: f64,
-    keplerian_elements: (f64, f64, f64, f64, f64, f64, f64, f64),
+    keplerian_elements: &KeplerianElements,
 ) -> ((f64, f64, f64), (f64, f64, f64)) {
     // !central_body ==> planetary tide ==> particle is the planet
     // central_body ==> stellar tide ==> tidal_host_particle is the planet
     // Keplerian elements
-    let (
-        _semi_major_axis,
-        _perihelion_distance,
-        eccentricity,
-        _inclination,
-        _longitude_perihelion,
-        _longitude_of_ascending_node,
-        _mean_anomaly,
-        orbital_period,
-    ) = keplerian_elements;
+    let eccentricity = keplerian_elements.eccentricity;
+    let orbital_period = keplerian_elements.orbital_period;
 
     // Planetary spin in [rad.s^-1]
     let spin = sqrt!(particle.norm_spin_vector_2) / DAY;
