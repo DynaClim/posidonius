@@ -1,6 +1,5 @@
-use super::super::Axes;
-use super::super::Particle;
-use super::super::constants::R_SUN;
+use crate::constants::R_SUN;
+use crate::{Axes, Particle};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]

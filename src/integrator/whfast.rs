@@ -1,15 +1,12 @@
-use super::super::Particle;
-use super::super::constants::{
+use super::Integrator;
+use super::output::{write_historic_snapshot, write_recovery_snapshot};
+use crate::Particle;
+use crate::constants::{
     DBL_EPSILON_2, G, IMPLICIT_MIDPOINT_MAX_ITER, IMPLICIT_MIDPOINT_MIN_ITER, MAX_PARTICLES, PI,
     WHFAST_NMAX_NEWT, WHFAST_NMAX_QUART,
 };
-use super::super::effects::EvolutionType;
-use super::super::effects::GeneralRelativityImplementation;
-use super::super::particles::Axes;
-use super::super::particles::IgnoreGravityTerms;
-use super::super::particles::Universe;
-use super::Integrator;
-use super::output::{write_historic_snapshot, write_recovery_snapshot};
+use crate::effects::{EvolutionType, GeneralRelativityImplementation};
+use crate::particles::{Axes, IgnoreGravityTerms, Universe};
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 use std;

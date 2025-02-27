@@ -1,4 +1,4 @@
-use super::Particle;
+use crate::Particle;
 
 pub fn calculate_spin(particles: &mut [Particle]) {
     for (i, particle) in particles.iter_mut().enumerate() {

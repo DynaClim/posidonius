@@ -1,8 +1,7 @@
-use super::super::super::Axes;
-use super::super::super::Particle;
 use super::constant_time_lag;
 use super::creep_coplanar;
 use super::kaula;
+use crate::{Axes, Particle};
 use serde::{Deserialize, Serialize};
 
 // For future reference:

@@ -1,10 +1,10 @@
-use super::super::constants::K2;
-use super::super::{Disk, EvolutionType, GeneralRelativity, RotationalFlattening, Tides, Wind};
-use super::super::{
-    DiskEffect, GeneralRelativityEffect, RotationalFlatteningEffect, RotationalFlatteningModel,
-    TidalModel, TidesEffect, WindEffect,
-};
 use super::Axes;
+use crate::constants::K2;
+use crate::effects::{
+    Disk, DiskEffect, EvolutionType, GeneralRelativity, GeneralRelativityEffect,
+    RotationalFlattening, RotationalFlatteningEffect, RotationalFlatteningModel, TidalModel, Tides,
+    TidesEffect, Wind, WindEffect,
+};
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, format_description};
 

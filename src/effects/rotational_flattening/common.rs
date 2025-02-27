@@ -1,8 +1,7 @@
-use super::super::super::Axes;
-use super::super::super::Particle;
-use super::super::tides::creep_coplanar::CreepCoplanarParameters;
 use super::creep_coplanar;
 use super::oblate_spheroid;
+use crate::effects::tides::creep_coplanar::CreepCoplanarParameters;
+use crate::{Axes, Particle};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]

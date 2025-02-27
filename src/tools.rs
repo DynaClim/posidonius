@@ -1,5 +1,5 @@
-use super::constants::{PI, TWO_PI};
-use super::particles::Axes;
+use crate::constants::{PI, TWO_PI};
+use crate::particles::Axes;
 
 pub fn calculate_inclination_orbital_equatorial_plane(
     position: Axes,

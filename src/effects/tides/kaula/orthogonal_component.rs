@@ -1,8 +1,8 @@
-use super::super::super::super::Particle;
 use super::{
     alpha_pqkj, calculate_2d_constant, calculate_base_constant, compute_phase_alpha_3,
     compute_phase_alpha_4, select_eccentricty_order_q,
 };
+use crate::Particle;
 use crate::tools::KeplerianElements;
 
 use itertools::izip;

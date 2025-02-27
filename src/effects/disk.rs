@@ -1,6 +1,5 @@
-use super::super::Axes;
-use super::super::Particle;
-use super::super::constants::{BOLTZMANN_CONSTANT, MASS_HYDROGEN_ATOM};
+use crate::constants::{BOLTZMANN_CONSTANT, MASS_HYDROGEN_ATOM};
+use crate::{Axes, Particle};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]

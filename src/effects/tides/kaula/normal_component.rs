@@ -1,4 +1,4 @@
-use super::super::super::super::Particle;
+use crate::Particle;
 use crate::tools::KeplerianElements;
 
 use super::{

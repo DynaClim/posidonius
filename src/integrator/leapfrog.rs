@@ -1,8 +1,7 @@
-use super::super::effects::EvolutionType;
-use super::super::particles::IgnoreGravityTerms;
-use super::super::particles::Universe;
 use super::Integrator;
 use super::output::{write_historic_snapshot, write_recovery_snapshot};
+use crate::effects::EvolutionType;
+use crate::particles::{IgnoreGravityTerms, Universe};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::collections::hash_map::DefaultHasher;

@@ -476,7 +476,7 @@ fn kepler_solution_for_a_hyperbola_hybrid_approach(
     eccentric_anomaly
 }
 
-use posidonius::constants::{M_EARTH, G};
+use posidonius::constants::{G, M_EARTH};
 fn calculate_keplerian_orbital_elements() {
     //- Star (central body)
     let star_mass = 0.08; // Solar masses

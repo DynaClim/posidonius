@@ -1,9 +1,7 @@
-use super::super::Integrator;
-use super::super::constants::MIN_ORBITAL_PERIOD_TIME_STEP_RATIO;
-use super::super::particles::Reference;
-use super::super::particles::Universe;
-use super::super::tools::calculate_keplerian_orbital_elements;
-use super::super::{Axes, TidalModel, TidesEffect};
+use crate::constants::MIN_ORBITAL_PERIOD_TIME_STEP_RATIO;
+use crate::particles::{Reference, Universe};
+use crate::tools::calculate_keplerian_orbital_elements;
+use crate::{Axes, Integrator, TidalModel, TidesEffect};
 use bincode;
 use serde::Serialize;
 use serde_json;

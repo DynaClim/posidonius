@@ -1,7 +1,6 @@
-use super::super::Axes;
-use super::super::Particle;
-use super::super::constants::{DBL_EPSILON_2, G, MAX_PARTICLES, SPEED_OF_LIGHT_2};
-use super::super::particles::universe::IgnoreGravityTerms;
+use crate::constants::{DBL_EPSILON_2, G, MAX_PARTICLES, SPEED_OF_LIGHT_2};
+use crate::particles::universe::IgnoreGravityTerms;
+use crate::{Axes, Particle};
 use serde::{Deserialize, Serialize};
 use std::iter;
 use time;

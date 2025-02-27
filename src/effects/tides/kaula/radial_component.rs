@@ -1,5 +1,5 @@
-use super::super::super::super::Particle;
 use super::{alpha_pqkj, calculate_base_constant, select_eccentricty_order_q};
+use crate::Particle;
 use crate::tools::KeplerianElements;
 use itertools::izip;
 

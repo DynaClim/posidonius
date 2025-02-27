@@ -1,10 +1,9 @@
 // Implemented by Alexandre Revol alexandre.revol@unige.ch
-use super::super::super::Axes;
-use super::super::super::Particle;
-use super::super::super::constants::{DAY, G, TWO_PI};
-use super::super::super::tools;
 use super::common::TidesEffect;
+use crate::constants::{DAY, G, TWO_PI};
+use crate::tools;
 use crate::tools::KeplerianElements;
+use crate::{Axes, Particle};
 use serde::{Deserialize, Serialize};
 
 mod polynomials;

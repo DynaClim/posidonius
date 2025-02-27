@@ -1,13 +1,11 @@
-use super::super::constants::{
+use super::Integrator;
+use super::output::{write_historic_snapshot, write_recovery_snapshot};
+use crate::constants::{
     INTEGRATOR_EPSILON, INTEGRATOR_EPSILON_GLOBAL, INTEGRATOR_FORCE_IS_VELOCITYDEPENDENT,
     INTEGRATOR_MAX_DT, INTEGRATOR_MIN_DT, MAX_PARTICLES, SAFETY_FACTOR,
 };
-use super::super::effects::EvolutionType;
-use super::super::effects::GeneralRelativityImplementation;
-use super::super::particles::IgnoreGravityTerms;
-use super::super::particles::Universe;
-use super::Integrator;
-use super::output::{write_historic_snapshot, write_recovery_snapshot};
+use crate::effects::{EvolutionType, GeneralRelativityImplementation};
+use crate::particles::{IgnoreGravityTerms, Universe};
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 use std::any::Any;

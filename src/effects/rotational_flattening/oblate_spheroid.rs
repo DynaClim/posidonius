@@ -1,7 +1,5 @@
-use super::super::super::Axes;
-use super::super::super::Particle;
-use super::common::RotationalFlatteningEffect;
-use super::common::RotationalFlatteningModel;
+use super::common::{RotationalFlatteningEffect, RotationalFlatteningModel};
+use crate::{Axes, Particle};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]

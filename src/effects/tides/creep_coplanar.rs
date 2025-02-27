@@ -1,11 +1,10 @@
 // Implemented by Gabriel Oliveira Gomes
 // Described in Gomes et al (2021): https://ui.adsabs.harvard.edu/abs/2021A%26A...651A..23G/abstract
-use super::super::super::Axes;
-use super::super::super::Particle;
-use super::super::super::constants::{K2, PI, TWO_PI};
-use super::super::super::tools;
-use super::common::TidalModel;
-use super::common::TidesEffect;
+use super::common::{TidalModel, TidesEffect};
+use crate::constants::{K2, PI, TWO_PI};
+use crate::tools;
+use crate::{Axes, Particle};
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
