@@ -73,7 +73,7 @@ class ConstantTimeLag(object):
             if key in self._data["ConstantTimeLag"]:
                 self._data["ConstantTimeLag"][key] = float(value)
             else:
-                print("Ignored parameter: {}".format(key))
+                print("CTL: Ignored parameter: {}".format(key))
 
     def get(self):
         if type(self._data) == str:
@@ -93,7 +93,7 @@ class CreepCoplanar(object):
             if key in self._data["CreepCoplanar"]:
                 self._data["CreepCoplanar"][key] = float(value)
             else:
-                print("Ignored parameter: {}".format(key))
+                print("Creep: Ignored parameter: {}".format(key))
 
     def get(self):
         if type(self._data) == str:
@@ -117,7 +117,7 @@ class Kaula(object):
             },
         }
         # Update default values, ignore non-recognised keys
-        for key, value in six.iteritems(input_parameters):
+        for key, value in six.iteritems(input_parameters["love_numbers"]):
             if isinstance(value, (tuple, list)):
                 # Convert lists or tuples to a list of floats
                 self._data["Kaula"]["love_numbers"][key] = [float(v) for v in value]
