@@ -41,6 +41,13 @@ impl Axes {
     }
 
     #[inline(always)]
+    pub fn sub(&mut self, other: &Self) {
+        self.x -= other.x;
+        self.y -= other.y;
+        self.z -= other.z;
+    }
+
+    #[inline(always)]
     pub fn mul(&mut self, factor: f64) {
         self.x *= factor;
         self.y *= factor;
@@ -50,6 +57,11 @@ impl Axes {
     #[inline(always)]
     pub fn negate(&mut self) {
         self.mul(-1.)
+    }
+
+    #[inline(always)]
+    pub fn dot(&self, other: &Self) -> f64 {
+        self.x * other.x + self.y * other.y + self.z * other.z
     }
 
     #[inline(always)]
