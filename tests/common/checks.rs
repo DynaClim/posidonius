@@ -1,5 +1,7 @@
-
-use posidonius::{Particle, RotationalFlatteningEffect, RotationalFlatteningModel,TidalModel, TidesEffect, EvolutionType};
+use posidonius::{
+    EvolutionType, Particle, RotationalFlatteningEffect, RotationalFlatteningModel, TidalModel,
+    TidesEffect,
+};
 use time::{OffsetDateTime, format_description};
 
 // If creep coplanar tides and rotational flattening are set, both
@@ -44,27 +46,23 @@ pub fn check_uniform_viscosity_coefficient(particle: &Particle) {
                 "[ERROR {} UTC] When using Creep Coplanar Tidal or rotational flattening effects, both effects need to be Creep Coplanar and not just one of them (e.g., it cannot be mixed with ConstantTimeLag or OblateSpheroid).",
                 OffsetDateTime::now_utc()
                     .format(
-                        &format_description::parse(
-                            "[year].[month].[day] [hour]:[minute]:[second]"
-                        )
-                        .unwrap()
+                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
+                            .unwrap()
                     )
                     .unwrap()
             );
         } else if creep_coplanar_tides && creep_coplanar_rotational_flattening {
             let diff_uniform_viscosity_coefficient = f64::abs(
                 particle_uniform_viscosity_coefficient_for_tides
-                    - particle_uniform_viscosity_coefficient_for_rotational_flattenning
+                    - particle_uniform_viscosity_coefficient_for_rotational_flattenning,
             );
             assert!(
                 diff_uniform_viscosity_coefficient <= 1.0e-16,
                 "[ERROR {} UTC] When using Creep Coplanar Tidal and rotational flattening effects, the uniform viscosity coefficient must be identical {:.16}.",
                 OffsetDateTime::now_utc()
                     .format(
-                        &format_description::parse(
-                            "[year].[month].[day] [hour]:[minute]:[second]"
-                        )
-                        .unwrap()
+                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
+                            .unwrap()
                     )
                     .unwrap(),
                 diff_uniform_viscosity_coefficient
@@ -72,8 +70,6 @@ pub fn check_uniform_viscosity_coefficient(particle: &Particle) {
         }
     }
 }
-
-
 
 pub fn evolution_warnings(evolution: EvolutionType) {
     match evolution {

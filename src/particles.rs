@@ -34,13 +34,6 @@ impl Axes {
     }
 
     #[inline(always)]
-    pub fn copy_from(&mut self, other: &Self) {
-        self.x = other.x;
-        self.y = other.y;
-        self.z = other.z;
-    }
-
-    #[inline(always)]
     pub fn add(&mut self, other: &Self) {
         self.x += other.x;
         self.y += other.y;
@@ -53,7 +46,6 @@ impl Axes {
         self.y *= factor;
         self.z *= factor;
     }
-
 
     #[inline(always)]
     pub fn negate(&mut self) {

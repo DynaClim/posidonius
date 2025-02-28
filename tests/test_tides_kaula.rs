@@ -203,7 +203,7 @@ fn enabled_planet_tides_case() -> posidonius::WHFast {
         check_uniform_viscosity_coefficient(&star);
         for planet in planets.iter_mut() {
             planet.tides = planet_tides;
-        check_uniform_viscosity_coefficient(&planet);
+            check_uniform_viscosity_coefficient(&planet);
         }
     }
     //////////////////////////////////////////////////////////////////////////////////
@@ -325,7 +325,6 @@ fn enabled_both_tides_case() -> posidonius::WHFast {
         for planet in planets.iter_mut() {
             planet.tides = planet_tides;
             check_uniform_viscosity_coefficient(&planet);
-
         }
     }
     //////////////////////////////////////////////////////////////////////////////////

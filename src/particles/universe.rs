@@ -136,11 +136,13 @@ impl Universe {
         );
         let mut transformed_particles = [Particle::default(); MAX_PARTICLES];
         let mut particles_evolvers: Vec<Evolver> = Vec::with_capacity(n_particles);
-        for i in 0..n_particles {
-            transformed_particles[i] = particles[i];
-            transformed_particles[i].id = i;
+        for (i, (transformed_particle, particle)) in
+            izip!(&mut transformed_particles, &mut particles).enumerate()
+        {
+            *transformed_particle = *particle;
+            transformed_particle.id = i;
             particles_evolvers.push(Evolver::new(
-                transformed_particles[i].evolution,
+                transformed_particle.evolution,
                 initial_time,
                 time_limit,
             ));

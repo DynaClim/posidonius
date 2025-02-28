@@ -42,27 +42,31 @@ pub fn calculate_tidal_force(
     let gm = G * (tidal_host_particle.mass + particle.mass);
 
     let (obliquity, keplerian_elements) = if central_body {
-        (tools::calculate_inclination_orbital_equatorial_plane(
-            tidal_host_particle.heliocentric_position,
-            tidal_host_particle.heliocentric_velocity,
-            particle.spin,
-        ),
-        tools::calculate_keplerian_orbital_elements(
-            gm,
-            tidal_host_particle.heliocentric_position,
-            tidal_host_particle.heliocentric_velocity,
-        ))
+        (
+            tools::calculate_inclination_orbital_equatorial_plane(
+                tidal_host_particle.heliocentric_position,
+                tidal_host_particle.heliocentric_velocity,
+                particle.spin,
+            ),
+            tools::calculate_keplerian_orbital_elements(
+                gm,
+                tidal_host_particle.heliocentric_position,
+                tidal_host_particle.heliocentric_velocity,
+            ),
+        )
     } else {
-        (tools::calculate_inclination_orbital_equatorial_plane(
-            particle.heliocentric_position,
-            particle.heliocentric_velocity,
-            particle.spin,
-        ),
-        tools::calculate_keplerian_orbital_elements(
-            gm,
-            particle.heliocentric_position,
-            particle.heliocentric_velocity,
-        ))
+        (
+            tools::calculate_inclination_orbital_equatorial_plane(
+                particle.heliocentric_position,
+                particle.heliocentric_velocity,
+                particle.spin,
+            ),
+            tools::calculate_keplerian_orbital_elements(
+                gm,
+                particle.heliocentric_position,
+                particle.heliocentric_velocity,
+            ),
+        )
     };
 
     let (tidal_force, tidal_force_secular) = calculate_2d_or_3d_tidal_force_components(
@@ -134,8 +138,7 @@ fn calculate_tidal_force_component(
         radial_component_secular,
     );
 
-    let kaula = particle.tides.get_kaula_mut();
-    kaula.tidal_force.copy_from(&secular_projection);
+    particle.tides.get_kaula_mut().tidal_force = secular_projection;
 
     components
 }

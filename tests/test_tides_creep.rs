@@ -2,8 +2,8 @@
 extern crate serde_derive;
 
 mod common;
-use std::path::Path;
 use crate::common::checks::check_uniform_viscosity_coefficient;
+use std::path::Path;
 
 fn enabled_tides_case() -> posidonius::WHFast {
     let (time_step, time_limit, initial_time, historic_snapshot_period, recovery_snapshot_period) =

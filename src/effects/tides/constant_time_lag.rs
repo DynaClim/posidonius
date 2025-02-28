@@ -251,12 +251,12 @@ pub fn calculate_torque_due_to_tides(
     particle: &Particle,
     central_body: bool,
 ) -> Axes {
-    let mut reference_spin = Axes::new();
     let orthogonal_component_of_the_tidal_force;
     let reference_rscalspin;
+    let reference_spin;
 
     if central_body {
-        reference_spin.copy_from(&tidal_host_particle.spin);
+        reference_spin = tidal_host_particle.spin;
         reference_rscalspin = particle
             .tides
             .parameters
@@ -268,7 +268,7 @@ pub fn calculate_torque_due_to_tides(
             .internal
             .orthogonal_component_of_the_tidal_force_due_to_stellar_tide;
     } else {
-        reference_spin.copy_from(&particle.spin);
+        reference_spin = particle.spin;
         reference_rscalspin = particle
             .tides
             .parameters

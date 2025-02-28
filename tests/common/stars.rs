@@ -1,5 +1,5 @@
-use posidonius;
 use crate::common::checks::{check_uniform_viscosity_coefficient, evolution_warnings};
+use posidonius;
 
 // NewFeatures:solar_like_for_kaula_1, solar_like_for_kaula_2, red_dwarf_like_for_kaula
 #[allow(dead_code)]

@@ -2,8 +2,7 @@ use super::Axes;
 use crate::constants::K2;
 use crate::effects::{
     Disk, DiskEffect, EvolutionType, GeneralRelativity, GeneralRelativityEffect,
-    RotationalFlattening, RotationalFlatteningEffect, Tides,
-    TidesEffect, Wind, WindEffect,
+    RotationalFlattening, RotationalFlatteningEffect, Tides, TidesEffect, Wind, WindEffect,
 };
 use serde::{Deserialize, Serialize};
 
@@ -81,11 +80,10 @@ impl Default for Particle {
             general_relativity: GeneralRelativity::new(GeneralRelativityEffect::Disabled),
             wind: Wind::new(WindEffect::Disabled, k_factor, rotation_saturation),
             disk: Disk::new(DiskEffect::Disabled),
-            evolution: EvolutionType::NonEvolving
+            evolution: EvolutionType::NonEvolving,
         }
     }
 }
-
 
 impl Particle {
     pub fn new(
@@ -98,7 +96,7 @@ impl Particle {
     ) -> Particle {
         // Default effects: None
         let radius_of_gyration_2 = radius_of_gyration.powi(2);
-        let moment_of_inertia =  mass * radius_of_gyration_2 * radius.powi(2);
+        let moment_of_inertia = mass * radius_of_gyration_2 * radius.powi(2);
         Particle {
             mass,
             mass_g: mass * K2,

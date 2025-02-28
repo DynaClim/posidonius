@@ -1,5 +1,5 @@
-use posidonius;
 use crate::common::checks::{check_uniform_viscosity_coefficient, evolution_warnings};
+use posidonius;
 // NewFeatures: new functions added: basic_planetary_configuration_for_stellar_kaula,
 // basic_planetary_configuration_for_planetary_kaula, super_earth_like, trappist1_h_like
 #[allow(dead_code)]

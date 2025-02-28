@@ -1050,20 +1050,14 @@ pub fn calculate_anderson1975_general_relativity_acceleration(
         .zip(particles_accelerations.iter())
     {
         if let GeneralRelativityEffect::OrbitingBody = particle.general_relativity.effect {
-            particle
-                .general_relativity
-                .parameters
-                .output
-                .acceleration
-                .copy_from(particle_acceleration);
+            particle.general_relativity.parameters.output.acceleration = *particle_acceleration;
         }
     }
     host_particle
         .general_relativity
         .parameters
         .output
-        .acceleration
-        .copy_from(&star_acceleration);
+        .acceleration = star_acceleration;
 }
 
 fn anderson1975_general_relativity_inertial_to_jacobi_posvelacc(
@@ -1216,14 +1210,13 @@ fn get_anderson1975_newhall1983_newtonian_inertial_accelerations(
     more_particles: &mut [Particle],
     ignored_gravity_terms: IgnoreGravityTerms,
 ) -> (Axes, [Axes; MAX_PARTICLES - 1]) {
-    let mut host_newtonian_inertial_accelerations = Axes::new();
     let mut newtonian_inertial_accelerations = [Axes::new(); MAX_PARTICLES - 1];
-    host_newtonian_inertial_accelerations.copy_from(&host_particle.inertial_acceleration);
+    let mut host_newtonian_inertial_accelerations = host_particle.inertial_acceleration;
     for (newtonian_acceleration, particle) in newtonian_inertial_accelerations
         .iter_mut()
         .zip(particles.iter_mut().chain(more_particles.iter_mut()))
     {
-        newtonian_acceleration.copy_from(&particle.inertial_acceleration);
+        *newtonian_acceleration = particle.inertial_acceleration;
     }
     // If some terms where ignored by the integrator, they should be added
     if ignored_gravity_terms == IgnoreGravityTerms::WHFastOne
@@ -1566,21 +1559,12 @@ pub fn calculate_newhall1983_general_relativity_acceleration(
         .zip(a_new.iter())
     {
         if let GeneralRelativityEffect::OrbitingBody = particle.general_relativity.effect {
-            particle
-                .general_relativity
-                .parameters
-                .output
-                .acceleration
-                .copy_from(a_new_particle);
+            particle.general_relativity.parameters.output.acceleration = *a_new_particle;
         }
     }
     host_particle
         .general_relativity
         .parameters
         .output
-        .acceleration
-        .copy_from(&host_a_new[0]);
+        .acceleration = host_a_new[0];
 }
-// [end] General Relativity FULL based on REBOUNDx gr.c
-//--------------------------------------------------------------------------
-////////////////////////////////////////////////////////////////////////////
