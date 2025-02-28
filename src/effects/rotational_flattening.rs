@@ -25,7 +25,6 @@ pub struct RotationalFlatteningParticleInternalParameters {
     pub orthogonal_component_of_the_force_induced_by_planet_rotation: f64,
     // Creep coplanar specific:
     pub shape: Axes,
-    //
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
@@ -52,6 +51,54 @@ pub struct RotationalFlatteningParticleCoordinates {
 pub enum RotationalFlatteningModel {
     OblateSpheroid(oblate_spheroid::OblateSpheroidParameters),
     CreepCoplanar(CreepCoplanarParameters),
+}
+
+// Resolves to the functions specific to the internal model.
+impl RotationalFlatteningModel {
+    fn calculate_torque_induced_by_rotational_flattening(
+        &self,
+        rotational_flattening_host_particle: &Particle,
+        particle: &Particle,
+        central_body: bool,
+    ) -> Axes {
+        match self {
+            RotationalFlatteningModel::OblateSpheroid(_) => {
+                oblate_spheroid::calculate_torque_induced_by_rotational_flattening(
+                    rotational_flattening_host_particle,
+                    particle,
+                    central_body,
+                )
+            }
+            RotationalFlatteningModel::CreepCoplanar(_) => {
+                creep_coplanar::calculate_torque_induced_by_rotational_flattening(
+                    rotational_flattening_host_particle,
+                    particle,
+                    central_body,
+                )
+            }
+        }
+    }
+
+    fn calculate_acceleration_induced_by_rotational_flattening(
+        &self,
+        rotational_flattening_host_particle: &Particle,
+        particle: &Particle,
+    ) -> Axes {
+        match self {
+            RotationalFlatteningModel::OblateSpheroid(_) => {
+                oblate_spheroid::calculate_acceleration_induced_by_rotational_flattening(
+                    rotational_flattening_host_particle,
+                    particle,
+                )
+            }
+            RotationalFlatteningModel::CreepCoplanar(_) => {
+                creep_coplanar::calculate_acceleration_induced_by_rotational_flattening(
+                    rotational_flattening_host_particle,
+                    particle,
+                )
+            }
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
@@ -262,42 +309,25 @@ pub fn calculate_dangular_momentum_dt_induced_by_rotational_flattening(
     particles: &mut [Particle],
     more_particles: &mut [Particle],
 ) {
-    let factor = -1.0;
-
     let central_body = false;
     for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
         if let RotationalFlatteningEffect::OrbitingBody(rotational_flattening_model) =
             particle.rotational_flattening.effect
         {
-            let torque_induced_by_rotational_flattening = match rotational_flattening_model {
-                RotationalFlatteningModel::OblateSpheroid(_) => {
-                    oblate_spheroid::calculate_torque_induced_by_rotational_flattening(
-                        rotational_flattening_host_particle,
-                        particle,
-                        central_body,
-                    )
-                }
-                RotationalFlatteningModel::CreepCoplanar(_) => {
-                    creep_coplanar::calculate_torque_induced_by_rotational_flattening(
-                        rotational_flattening_host_particle,
-                        particle,
-                        central_body,
-                    )
-                }
-            };
+            let mut torque_induced_by_rotational_flattening = rotational_flattening_model
+                .calculate_torque_induced_by_rotational_flattening(
+                    rotational_flattening_host_particle,
+                    particle,
+                    central_body,
+                );
             // - Equation 25 from Bolmont et al. 2015
             // Integration of the spin (total torque rot):
+            torque_induced_by_rotational_flattening.negate();
             particle
                 .rotational_flattening
                 .parameters
                 .output
                 .dangular_momentum_dt = torque_induced_by_rotational_flattening;
-            particle
-                .rotational_flattening
-                .parameters
-                .output
-                .dangular_momentum_dt
-                .mul(factor);
         }
     }
 
@@ -309,26 +339,15 @@ pub fn calculate_dangular_momentum_dt_induced_by_rotational_flattening(
                 .rotational_flattening
                 .effect
         {
-            let torque_induced_by_rotational_flattening = match rotational_flattening_model {
-                RotationalFlatteningModel::OblateSpheroid(_) => {
-                    oblate_spheroid::calculate_torque_induced_by_rotational_flattening(
-                        rotational_flattening_host_particle,
-                        particle,
-                        central_body,
-                    )
-                }
-                RotationalFlatteningModel::CreepCoplanar(_) => {
-                    creep_coplanar::calculate_torque_induced_by_rotational_flattening(
-                        rotational_flattening_host_particle,
-                        particle,
-                        central_body,
-                    )
-                }
-            };
+            let mut torque_induced_by_rotational_flattening = rotational_flattening_model
+                .calculate_torque_induced_by_rotational_flattening(
+                    rotational_flattening_host_particle,
+                    particle,
+                    central_body,
+                );
             // Integration of the spin (total torque rot):
-            dangular_momentum_dt.x += factor * torque_induced_by_rotational_flattening.x;
-            dangular_momentum_dt.y += factor * torque_induced_by_rotational_flattening.y;
-            dangular_momentum_dt.z += factor * torque_induced_by_rotational_flattening.z;
+            torque_induced_by_rotational_flattening.negate();
+            dangular_momentum_dt.add(&torque_induced_by_rotational_flattening);
         }
     }
     // - Equation 25 from Bolmont et al. 2015
@@ -339,7 +358,7 @@ pub fn calculate_dangular_momentum_dt_induced_by_rotational_flattening(
         .dangular_momentum_dt = dangular_momentum_dt;
 }
 
-pub fn calculate_acceleration_induced_by_rotational_flattering(
+pub fn calculate_acceleration_induced_by_rotational_flattening(
     rotational_flattening_host_particle: &mut Particle,
     particles: &mut [Particle],
     more_particles: &mut [Particle],
@@ -353,36 +372,20 @@ pub fn calculate_acceleration_induced_by_rotational_flattering(
         if let RotationalFlatteningEffect::OrbitingBody(rotational_flattening_model) =
             particle.rotational_flattening.effect
         {
-            let force_induced_by_rotation = match rotational_flattening_model {
-                RotationalFlatteningModel::OblateSpheroid(_) => {
-                    oblate_spheroid::calculate_acceleration_induced_by_rotational_flattering(
-                        rotational_flattening_host_particle,
-                        particle,
-                    )
-                }
-                RotationalFlatteningModel::CreepCoplanar(_) => {
-                    creep_coplanar::calculate_acceleration_induced_by_rotational_flattering(
-                        rotational_flattening_host_particle,
-                        particle,
-                    )
-                }
-            };
-
+            let mut force_induced_by_rotation = rotational_flattening_model
+                .calculate_acceleration_induced_by_rotational_flattening(
+                    rotational_flattening_host_particle,
+                    particle,
+                );
             sum_force_induced_by_rotation.add(&force_induced_by_rotation);
 
             // - Equation 19 from Bolmont et al. 2015 (first term)
-            let factor1 = 1. / particle.mass;
+            force_induced_by_rotation.mul(1. / particle.mass);
             particle
                 .rotational_flattening
                 .parameters
                 .output
                 .acceleration = force_induced_by_rotation;
-            particle
-                .rotational_flattening
-                .parameters
-                .output
-                .acceleration
-                .mul(factor1);
         }
     }
 
@@ -393,15 +396,10 @@ pub fn calculate_acceleration_induced_by_rotational_flattering(
     //particle.rotational_flattening.parameters.output.acceleration.z += factor2 * sum_force_induced_by_rotation.z;
     //}
     // Instead of the previous code, keep star tidal acceleration separated:
+    sum_force_induced_by_rotation.mul(-1.0 * factor2);
     rotational_flattening_host_particle
         .rotational_flattening
         .parameters
         .output
         .acceleration = sum_force_induced_by_rotation;
-    rotational_flattening_host_particle
-        .rotational_flattening
-        .parameters
-        .output
-        .acceleration
-        .mul(-1.0 * factor2);
 }

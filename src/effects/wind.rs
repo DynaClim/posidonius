@@ -70,8 +70,7 @@ pub fn calculate_wind_factor(particles: &mut [Particle]) {
     for particle in particles.iter_mut() {
         if particle.wind.effect == WindEffect::Interaction {
             let threshold = sqrt!(particle.norm_spin_vector_2);
-            // Eq. 14 from Bolmont & Mathis 2016 (adapted to be able to add to the rest of
-            // dangular_momentum_dt)
+            // Eq. 14 from Bolmont & Mathis 2016 (adapted to be able to add to the rest of dangular_momentum_dt)
             if threshold >= particle.wind.parameters.input.rotation_saturation {
                 // Fast rotator
                 particle.wind.parameters.output.dangular_momentum_dt.x = -1.

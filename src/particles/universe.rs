@@ -735,7 +735,7 @@ impl Universe {
 
                         if self.consider_effects.rotational_flattening {
                             rotational_flattening::calculate_radial_component_of_the_force_induced_by_rotational_flattening(tidal_host_particle, particles_left, particles_right);
-                            rotational_flattening::calculate_acceleration_induced_by_rotational_flattering(tidal_host_particle, particles_left, particles_right);
+                            rotational_flattening::calculate_acceleration_induced_by_rotational_flattening(tidal_host_particle, particles_left, particles_right);
                         }
                     }
 

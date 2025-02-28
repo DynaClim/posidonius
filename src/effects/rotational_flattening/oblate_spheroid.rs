@@ -240,7 +240,7 @@ pub fn calculate_torque_induced_by_rotational_flattening(
     )
 }
 
-pub fn calculate_acceleration_induced_by_rotational_flattering(
+pub fn calculate_acceleration_induced_by_rotational_flattening(
     rotational_flattening_host_particle: &Particle,
     particle: &Particle,
 ) -> Axes {

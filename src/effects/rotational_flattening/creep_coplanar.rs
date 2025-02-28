@@ -93,7 +93,7 @@ pub fn calculate_torque_induced_by_rotational_flattening(
     Axes::from(0.0, 0.0, torque_induced_by_rotational_flattening_z)
 }
 
-pub fn calculate_acceleration_induced_by_rotational_flattering(
+pub fn calculate_acceleration_induced_by_rotational_flattening(
     rotational_flattening_host_particle: &Particle,
     particle: &Particle,
 ) -> Axes {
@@ -114,16 +114,9 @@ pub fn calculate_acceleration_induced_by_rotational_flattering(
             * particle.rotational_flattening.parameters.internal.shape.z);
 
     // Expression for ONLY rotational flattenings
-    let total_force_induced_by_rotational_flattening_x =
-        particle.rotational_flattening.coordinates.position.x / factor;
+    let mut total_force_induced_by_rotational_flattening = particle.rotational_flattening.coordinates.position;
+    total_force_induced_by_rotational_flattening.z = 0.0;
+    total_force_induced_by_rotational_flattening.mul(factor);
 
-    // Expression for ONLY rotational flattenings
-    let total_force_induced_by_rotational_flattening_y =
-        particle.rotational_flattening.coordinates.position.y / factor;
-
-    Axes::from(
-        total_force_induced_by_rotational_flattening_x,
-        total_force_induced_by_rotational_flattening_y,
-        0.0,
-    )
+    total_force_induced_by_rotational_flattening
 }
