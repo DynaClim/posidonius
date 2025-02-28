@@ -114,7 +114,8 @@ pub fn calculate_acceleration_induced_by_rotational_flattening(
             * particle.rotational_flattening.parameters.internal.shape.z);
 
     // Expression for ONLY rotational flattenings
-    let mut total_force_induced_by_rotational_flattening = particle.rotational_flattening.coordinates.position;
+    let mut total_force_induced_by_rotational_flattening =
+        particle.rotational_flattening.coordinates.position;
     total_force_induced_by_rotational_flattening.z = 0.0;
     total_force_induced_by_rotational_flattening.mul(factor);
 

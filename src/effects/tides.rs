@@ -95,7 +95,12 @@ pub enum TidalModel {
 }
 
 impl TidalModel {
-    fn calculate_torque_due_to_tides(&self, tidal_host_particle: &Particle, particle: &Particle, central_body: bool) -> Axes {
+    fn calculate_torque_due_to_tides(
+        &self,
+        tidal_host_particle: &Particle,
+        particle: &Particle,
+        central_body: bool,
+    ) -> Axes {
         match self {
             TidalModel::ConstantTimeLag(_) => constant_time_lag::calculate_torque_due_to_tides(
                 tidal_host_particle,
@@ -107,37 +112,34 @@ impl TidalModel {
                 particle,
                 central_body,
             ),
-            TidalModel::Kaula(_) => kaula::calculate_torque_due_to_tides(
-                tidal_host_particle,
-                particle,
-                central_body,
-            ),
+            TidalModel::Kaula(_) => {
+                kaula::calculate_torque_due_to_tides(tidal_host_particle, particle, central_body)
+            }
             TidalModel::DisabledModel => {
                 unreachable!();
             }
         }
     }
     // TODO unusable because of double immutable borrow
-/*
-    fn calculate_tidal_force(&self, tidal_host_particle: &mut Particle, particle: &Particle, central_body: bool) -> Axes {
-        match self {
-            TidalModel::ConstantTimeLag(_) => {
-                constant_time_lag::calculate_tidal_force(tidal_host_particle, particle)
-            }
-            TidalModel::CreepCoplanar(_) => {
-                creep_coplanar::calculate_tidal_force(tidal_host_particle, particle)
-            }
-            TidalModel::Kaula(_) => {
-                kaula::calculate_tidal_force(tidal_host_particle, particle, central_body)
-            }
-            TidalModel::DisabledModel => {
-                unreachable!();
+    /*
+        fn calculate_tidal_force(&self, tidal_host_particle: &mut Particle, particle: &Particle, central_body: bool) -> Axes {
+            match self {
+                TidalModel::ConstantTimeLag(_) => {
+                    constant_time_lag::calculate_tidal_force(tidal_host_particle, particle)
+                }
+                TidalModel::CreepCoplanar(_) => {
+                    creep_coplanar::calculate_tidal_force(tidal_host_particle, particle)
+                }
+                TidalModel::Kaula(_) => {
+                    kaula::calculate_tidal_force(tidal_host_particle, particle, central_body)
+                }
+                TidalModel::DisabledModel => {
+                    unreachable!();
+                }
             }
         }
-    }
-*/
+    */
 }
-
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub enum TidesEffect {
@@ -238,13 +240,15 @@ pub fn initialize(
                     .tides
                     .parameters
                     .internal
-                    .scalar_product_of_vector_position_with_stellar_spin = host_particle.spin.dot(&particle.tides.coordinates.position);
+                    .scalar_product_of_vector_position_with_stellar_spin =
+                    host_particle.spin.dot(&particle.tides.coordinates.position);
 
                 particle
                     .tides
                     .parameters
                     .internal
-                    .scalar_product_of_vector_position_with_planetary_spin = particle.spin.dot(&particle.tides.coordinates.position);
+                    .scalar_product_of_vector_position_with_planetary_spin =
+                    particle.spin.dot(&particle.tides.coordinates.position);
 
                 particle.tides.parameters.output.acceleration.zero();
                 particle.tides.parameters.output.dangular_momentum_dt.zero();
@@ -267,15 +271,28 @@ pub fn inertial_to_heliocentric_coordinates(
         for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
             if let TidesEffect::OrbitingBody(_) = particle.tides.effect {
                 particle.tides.coordinates.position = particle.inertial_position;
-                particle.tides.coordinates.position.sub(&host_particle.inertial_position);
+                particle
+                    .tides
+                    .coordinates
+                    .position
+                    .sub(&host_particle.inertial_position);
 
                 particle.tides.coordinates.velocity = particle.inertial_velocity;
-                particle.tides.coordinates.velocity.sub(&host_particle.inertial_velocity);
+                particle
+                    .tides
+                    .coordinates
+                    .velocity
+                    .sub(&host_particle.inertial_velocity);
 
                 let (x, y, z) = particle.tides.coordinates.position.unpack();
-                particle.tides.parameters.internal.distance = sqrt!(x.powi(2) + y.powi(2) + z.powi(2));
-                particle.tides.parameters.internal.radial_velocity = particle.tides.coordinates.position.dot(&particle.tides.coordinates.velocity)
-                        / particle.tides.parameters.internal.distance;
+                particle.tides.parameters.internal.distance =
+                    sqrt!(x.powi(2) + y.powi(2) + z.powi(2));
+                particle.tides.parameters.internal.radial_velocity = particle
+                    .tides
+                    .coordinates
+                    .position
+                    .dot(&particle.tides.coordinates.velocity)
+                    / particle.tides.parameters.internal.distance;
             }
         }
     }
@@ -317,10 +334,10 @@ pub fn calculate_dangular_momentum_dt_due_to_tides(
             }
 
             let mut torque_due_to_tides = tidal_model.calculate_torque_due_to_tides(
-                    tidal_host_particle,
-                    particle,
-                    central_body,
-                );
+                tidal_host_particle,
+                particle,
+                central_body,
+            );
 
             // Integration of the spin (total torque tides):
             torque_due_to_tides.negate();
@@ -337,10 +354,10 @@ pub fn calculate_dangular_momentum_dt_due_to_tides(
             }
 
             let mut torque_due_to_tides = tidal_model.calculate_torque_due_to_tides(
-                    tidal_host_particle,
-                    particle,
-                    central_body,
-                );
+                tidal_host_particle,
+                particle,
+                central_body,
+            );
 
             // Integration of the spin (total torque tides):
             torque_due_to_tides.negate();
@@ -494,11 +511,21 @@ pub fn calculate_tidal_acceleration(
                 kaula::calculate_tidal_force(particle, tidal_host_particle, central_body);
 
             let mut tidal_force_host = tidal_force;
-            tidal_force_host.mul(1. / tidal_host_particle.mass);         
-            tidal_host_particle.tides.parameters.output.acceleration.add(&tidal_force_host);
-            
+            tidal_force_host.mul(1. / tidal_host_particle.mass);
+            tidal_host_particle
+                .tides
+                .parameters
+                .output
+                .acceleration
+                .add(&tidal_force_host);
+
             tidal_force.mul(-1. / particle.mass);
-            particle.tides.parameters.output.acceleration.add(&tidal_force);
+            particle
+                .tides
+                .parameters
+                .output
+                .acceleration
+                .add(&tidal_force);
         }
     }
 }
