@@ -12,20 +12,11 @@ pub use polynomials::Polynomials;
 mod love_number;
 pub use love_number::LoveNumber;
 
-mod radial_component;
-use radial_component::{
-    calculate_radial_component_of_the_tidal_force_2d,
-    calculate_radial_component_of_the_tidal_force_3d,
-};
+mod components_2d;
+use components_2d::calculate_2d_tidal_force_components;
 
-mod normal_component;
-use normal_component::calculate_normal_component_of_the_tidal_force_3d;
-
-mod orthogonal_component;
-use orthogonal_component::{
-    calculate_orthogonal_component_of_the_tidal_force_2d,
-    calculate_orthogonal_component_of_the_tidal_force_3d,
-};
+mod components_3d;
+use components_3d::calculate_3d_tidal_force_components;
 
 // Structure declare the intput parameters needed for the Kaula model calculation.
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
@@ -151,76 +142,6 @@ fn calculate_tidal_force_component(
     components
 }
 
-fn calculate_2d_tidal_force_components(
-    tidal_host_particle: &Particle,
-    particle: &Particle,
-    central_body: bool,
-    keplerian_elements: &KeplerianElements,
-) -> ((f64, f64, f64), (f64, f64, f64)) {
-    let (orthogonal_component, orthogonal_component_secular) =
-        calculate_orthogonal_component_of_the_tidal_force_2d(
-            tidal_host_particle,
-            particle,
-            keplerian_elements,
-            central_body,
-        );
-    let (radial_component, radial_component_secular) =
-        calculate_radial_component_of_the_tidal_force_2d(
-            tidal_host_particle,
-            particle,
-            keplerian_elements,
-            central_body,
-        );
-    let (normal_component, normal_component_secular) = (0., 0.);
-
-    (
-        (normal_component, orthogonal_component, radial_component),
-        (
-            normal_component_secular,
-            orthogonal_component_secular,
-            radial_component_secular,
-        ),
-    )
-}
-
-fn calculate_3d_tidal_force_components(
-    tidal_host_particle: &Particle,
-    particle: &Particle,
-    central_body: bool,
-    keplerian_elements: &KeplerianElements,
-) -> ((f64, f64, f64), (f64, f64, f64)) {
-    let (orthogonal_component, orthogonal_component_secular) =
-        calculate_orthogonal_component_of_the_tidal_force_3d(
-            tidal_host_particle,
-            particle,
-            keplerian_elements,
-            central_body,
-        );
-    let (radial_component, radial_component_secular) =
-        calculate_radial_component_of_the_tidal_force_3d(
-            tidal_host_particle,
-            particle,
-            keplerian_elements,
-            central_body,
-        );
-    let (normal_component, normal_component_secular) =
-        calculate_normal_component_of_the_tidal_force_3d(
-            tidal_host_particle,
-            particle,
-            keplerian_elements,
-            central_body,
-        );
-
-    (
-        (normal_component, orthogonal_component, radial_component),
-        (
-            normal_component_secular,
-            orthogonal_component_secular,
-            radial_component_secular,
-        ),
-    )
-}
-
 fn calculate_2d_or_3d_tidal_force_components(
     tidal_host_particle: &Particle,
     particle: &mut Particle,
@@ -238,13 +159,13 @@ fn calculate_2d_or_3d_tidal_force_components(
     let spin = sqrt!(particle.norm_spin_vector_2) / DAY;
     // Orbital mean motion in [rad.s^-1]
     let orbital_frequency = TWO_PI / (orbital_period * DAY);
-    // Decide if this is a 2d or 3d case
 
     let kaula = particle.tides.get_kaula_mut();
     // Update the kaula eccentricity, used by both 2D and 3D
     kaula.polynomials.update_eccentricity_2d(eccentricity);
 
     // Update the love number values and compute the components.
+    // Decide if this is a 2d or 3d case
     if obliquity <= 1.0e-8 {
         // 2D case
         // refresh only love numbers used by 2D calculations
@@ -362,113 +283,6 @@ pub fn calculate_torque_due_to_tides(
     )
 }
 
-// Calculate the phases of the 2-Kaula transformed tidal forces
-pub fn alpha_pqkj(
-    p: usize,
-    q: usize,
-    k: usize,
-    j: usize,
-    mean_anomaly: f64,
-    argument_perihelion: f64,
-) -> f64 {
-    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
-    f64!(2 * p - 2 * k + j - q) * mean_anomaly + f64!(2 * (p - k)) * argument_perihelion
-}
-
-// Calculate the phases of the 2-Kaula transformed tidal forces
-pub fn compute_phase_beta(
-    p: usize,
-    q: usize,
-    k: usize,
-    j: usize,
-    mean_anomaly: f64,
-    spin_angle: f64,
-    argument_perihelion: f64,
-    longitude_ascending_node: f64,
-    heliocentric_varphi: f64,
-) -> f64 {
-    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
-    f64!(4 - 2 * p - 2 * k + q - j) * mean_anomaly
-        + f64!(4 - 2 * (k + p)) * argument_perihelion
-        + spin_angle
-        - longitude_ascending_node
-        + heliocentric_varphi
-}
-
-pub fn compute_phase_alpha_1(
-    p: usize,
-    q: usize,
-    k: usize,
-    j: usize,
-    mean_anomaly: f64,
-    spin_angle: f64,
-    argument_perihelion: f64,
-    longitude_ascending_node: f64,
-    heliocentric_varphi: f64,
-) -> f64 {
-    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
-    f64!(2 * k - 2 * p + q - j) * mean_anomaly
-        + f64!(2 * (k - p)) * argument_perihelion
-        + spin_angle
-        - longitude_ascending_node
-        - heliocentric_varphi
-}
-
-pub fn compute_phase_alpha_2(
-    p: usize,
-    q: usize,
-    k: usize,
-    j: usize,
-    mean_anomaly: f64,
-    spin_angle: f64,
-    argument_perihelion: f64,
-    longitude_ascending_node: f64,
-    heliocentric_varphi: f64,
-) -> f64 {
-    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
-    f64!(2 * k - 2 * p + q - j) * mean_anomaly + f64!(2 * (k - p)) * argument_perihelion
-        - spin_angle
-        + longitude_ascending_node
-        + heliocentric_varphi
-}
-
-pub fn compute_phase_alpha_3(
-    p: usize,
-    q: usize,
-    k: usize,
-    j: usize,
-    mean_anomaly: f64,
-    spin_angle: f64,
-    argument_perihelion: f64,
-    longitude_ascending_node: f64,
-    heliocentric_varphi: f64,
-) -> f64 {
-    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
-    f64!(2 * k - 2 * p + q - j - 1) * mean_anomaly
-        + f64!(2 * (k - p - 1)) * argument_perihelion
-        + spin_angle
-        - longitude_ascending_node
-        - heliocentric_varphi
-}
-
-pub fn compute_phase_alpha_4(
-    p: usize,
-    q: usize,
-    k: usize,
-    j: usize,
-    mean_anomaly: f64,
-    spin_angle: f64,
-    argument_perihelion: f64,
-    longitude_ascending_node: f64,
-    heliocentric_varphi: f64,
-) -> f64 {
-    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
-    f64!(2 * k - 2 * p + q - j - 1) * mean_anomaly + f64!(2 * (k - p - 1)) * argument_perihelion
-        - spin_angle
-        + longitude_ascending_node
-        - heliocentric_varphi
-}
-
 pub fn select_eccentricty_order_q(eccentricity: f64) -> (usize, usize) {
     match () {
         // Select the order of the summation q over the eccentricity function G_lpq
@@ -480,6 +294,19 @@ pub fn select_eccentricty_order_q(eccentricity: f64) -> (usize, usize) {
         () if (eccentricity <= 0.1) => (5, 10), // q: -2 <= q <= 2
         () => unreachable!(),
     }
+}
+
+// Calculate the phases of the 2-Kaula transformed tidal forces
+fn alpha_pqkj(
+    p: usize,
+    q: usize,
+    k: usize,
+    j: usize,
+    mean_anomaly: f64,
+    argument_perihelion: f64,
+) -> f64 {
+    let (p, q, k, j) = (p as i32, q as i32, k as i32, j as i32);
+    f64!(2 * p - 2 * k + j - q) * mean_anomaly + f64!(2 * (p - k)) * argument_perihelion
 }
 
 fn calculate_base_constant(
