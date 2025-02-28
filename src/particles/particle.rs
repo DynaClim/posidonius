@@ -2,11 +2,10 @@ use super::Axes;
 use crate::constants::K2;
 use crate::effects::{
     Disk, DiskEffect, EvolutionType, GeneralRelativity, GeneralRelativityEffect,
-    RotationalFlattening, RotationalFlatteningEffect, RotationalFlatteningModel, TidalModel, Tides,
+    RotationalFlattening, RotationalFlatteningEffect, Tides,
     TidesEffect, Wind, WindEffect,
 };
 use serde::{Deserialize, Serialize};
-use time::{OffsetDateTime, format_description};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Reference {
@@ -16,7 +15,7 @@ pub enum Reference {
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Particle {
-    pub id: usize, // Unique internal identifier
+    pub id: usize, // Unique internal identifier, to be set by the universe
     pub mass: f64,
     pub mass_g: f64,
     pub radius: f64,
@@ -51,65 +50,11 @@ pub struct Particle {
     pub evolution: EvolutionType,
 }
 
-impl Particle {
-    pub fn new(
-        mass: f64,
-        radius: f64,
-        radius_of_gyration: f64,
-        position: Axes,
-        velocity: Axes,
-        spin: Axes,
-    ) -> Particle {
-        // Default effects: None
+impl Default for Particle {
+    fn default() -> Self {
         let k_factor = 0.;
         let rotation_saturation = 0.;
-        let tides = Tides::new(TidesEffect::Disabled);
-        let rotational_flattening = RotationalFlattening::new(RotationalFlatteningEffect::Disabled);
-        let general_relativity = GeneralRelativity::new(GeneralRelativityEffect::Disabled);
-        let wind = Wind::new(WindEffect::Disabled, k_factor, rotation_saturation);
-        let disk = Disk::new(DiskEffect::Disabled);
-        let evolution = EvolutionType::NonEvolving;
-        let radius_of_gyration_2 = radius_of_gyration.powi(2);
-        let moment_of_inertia = mass * radius_of_gyration_2 * radius.powi(2);
-        Particle {
-            id: 0, // Unique internal identifier, to be set by the universe
-            mass,
-            mass_g: mass * K2,
-            radius,
-            inertial_position: Axes::new(), // To be re-computed by the universe
-            inertial_velocity: Axes::new(), // To be re-computed by the universe
-            inertial_acceleration: Axes::new(),
-            inertial_additional_acceleration: Axes::new(),
-            heliocentric_position: position,
-            heliocentric_velocity: velocity,
-            heliocentric_distance: 0.,
-            heliocentric_radial_velocity: 0.,
-            heliocentric_norm_velocity_vector: 0.,
-            heliocentric_norm_velocity_vector_2: 0.,
-            spin,
-            norm_spin_vector_2: (spin.x.powi(2)) + (spin.y.powi(2)) + (spin.z.powi(2)),
-            angular_momentum: Axes::from(
-                moment_of_inertia * spin.x,
-                moment_of_inertia * spin.y,
-                moment_of_inertia * spin.z,
-            ),
-            dangular_momentum_dt: Axes::new(),
-            radius_of_gyration_2,
-            moment_of_inertia,
-            reference: Reference::MostMassiveParticle,
-            tides,
-            rotational_flattening,
-            general_relativity,
-            wind,
-            disk,
-            evolution,
-        }
-    }
-
-    pub fn new_dummy() -> Particle {
-        let k_factor = 0.;
-        let rotation_saturation = 0.;
-        Particle {
+        Self {
             id: 0,
             mass: 0.,
             mass_g: 0.,
@@ -136,207 +81,49 @@ impl Particle {
             general_relativity: GeneralRelativity::new(GeneralRelativityEffect::Disabled),
             wind: Wind::new(WindEffect::Disabled, k_factor, rotation_saturation),
             disk: Disk::new(DiskEffect::Disabled),
-            evolution: EvolutionType::NonEvolving,
+            evolution: EvolutionType::NonEvolving
         }
-    }
-
-    pub fn set_tides(&mut self, tides: Tides) {
-        self.tides = tides;
-        self.check_uniform_viscosity_coefficient();
-    }
-
-    pub fn set_rotational_flattening(&mut self, rotational_flattening: RotationalFlattening) {
-        self.rotational_flattening = rotational_flattening;
-        self.check_uniform_viscosity_coefficient();
-    }
-
-    // If creep coplanar tides and rotational flattening are set, both
-    // need to have the same uniform viscosity coefficient parameter
-    pub fn check_uniform_viscosity_coefficient(&mut self) {
-        let disabled_tides = matches!(self.tides.effect, TidesEffect::Disabled);
-        let disabled_rotational_flattening = matches!(
-            self.rotational_flattening.effect,
-            RotationalFlatteningEffect::Disabled
-        );
-        if !disabled_tides && !disabled_rotational_flattening {
-            let (creep_coplanar_tides, particle_uniform_viscosity_coefficient_for_tides) = {
-                if let TidesEffect::CentralBody(TidalModel::CreepCoplanar(params))
-                | TidesEffect::OrbitingBody(TidalModel::CreepCoplanar(params)) =
-                    &self.tides.effect
-                {
-                    (true, params.uniform_viscosity_coefficient)
-                } else {
-                    (false, 0.)
-                }
-            };
-            let (
-                creep_coplanar_rotational_flattening,
-                particle_uniform_viscosity_coefficient_for_rotational_flattenning,
-            ) = {
-                if let RotationalFlatteningEffect::CentralBody(
-                    RotationalFlatteningModel::CreepCoplanar(params),
-                )
-                | RotationalFlatteningEffect::OrbitingBody(
-                    RotationalFlatteningModel::CreepCoplanar(params),
-                ) = &self.rotational_flattening.effect
-                {
-                    (true, params.uniform_viscosity_coefficient)
-                } else {
-                    (false, 0.)
-                }
-            };
-            if (creep_coplanar_tides && !creep_coplanar_rotational_flattening)
-                || (!creep_coplanar_tides && creep_coplanar_rotational_flattening)
-            {
-                panic!(
-                    "[ERROR {} UTC] When using Creep Coplanar Tidal or rotational flattening effects, both effects need to be Creep Coplanar and not just one of them (e.g., it cannot be mixed with ConstantTimeLag or OblateSpheroid).",
-                    OffsetDateTime::now_utc()
-                        .format(
-                            &format_description::parse(
-                                "[year].[month].[day] [hour]:[minute]:[second]"
-                            )
-                            .unwrap()
-                        )
-                        .unwrap()
-                );
-            } else if creep_coplanar_tides && creep_coplanar_rotational_flattening {
-                let diff_uniform_viscosity_coefficient = abs!(
-                    particle_uniform_viscosity_coefficient_for_tides
-                        - particle_uniform_viscosity_coefficient_for_rotational_flattenning
-                );
-                assert!(
-                    diff_uniform_viscosity_coefficient <= 1.0e-16,
-                    "[ERROR {} UTC] When using Creep Coplanar Tidal and rotational flattening effects, the uniform viscosity coefficient must be identical {:.16}.",
-                    OffsetDateTime::now_utc()
-                        .format(
-                            &format_description::parse(
-                                "[year].[month].[day] [hour]:[minute]:[second]"
-                            )
-                            .unwrap()
-                        )
-                        .unwrap(),
-                    diff_uniform_viscosity_coefficient
-                );
-            }
-        }
-    }
-
-    pub fn set_general_relativity(&mut self, general_relativity: GeneralRelativity) {
-        self.general_relativity = general_relativity;
-    }
-
-    pub fn set_wind(&mut self, wind: Wind) {
-        self.wind = wind;
-    }
-
-    pub fn set_disk(&mut self, disk: Disk) {
-        self.disk = disk;
-    }
-
-    pub fn set_evolution(&mut self, evolution: EvolutionType) {
-        evolution_warnings(evolution);
-        self.evolution = evolution;
     }
 }
 
-fn evolution_warnings(evolution: EvolutionType) {
-    match evolution {
-        EvolutionType::GalletBolmont2017(_) => {
-            println!(
-                "[WARNING {} UTC] Bodies with GalletBolmont2017 evolution will ignore initial radius and dissipation factor.",
-                OffsetDateTime::now_utc()
-                    .format(
-                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
-                            .unwrap()
-                    )
-                    .unwrap()
-            );
-            println!(
-                "[WARNING {} UTC] GalletBolmont2017 prescription theoretically only works for circular orbits and non inclined orbits, use carefully.",
-                OffsetDateTime::now_utc()
-                    .format(
-                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
-                            .unwrap()
-                    )
-                    .unwrap()
-            );
+
+impl Particle {
+    pub fn new(
+        mass: f64,
+        radius: f64,
+        radius_of_gyration: f64,
+        position: Axes,
+        velocity: Axes,
+        spin: Axes,
+    ) -> Particle {
+        // Default effects: None
+        let radius_of_gyration_2 = radius_of_gyration.powi(2);
+        let moment_of_inertia =  mass * radius_of_gyration_2 * radius.powi(2);
+        Particle {
+            mass,
+            mass_g: mass * K2,
+            radius,
+            heliocentric_position: position,
+            heliocentric_velocity: velocity,
+            spin,
+            norm_spin_vector_2: (spin.x.powi(2)) + (spin.y.powi(2)) + (spin.z.powi(2)),
+            angular_momentum: Axes::from(
+                moment_of_inertia * spin.x,
+                moment_of_inertia * spin.y,
+                moment_of_inertia * spin.z,
+            ),
+            radius_of_gyration_2,
+            moment_of_inertia,
+            ..Default::default()
         }
-        EvolutionType::BolmontMathis2016(_) => {
-            println!(
-                "[WARNING {} UTC] Bodies with Baraffe2015 evolution will ignore initial radius and radius of gyration.",
-                OffsetDateTime::now_utc()
-                    .format(
-                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
-                            .unwrap()
-                    )
-                    .unwrap()
-            );
-            println!(
-                "[WARNING {} UTC] BolmontMathis2016 prescription theoretically only works for circular orbits and non inclined orbits, use carefully. ",
-                OffsetDateTime::now_utc()
-                    .format(
-                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
-                            .unwrap()
-                    )
-                    .unwrap()
-            );
-        }
-        EvolutionType::Baraffe2015(_) => println!(
-            "[WARNING {} UTC]  ",
-            OffsetDateTime::now_utc()
-                .format(
-                    &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
-                        .unwrap()
-                )
-                .unwrap()
-        ),
-        EvolutionType::Leconte2011(_) => println!(
-            "[WARNING {} UTC] Bodies with Leconte2011 evolution will ignore initial radius and radius of gyration.",
-            OffsetDateTime::now_utc()
-                .format(
-                    &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
-                        .unwrap()
-                )
-                .unwrap()
-        ),
-        EvolutionType::Baraffe1998(_) => println!(
-            "[WARNING {} UTC] Bodies with Baraffe1998 evolution will ignore initial radius. ",
-            OffsetDateTime::now_utc()
-                .format(
-                    &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
-                        .unwrap()
-                )
-                .unwrap()
-        ),
-        EvolutionType::LeconteChabrier2013(false) => println!(
-            "[WARNING {} UTC] Bodies with Jupiter evolution will ignore initial radius, radius of gyration and love number.",
-            OffsetDateTime::now_utc()
-                .format(
-                    &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
-                        .unwrap()
-                )
-                .unwrap()
-        ),
-        EvolutionType::LeconteChabrier2013(true) => {
-            println!(
-                "[WARNING {} UTC] Bodies with Jupiter evolution will ignore initial radius, radius of gyration, love number and dissipation factor.",
-                OffsetDateTime::now_utc()
-                    .format(
-                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
-                            .unwrap()
-                    )
-                    .unwrap()
-            );
-            println!(
-                "[WARNING {} UTC] LeconteChabrier2013(true) prescription theoretically only works for circular orbits and non inclined orbits, use carefully.",
-                OffsetDateTime::now_utc()
-                    .format(
-                        &format_description::parse("[year].[month].[day] [hour]:[minute]:[second]")
-                            .unwrap()
-                    )
-                    .unwrap()
-            );
-        }
-        EvolutionType::NonEvolving => {}
+    }
+
+    pub fn update_spin(&mut self) {
+        self.spin.x = self.angular_momentum.x / self.moment_of_inertia;
+        self.spin.y = self.angular_momentum.y / self.moment_of_inertia;
+        self.spin.z = self.angular_momentum.z / self.moment_of_inertia;
+        // norm needed for rotational flattening (torque and accelerations) and evolution
+        self.norm_spin_vector_2 =
+            (self.spin.x.powi(2)) + (self.spin.y.powi(2)) + (self.spin.z.powi(2));
     }
 }

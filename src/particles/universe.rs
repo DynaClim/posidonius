@@ -134,7 +134,7 @@ impl Universe {
             (n_particles <= MAX_PARTICLES),
             "Only {MAX_PARTICLES} bodies are allowed, you need to increase the MAX_PARTICLE constant."
         );
-        let mut transformed_particles = [Particle::new_dummy(); MAX_PARTICLES];
+        let mut transformed_particles = [Particle::default(); MAX_PARTICLES];
         let mut particles_evolvers: Vec<Evolver> = Vec::with_capacity(n_particles);
         for i in 0..n_particles {
             transformed_particles[i] = particles[i];

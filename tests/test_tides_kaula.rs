@@ -2,6 +2,7 @@
 extern crate serde_derive;
 
 mod common;
+use common::checks::check_uniform_viscosity_coefficient;
 use posidonius::constants::{DAY, TWO_PI};
 use std::path::Path;
 
@@ -76,9 +77,11 @@ fn enabled_star_tides_case() -> posidonius::WHFast {
     ));
 
     if let Some((star, planets)) = particles.split_first_mut() {
-        star.set_tides(star_tides);
+        star.tides = star_tides;
+        check_uniform_viscosity_coefficient(&star);
         for planet in planets.iter_mut() {
-            planet.set_tides(planet_tides);
+            planet.tides = planet_tides;
+            check_uniform_viscosity_coefficient(&planet);
         }
     }
     //////////////////////////////////////////////////////////////////////////////////
@@ -196,9 +199,11 @@ fn enabled_planet_tides_case() -> posidonius::WHFast {
     ));
     //
     if let Some((star, planets)) = particles.split_first_mut() {
-        star.set_tides(star_tides);
+        star.tides = star_tides;
+        check_uniform_viscosity_coefficient(&star);
         for planet in planets.iter_mut() {
-            planet.set_tides(planet_tides);
+            planet.tides = planet_tides;
+        check_uniform_viscosity_coefficient(&planet);
         }
     }
     //////////////////////////////////////////////////////////////////////////////////
@@ -315,9 +320,12 @@ fn enabled_both_tides_case() -> posidonius::WHFast {
 
     //
     if let Some((star, planets)) = particles.split_first_mut() {
-        star.set_tides(star_tides);
+        star.tides = star_tides;
+        check_uniform_viscosity_coefficient(&star);
         for planet in planets.iter_mut() {
-            planet.set_tides(planet_tides);
+            planet.tides = planet_tides;
+            check_uniform_viscosity_coefficient(&planet);
+
         }
     }
     //////////////////////////////////////////////////////////////////////////////////

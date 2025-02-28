@@ -2,6 +2,8 @@ pub mod planets;
 pub mod stars;
 pub mod tools;
 pub mod universe;
+pub mod checks;
+
 
 use std::error::Error;
 use std::fs::File;

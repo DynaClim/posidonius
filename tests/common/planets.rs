@@ -1,5 +1,5 @@
 use posidonius;
-
+use crate::common::checks::{check_uniform_viscosity_coefficient, evolution_warnings};
 // NewFeatures: new functions added: basic_planetary_configuration_for_stellar_kaula,
 // basic_planetary_configuration_for_planetary_kaula, super_earth_like, trappist1_h_like
 #[allow(dead_code)]
@@ -197,12 +197,14 @@ pub fn super_earth_like(
         planet_velocity,
         planet_spin,
     );
-    planet.set_tides(planet_tides);
-    planet.set_rotational_flattening(planet_rotational_flattening);
-    planet.set_general_relativity(planet_general_relativity);
-    planet.set_wind(planet_wind);
-    planet.set_disk(planet_disk);
-    planet.set_evolution(planet_evolution);
+    planet.tides = planet_tides;
+    planet.rotational_flattening = planet_rotational_flattening;
+    check_uniform_viscosity_coefficient(&planet);
+    planet.general_relativity = planet_general_relativity;
+    planet.wind = planet_wind;
+    planet.disk = planet_disk;
+    planet.evolution = planet_evolution;
+    evolution_warnings(planet_evolution);
     planet
 }
 
@@ -297,12 +299,14 @@ pub fn trappist1_h_like(
         planet_velocity,
         planet_spin,
     );
-    planet.set_tides(planet_tides);
-    planet.set_rotational_flattening(planet_rotational_flattening);
-    planet.set_general_relativity(planet_general_relativity);
-    planet.set_wind(planet_wind);
-    planet.set_disk(planet_disk);
-    planet.set_evolution(planet_evolution);
+    planet.tides = planet_tides;
+    planet.rotational_flattening = planet_rotational_flattening;
+    check_uniform_viscosity_coefficient(&planet);
+    planet.general_relativity = planet_general_relativity;
+    planet.wind = planet_wind;
+    planet.disk = planet_disk;
+    planet.evolution = planet_evolution;
+    evolution_warnings(planet_evolution);
     planet
 }
 
@@ -423,12 +427,14 @@ pub fn earth_like(
         planet_velocity,
         planet_spin,
     );
-    planet.set_tides(planet_tides);
-    planet.set_rotational_flattening(planet_rotational_flattening);
-    planet.set_general_relativity(planet_general_relativity);
-    planet.set_wind(planet_wind);
-    planet.set_disk(planet_disk);
-    planet.set_evolution(planet_evolution);
+    planet.tides = planet_tides;
+    planet.rotational_flattening = planet_rotational_flattening;
+    check_uniform_viscosity_coefficient(&planet);
+    planet.general_relativity = planet_general_relativity;
+    planet.wind = planet_wind;
+    planet.disk = planet_disk;
+    planet.evolution = planet_evolution;
+    evolution_warnings(planet_evolution);
     planet
 }
 
@@ -538,11 +544,13 @@ pub fn jupiter_like(
         planet_velocity,
         planet_spin,
     );
-    planet.set_tides(planet_tides);
-    planet.set_rotational_flattening(planet_rotational_flattening);
-    planet.set_general_relativity(planet_general_relativity);
-    planet.set_wind(planet_wind);
-    planet.set_disk(planet_disk);
-    planet.set_evolution(planet_evolution);
+    planet.tides = planet_tides;
+    planet.rotational_flattening = planet_rotational_flattening;
+    check_uniform_viscosity_coefficient(&planet);
+    planet.general_relativity = planet_general_relativity;
+    planet.wind = planet_wind;
+    planet.disk = planet_disk;
+    planet.evolution = planet_evolution;
+    evolution_warnings(planet_evolution);
     planet
 }

@@ -38,34 +38,32 @@ pub fn calculate_tidal_force(
     particle: &mut Particle,
     central_body: bool,
 ) -> Axes {
-    //// TODO: Reconsider how to compute the stellar tide here instead of 'src/effects/tides/common.rs' while allowing a mixture of tidal models
-    let obliquity;
-    let keplerian_elements;
+    //// TODO: Reconsider how to compute the stellar tide here instead of in tides.rs while allowing a mixture of tidal models
     let gm = G * (tidal_host_particle.mass + particle.mass);
 
-    if central_body {
-        obliquity = tools::calculate_inclination_orbital_equatorial_plane(
+    let (obliquity, keplerian_elements) = if central_body {
+        (tools::calculate_inclination_orbital_equatorial_plane(
             tidal_host_particle.heliocentric_position,
             tidal_host_particle.heliocentric_velocity,
             particle.spin,
-        );
-        keplerian_elements = tools::calculate_keplerian_orbital_elements(
+        ),
+        tools::calculate_keplerian_orbital_elements(
             gm,
             tidal_host_particle.heliocentric_position,
             tidal_host_particle.heliocentric_velocity,
-        );
+        ))
     } else {
-        obliquity = tools::calculate_inclination_orbital_equatorial_plane(
+        (tools::calculate_inclination_orbital_equatorial_plane(
             particle.heliocentric_position,
             particle.heliocentric_velocity,
             particle.spin,
-        );
-        keplerian_elements = tools::calculate_keplerian_orbital_elements(
+        ),
+        tools::calculate_keplerian_orbital_elements(
             gm,
             particle.heliocentric_position,
             particle.heliocentric_velocity,
-        );
-    }
+        ))
+    };
 
     let (tidal_force, tidal_force_secular) = calculate_2d_or_3d_tidal_force_components(
         tidal_host_particle,
@@ -164,7 +162,7 @@ fn calculate_2d_or_3d_tidal_force_components(
     // Update the kaula eccentricity, used by both 2D and 3D
     kaula.polynomials.update_eccentricity_2d(eccentricity);
 
-    // Update the love number values and compute the components.
+    // Update the love number values and compute the tidal force components.
     // Decide if this is a 2d or 3d case
     if obliquity <= 1.0e-8 {
         // 2D case
@@ -207,9 +205,9 @@ fn trig_angles(particle: &Particle) -> (f64, f64, f64, f64) {
     let (x, y, z) = particle.tides.coordinates.position.unpack();
 
     let coplanar_distance = sqrt!(x.powi(2) + y.powi(2));
-    let cos_theta = z / radial_distance;
     let cos_phi = x / coplanar_distance;
     let sin_phi = y / coplanar_distance;
+    let cos_theta = z / radial_distance;
     let sin_theta = coplanar_distance / radial_distance;
 
     (cos_phi, cos_theta, sin_phi, sin_theta)
@@ -258,8 +256,8 @@ pub fn calculate_torque_due_to_tides(
             &tidal_host_particle.tides.effect,
             TidesEffect::CentralBody(_)
         ) {
-            // negate positions if the host particle is the central body
-            position.mul(-1.);
+            // additive inversion of positions if the host particle is the central body
+            position.negate();
         }
         // If this is the central body, take the kaula tidal force from the tidal host particle
         tidal_host_particle.tides.get_kaula().tidal_force
