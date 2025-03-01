@@ -4,9 +4,7 @@ use crate::effects::EvolutionType;
 use crate::particles::{IgnoreGravityTerms, Universe};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
-use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
-use std::hash::{Hash, Hasher};
 use std::io::{BufWriter, Write};
 use std::path::Path;
 use time::{OffsetDateTime, format_description};
@@ -46,16 +44,6 @@ pub struct LeapFrog {
     last_recovery_snapshot_time: f64,
     last_historic_snapshot_time: f64,
     pub n_historic_snapshots: usize,
-    pub hash: u64,
-}
-
-impl Hash for LeapFrog {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        // Hash only works with certain types (for instance, it does not work with f64 values)
-        // thus we convert the whole integrator to a string thanks to the debug trait
-        // and we hash that value
-        format!("{self:?}").hash(state);
-    }
 }
 
 impl LeapFrog {
@@ -73,7 +61,6 @@ impl LeapFrog {
             last_recovery_snapshot_time: -1.,
             last_historic_snapshot_time: -1.,
             n_historic_snapshots: 0,
-            hash: 0,
             universe,
             current_time: 0.,
             current_iteration: 0,
@@ -308,11 +295,6 @@ impl Integrator for LeapFrog {
     ) {
         self.last_recovery_snapshot_time = self.current_time;
         universe_history_writer.flush().unwrap();
-        // Compute hash for this universe at this moment of time
-        let mut s = DefaultHasher::new();
-        self.hash = 0;
-        self.hash(&mut s);
-        self.hash = s.finish();
         write_recovery_snapshot(snapshot_path, &self);
     }
 }
