@@ -124,4 +124,18 @@ impl Particle {
         self.norm_spin_vector_2 =
             (self.spin.x.powi(2)) + (self.spin.y.powi(2)) + (self.spin.z.powi(2));
     }
+
+    pub fn view(&self) -> ParticleView {
+        ParticleView {
+            angular_momentum: self.angular_momentum,
+            inertial_velocity: self.inertial_velocity,
+        }
+    }
+}
+
+// Instead of cloning the full particle, only clone the used fields
+#[derive(Debug, Clone)]
+pub struct ParticleView {
+    pub angular_momentum: Axes,
+    pub inertial_velocity: Axes,
 }
