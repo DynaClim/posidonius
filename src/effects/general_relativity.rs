@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 use std::iter;
 use time;
 use time::{OffsetDateTime, format_description};
+use itertools::izip;
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct GeneralRelativityParticleInternalParameters {
     pub distance: f64,
     pub radial_velocity: f64,
@@ -72,13 +73,7 @@ impl GeneralRelativity {
         GeneralRelativity {
             effect,
             parameters: GeneralRelativityParticleParameters {
-                internal: GeneralRelativityParticleInternalParameters {
-                    distance: 0.,
-                    radial_velocity: 0.,
-                    norm_velocity_vector: 0.,
-                    norm_velocity_vector_2: 0.,
-                    factor: 0.,
-                },
+                internal: GeneralRelativityParticleInternalParameters::default(),
                 output: GeneralRelativityParticleOutputParameters {
                     acceleration: Axes::new(),
                     dangular_momentum_dt: Axes::new(),
@@ -169,12 +164,8 @@ pub fn inertial_to_heliocentric_coordinates(
                         .velocity
                         .sub(&host_particle.inertial_velocity);
 
-                    particle.general_relativity.parameters.internal.distance = {
-                        let (px, py, pz) =
-                            particle.general_relativity.coordinates.position.unpack();
+                    particle.general_relativity.parameters.internal.distance = particle.general_relativity.coordinates.position.norm();
 
-                        sqrt!(px.powi(2) + py.powi(2) + pz.powi(2))
-                    };
 
                     particle
                         .general_relativity
@@ -187,30 +178,23 @@ pub fn inertial_to_heliocentric_coordinates(
                         .dot(&particle.general_relativity.coordinates.velocity)
                         / particle.general_relativity.parameters.internal.distance;
 
+
+
+                    let mut tmp = particle.general_relativity.coordinates.velocity;
+                    tmp.sub(&host_particle.general_relativity.coordinates.velocity);
+                    let norm = tmp.norm();
                     particle
                         .general_relativity
                         .parameters
                         .internal
-                        .norm_velocity_vector_2 = {
-                        let (vx, vy, vz) =
-                            particle.general_relativity.coordinates.velocity.unpack();
-                        let (host_vx, host_vy, host_vz) =
-                            particle.general_relativity.coordinates.velocity.unpack();
-
-                        (vx - host_vx).powi(2) + (vy - host_vy).powi(2) + (vz - host_vz).powi(2)
-                    };
+                        .norm_velocity_vector = norm;
 
                     particle
                         .general_relativity
                         .parameters
                         .internal
-                        .norm_velocity_vector = sqrt!(
-                        particle
-                            .general_relativity
-                            .parameters
-                            .internal
-                            .norm_velocity_vector_2
-                    );
+                        .norm_velocity_vector_2 = norm.powi(2);
+
                 }
             }
         }
@@ -360,7 +344,7 @@ fn calculate_kidder1995_first_order_general_relativity_acceleration(
             //println!("Ortho component GR force {:e}", orthogonal_component_of_the_general_relativity_force);
             // Total General Relativity force
             // - Equation 10 from Bolmont et al. 2015
-            let total_general_relativity_acceleration_x =
+            let mut total_general_relativity_acceleration = Axes::from(
                 radial_component_of_the_general_relativity_force
                     * particle.general_relativity.coordinates.position.x
                     / particle.general_relativity.parameters.internal.distance
@@ -370,8 +354,7 @@ fn calculate_kidder1995_first_order_general_relativity_acceleration(
                             .general_relativity
                             .parameters
                             .internal
-                            .norm_velocity_vector;
-            let total_general_relativity_acceleration_y =
+                            .norm_velocity_vector,
                 radial_component_of_the_general_relativity_force
                     * particle.general_relativity.coordinates.position.y
                     / particle.general_relativity.parameters.internal.distance
@@ -381,8 +364,7 @@ fn calculate_kidder1995_first_order_general_relativity_acceleration(
                             .general_relativity
                             .parameters
                             .internal
-                            .norm_velocity_vector;
-            let total_general_relativity_acceleration_z =
+                            .norm_velocity_vector,
                 radial_component_of_the_general_relativity_force
                     * particle.general_relativity.coordinates.position.z
                     / particle.general_relativity.parameters.internal.distance
@@ -392,24 +374,18 @@ fn calculate_kidder1995_first_order_general_relativity_acceleration(
                             .general_relativity
                             .parameters
                             .internal
-                            .norm_velocity_vector;
+                            .norm_velocity_vector
+            );
 
-            sum_total_general_relativity_acceleration.x +=
-                particle.mass / host_particle.mass * total_general_relativity_acceleration_x;
-            sum_total_general_relativity_acceleration.y +=
-                particle.mass / host_particle.mass * total_general_relativity_acceleration_y;
-            sum_total_general_relativity_acceleration.z +=
-                particle.mass / host_particle.mass * total_general_relativity_acceleration_z;
 
             // - Equation 19 from Bolmont et al. 2015 (first term)
-            particle.general_relativity.parameters.output.acceleration.x =
-                total_general_relativity_acceleration_x;
-            particle.general_relativity.parameters.output.acceleration.y =
-                total_general_relativity_acceleration_y;
-            particle.general_relativity.parameters.output.acceleration.z =
-                total_general_relativity_acceleration_z;
-            //println!("GR force {:e} {:e} {:e}", total_general_relativity_acceleration_x,
-            //total_general_relativity_acceleration_y, total_general_relativity_acceleration_z);
+            particle.general_relativity.parameters.output.acceleration = total_general_relativity_acceleration;
+
+            total_general_relativity_acceleration.mul(particle.mass / host_particle.mass);
+            sum_total_general_relativity_acceleration.add(&total_general_relativity_acceleration);
+
+            //println!("GR force {:e} {:e} {:e}", total_general_relativity_acceleration.x,
+            //total_general_relativity_acceleration.y, total_general_relativity_acceleration.z);
         }
     }
 
@@ -518,42 +494,33 @@ fn calculate_kidder1995_second_order_general_relativity_acceleration(
                             * (3.0 + 2.0 * particle.general_relativity.parameters.internal.factor)
                             * radial_velocity_2);
 
-            let total_second_order_general_relativity_acceleration_x =
+            let mut total_second_order_general_relativity_acceleration = Axes::from(
                 radial_component_of_the_second_order_general_relativity_acceleration
                     * particle.general_relativity.coordinates.position.x
                     / particle.general_relativity.parameters.internal.distance
                     + orthogonal_component_of_the_second_order_general_relativity_acceleration
-                        * particle.general_relativity.coordinates.velocity.x;
-            let total_second_order_general_relativity_acceleration_y =
+                        * particle.general_relativity.coordinates.velocity.x,
+
                 radial_component_of_the_second_order_general_relativity_acceleration
                     * particle.general_relativity.coordinates.position.y
                     / particle.general_relativity.parameters.internal.distance
                     + orthogonal_component_of_the_second_order_general_relativity_acceleration
-                        * particle.general_relativity.coordinates.velocity.y;
-            let total_second_order_general_relativity_acceleration_z =
+                        * particle.general_relativity.coordinates.velocity.y,
+
                 radial_component_of_the_second_order_general_relativity_acceleration
                     * particle.general_relativity.coordinates.position.z
                     / particle.general_relativity.parameters.internal.distance
                     + orthogonal_component_of_the_second_order_general_relativity_acceleration
-                        * particle.general_relativity.coordinates.velocity.z;
+                        * particle.general_relativity.coordinates.velocity.z
+            );
 
-            sum_total_second_order_general_relativity_acceleration.x += particle.mass
-                / host_particle.mass
-                * total_second_order_general_relativity_acceleration_x;
-            sum_total_second_order_general_relativity_acceleration.y += particle.mass
-                / host_particle.mass
-                * total_second_order_general_relativity_acceleration_y;
-            sum_total_second_order_general_relativity_acceleration.z += particle.mass
-                / host_particle.mass
-                * total_second_order_general_relativity_acceleration_z;
+            particle.general_relativity.parameters.output.acceleration.add(
+                &total_second_order_general_relativity_acceleration);
 
-            particle.general_relativity.parameters.output.acceleration.x +=
-                total_second_order_general_relativity_acceleration_x;
-            particle.general_relativity.parameters.output.acceleration.y +=
-                total_second_order_general_relativity_acceleration_y;
-            particle.general_relativity.parameters.output.acceleration.z +=
-                total_second_order_general_relativity_acceleration_z;
-            //println!("a {} {} {}", total_second_order_general_relativity_acceleration_x, total_second_order_general_relativity_acceleration_y, total_second_order_general_relativity_acceleration_z);
+            total_second_order_general_relativity_acceleration.mul(particle.mass / host_particle.mass);
+            sum_total_second_order_general_relativity_acceleration.add(
+                &total_second_order_general_relativity_acceleration);
+            //println!("a {} {} {}", total_second_order_general_relativity_acceleration.x, total_second_order_general_relativity_acceleration.y, total_second_order_general_relativity_acceleration.z);
         }
     }
 
@@ -607,249 +574,191 @@ fn calculate_kidder1995_spin_orbit_general_relativity_acceleration_and_dangular_
             particle_normalized_position
                 .div(particle.general_relativity.parameters.internal.distance);
 
-            let mass_spin_factor_x = mass_factor
+            let mass_spin_factor = Axes::from(
+                mass_factor
                 * star_planet_mass
                 * (particle_angular_momentum.x / particle.mass
-                    - star_angular_momentum.x / host_particle.mass);
-            let mass_spin_factor_y = mass_factor
+                    - star_angular_momentum.x / host_particle.mass),
+
+                mass_factor
                 * star_planet_mass
                 * (particle_angular_momentum.y / particle.mass
-                    - star_angular_momentum.y / host_particle.mass);
-            let mass_spin_factor_z = mass_factor
+                    - star_angular_momentum.y / host_particle.mass),
+
+                mass_factor
                 * star_planet_mass
                 * (particle_angular_momentum.z / particle.mass
-                    - star_angular_momentum.z / host_particle.mass);
+                    - star_angular_momentum.z / host_particle.mass)
+            );
 
-            let element1_x = 6.
+            let element1 = Axes::from(
+                6.
                 * particle_normalized_position.x
                 * ((particle_normalized_position.y
                     * particle.general_relativity.coordinates.velocity.z
                     - particle_normalized_position.z
                         * particle.general_relativity.coordinates.velocity.y)
                     * (2. * (star_angular_momentum.x + particle_angular_momentum.x)
-                        + mass_spin_factor_x));
-            let element1_y = 6.
+                        + mass_spin_factor.x)),
+
+                6.
                 * particle_normalized_position.y
                 * ((particle_normalized_position.z
                     * particle.general_relativity.coordinates.velocity.x
                     - particle_normalized_position.x
                         * particle.general_relativity.coordinates.velocity.z)
                     * (2. * (star_angular_momentum.y + particle_angular_momentum.y)
-                        + mass_spin_factor_y));
-            let element1_z = 6.
+                        + mass_spin_factor.y)),
+
+                6.
                 * particle_normalized_position.z
                 * ((particle_normalized_position.x
                     * particle.general_relativity.coordinates.velocity.y
                     - particle_normalized_position.y
                         * particle.general_relativity.coordinates.velocity.x)
                     * (2. * (star_angular_momentum.z + particle_angular_momentum.z)
-                        + mass_spin_factor_z));
+                        + mass_spin_factor.z))
+            );
 
             let element7s = Axes::from(
                 7. * (star_angular_momentum.x + particle_angular_momentum.x)
-                    + 3. * mass_spin_factor_x,
+                    + 3. * mass_spin_factor.x,
                 7. * (star_angular_momentum.y + particle_angular_momentum.y)
-                    + 3. * mass_spin_factor_y,
+                    + 3. * mass_spin_factor.y,
                 7. * (star_angular_momentum.z + particle_angular_momentum.z)
-                    + 3. * mass_spin_factor_z,
+                    + 3. * mass_spin_factor.z,
             );
-            let element2_x = particle.general_relativity.coordinates.velocity.y * element7s.z
-                - particle.general_relativity.coordinates.velocity.z * element7s.y;
-            let element2_y = particle.general_relativity.coordinates.velocity.z * element7s.x
-                - particle.general_relativity.coordinates.velocity.x * element7s.z;
-            let element2_z = particle.general_relativity.coordinates.velocity.x * element7s.y
-                - particle.general_relativity.coordinates.velocity.y * element7s.x;
+            let element2 = Axes::from(
+                particle.general_relativity.coordinates.velocity.y * element7s.z
+                - particle.general_relativity.coordinates.velocity.z * element7s.y,
+
+                particle.general_relativity.coordinates.velocity.z * element7s.x
+                - particle.general_relativity.coordinates.velocity.x * element7s.z,
+
+                particle.general_relativity.coordinates.velocity.x * element7s.y
+                - particle.general_relativity.coordinates.velocity.y * element7s.x
+            );
 
             let element3s = Axes::from(
-                3. * (star_angular_momentum.x + particle_angular_momentum.x) + mass_spin_factor_x,
-                3. * (star_angular_momentum.y + particle_angular_momentum.y) + mass_spin_factor_y,
-                3. * (star_angular_momentum.z + particle_angular_momentum.z) + mass_spin_factor_z,
+                3. * (star_angular_momentum.x + particle_angular_momentum.x) + mass_spin_factor.x,
+                3. * (star_angular_momentum.y + particle_angular_momentum.y) + mass_spin_factor.y,
+                3. * (star_angular_momentum.z + particle_angular_momentum.z) + mass_spin_factor.z,
             );
-            let element3_x = 3.
+            let element3 = Axes::from(
+                3.
                 * particle
                     .general_relativity
                     .parameters
                     .internal
                     .radial_velocity
                 * (particle_normalized_position.y * element3s.z
-                    - particle_normalized_position.z * element3s.y);
-            let element3_y = 3.
+                    - particle_normalized_position.z * element3s.y),
+
+                3.
                 * particle
                     .general_relativity
                     .parameters
                     .internal
                     .radial_velocity
                 * (particle_normalized_position.z * element3s.x
-                    - particle_normalized_position.x * element3s.z);
-            let element3_z = 3.
+                    - particle_normalized_position.x * element3s.z),
+
+                3.
                 * particle
                     .general_relativity
                     .parameters
                     .internal
                     .radial_velocity
                 * (particle_normalized_position.x * element3s.y
-                    - particle_normalized_position.y * element3s.x);
+                    - particle_normalized_position.y * element3s.x)
+            );
 
             let factor_a = G / SPEED_OF_LIGHT_2;
-            let total_general_relativity_spin_orbit_acceleration_x =
-                factor_a * (element1_x - element2_x + element3_x);
-            let total_general_relativity_spin_orbit_acceleration_y =
-                factor_a * (element1_y - element2_y + element3_y);
-            let total_general_relativity_spin_orbit_acceleration_z =
-                factor_a * (element1_z - element2_z + element3_z);
+            let mut total_general_relativity_spin_orbit_acceleration = Axes::from(
+                factor_a * (element1.x - element2.x + element3.x),
+                factor_a * (element1.y - element2.y + element3.y),
+                factor_a * (element1.z - element2.z + element3.z)
+            );
 
-            sum_total_general_relativity_spin_orbit_acceleration.x += particle.mass
-                / host_particle.mass
-                * total_general_relativity_spin_orbit_acceleration_x;
-            sum_total_general_relativity_spin_orbit_acceleration.y += particle.mass
-                / host_particle.mass
-                * total_general_relativity_spin_orbit_acceleration_y;
-            sum_total_general_relativity_spin_orbit_acceleration.z += particle.mass
-                / host_particle.mass
-                * total_general_relativity_spin_orbit_acceleration_z;
+            particle.general_relativity.parameters.output.acceleration.add(&
+                total_general_relativity_spin_orbit_acceleration);
 
-            particle.general_relativity.parameters.output.acceleration.x +=
-                total_general_relativity_spin_orbit_acceleration_x;
-            particle.general_relativity.parameters.output.acceleration.y +=
-                total_general_relativity_spin_orbit_acceleration_y;
-            particle.general_relativity.parameters.output.acceleration.z +=
-                total_general_relativity_spin_orbit_acceleration_z;
-            //println!("{} {} {}", total_general_relativity_spin_orbit_acceleration_x, total_general_relativity_spin_orbit_acceleration_y, total_general_relativity_spin_orbit_acceleration_z);
+            total_general_relativity_spin_orbit_acceleration.mul(particle.mass / host_particle.mass);
+            sum_total_general_relativity_spin_orbit_acceleration.add(&total_general_relativity_spin_orbit_acceleration);
+
+            //println!("{} {} {}", total_general_relativity_spin_orbit_acceleration.x, total_general_relativity_spin_orbit_acceleration.y, total_general_relativity_spin_orbit_acceleration.z);
 
             // Kidder 1995, equation 2.4a
             let mu = (host_particle.mass * particle.mass) / star_planet_mass;
-            let newtonian_orbital_angular_momentum = Axes::from(
-                mu * (particle.general_relativity.coordinates.position.y
-                    * particle.general_relativity.coordinates.velocity.z
-                    - particle.general_relativity.coordinates.position.z
-                        * particle.general_relativity.coordinates.velocity.y),
-                mu * (particle.general_relativity.coordinates.position.z
-                    * particle.general_relativity.coordinates.velocity.x
-                    - particle.general_relativity.coordinates.position.x
-                        * particle.general_relativity.coordinates.velocity.z),
-                mu * (particle.general_relativity.coordinates.position.x
-                    * particle.general_relativity.coordinates.velocity.y
-                    - particle.general_relativity.coordinates.position.y
-                        * particle.general_relativity.coordinates.velocity.x),
-            );
+            let mut newtonian_orbital_angular_momentum = particle.general_relativity.coordinates.position.cross(&particle.general_relativity.coordinates.velocity);
+            newtonian_orbital_angular_momentum.mul(mu);
 
             let factor_mass = 2. + 3. / 2. * particle.mass / host_particle.mass;
-            let element1_x = factor_mass
-                * (newtonian_orbital_angular_momentum.y * star_angular_momentum.z
-                    - newtonian_orbital_angular_momentum.z * star_angular_momentum.y);
-            let element1_y = factor_mass
-                * (newtonian_orbital_angular_momentum.z * star_angular_momentum.x
-                    - newtonian_orbital_angular_momentum.x * star_angular_momentum.z);
-            let element1_z = factor_mass
-                * (newtonian_orbital_angular_momentum.x * star_angular_momentum.y
-                    - newtonian_orbital_angular_momentum.y * star_angular_momentum.x);
+            let mut element1 = newtonian_orbital_angular_momentum.cross(&star_angular_momentum);
+            element1.mul(factor_mass);
 
-            let element2_x = particle_angular_momentum.y * star_angular_momentum.z
-                - particle_angular_momentum.z * star_angular_momentum.y;
-            let element2_y = particle_angular_momentum.z * star_angular_momentum.x
-                - particle_angular_momentum.x * star_angular_momentum.z;
-            let element2_z = particle_angular_momentum.x * star_angular_momentum.y
-                - particle_angular_momentum.y * star_angular_momentum.x;
+            let element2 = particle_angular_momentum.cross(&star_angular_momentum);
 
             let scalar_product_particle_normalized_position_with_particle_angular_momentum =
-                particle_normalized_position.x * particle_angular_momentum.x
-                    + particle_normalized_position.y * particle_angular_momentum.y
-                    + particle_normalized_position.z * particle_angular_momentum.z;
-            let element3_x = 3.
-                * scalar_product_particle_normalized_position_with_particle_angular_momentum
-                * (particle_normalized_position.y * star_angular_momentum.z
-                    - particle_normalized_position.z * star_angular_momentum.y);
-            let element3_y = 3.
-                * scalar_product_particle_normalized_position_with_particle_angular_momentum
-                * (particle_normalized_position.z * star_angular_momentum.x
-                    - particle_normalized_position.x * star_angular_momentum.z);
-            let element3_z = 3.
-                * scalar_product_particle_normalized_position_with_particle_angular_momentum
-                * (particle_normalized_position.x * star_angular_momentum.y
-                    - particle_normalized_position.y * star_angular_momentum.x);
+                particle_normalized_position.dot(&particle_angular_momentum);
+
+            let mut element3 = particle_normalized_position.cross(&star_angular_momentum);
+            element3.mul(3.* scalar_product_particle_normalized_position_with_particle_angular_momentum);
 
             host_particle
                 .general_relativity
                 .parameters
                 .output
                 .dangular_momentum_dt
-                .x += factor_a * (element1_x - element2_x + element3_x);
+                .x += factor_a * (element1.x - element2.x + element3.x);
             host_particle
                 .general_relativity
                 .parameters
                 .output
                 .dangular_momentum_dt
-                .y += factor_a * (element1_y - element2_y + element3_y);
+                .y += factor_a * (element1.y - element2.y + element3.y);
             host_particle
                 .general_relativity
                 .parameters
                 .output
                 .dangular_momentum_dt
-                .z += factor_a * (element1_z - element2_z + element3_z);
-            //println!("{} {} {}", factor_a * (element1_x - element2_x + element3_x), factor_a * (element1_y - element2_y + element3_y), factor_a * (element1_z - element2_z + element3_z));
+                .z += factor_a * (element1.z - element2.z + element3.z);
+            //println!("{} {} {}", factor_a * (element1.x - element2.x + element3.x), factor_a * (element1.y - element2.y + element3.y), factor_a * (element1.z - element2.z + element3.z));
 
             // Kidder 1995, equation 2.4b
             let factor_mass = 2. + 3. / 2. * host_particle.mass / particle.mass;
-            let element1_x = factor_mass
-                * (newtonian_orbital_angular_momentum.y * particle_angular_momentum.z
-                    - newtonian_orbital_angular_momentum.z * particle_angular_momentum.y);
-            let element1_y = factor_mass
-                * (newtonian_orbital_angular_momentum.z * particle_angular_momentum.x
-                    - newtonian_orbital_angular_momentum.x * particle_angular_momentum.z);
-            let element1_z = factor_mass
-                * (newtonian_orbital_angular_momentum.x * particle_angular_momentum.y
-                    - newtonian_orbital_angular_momentum.y * particle_angular_momentum.x);
+            let mut element1 = newtonian_orbital_angular_momentum.cross(&particle_angular_momentum);
+            element1.mul(factor_mass);
 
-            let element2_x = star_angular_momentum.y * particle_angular_momentum.z
-                - star_angular_momentum.z * particle_angular_momentum.y;
-            let element2_y = star_angular_momentum.z * particle_angular_momentum.x
-                - star_angular_momentum.x * particle_angular_momentum.z;
-            let element2_z = star_angular_momentum.x * particle_angular_momentum.y
-                - star_angular_momentum.y * particle_angular_momentum.x;
+            let element2 = star_angular_momentum.cross(&particle_angular_momentum);
 
             let scalar_product_particle_normalized_position_with_star_angular_momentum =
-                particle_normalized_position.x * star_angular_momentum.x
-                    + particle_normalized_position.y * star_angular_momentum.y
-                    + particle_normalized_position.z * star_angular_momentum.z;
-            let element3_x = 3.
-                * scalar_product_particle_normalized_position_with_star_angular_momentum
-                * (particle_normalized_position.y * particle_angular_momentum.z
-                    - particle_normalized_position.z * particle_angular_momentum.y);
-            let element3_y = 3.
-                * scalar_product_particle_normalized_position_with_star_angular_momentum
-                * (particle_normalized_position.z * particle_angular_momentum.x
-                    - particle_normalized_position.x * particle_angular_momentum.z);
-            let element3_z = 3.
-                * scalar_product_particle_normalized_position_with_star_angular_momentum
-                * (particle_normalized_position.x * particle_angular_momentum.y
-                    - particle_normalized_position.y * particle_angular_momentum.x);
+                particle_normalized_position.dot(&star_angular_momentum);
+
+            let mut element3 = particle_normalized_position.cross(&particle_angular_momentum);
+            element3.mul(3.
+                * scalar_product_particle_normalized_position_with_star_angular_momentum);
 
             particle
                 .general_relativity
                 .parameters
                 .output
                 .dangular_momentum_dt
-                .x = factor_a * (element1_x - element2_x + element3_x);
+                .x = factor_a * (element1.x - element2.x + element3.x);
             particle
                 .general_relativity
                 .parameters
                 .output
                 .dangular_momentum_dt
-                .y = factor_a * (element1_y - element2_y + element3_y);
+                .y = factor_a * (element1.y - element2.y + element3.y);
             particle
                 .general_relativity
                 .parameters
                 .output
                 .dangular_momentum_dt
-                .z = factor_a * (element1_z - element2_z + element3_z);
+                .z = factor_a * (element1.z - element2.z + element3.z);
         }
     }
-    //for particle in particles.iter_mut() {
-    //particle.general_relativity.parameters.output.acceleration.x += sum_total_general_relativity_spin_orbit_acceleration.x;
-    //particle.general_relativity.parameters.output.acceleration.y += sum_total_general_relativity_spin_orbit_acceleration.y;
-    //particle.general_relativity.parameters.output.acceleration.z += sum_total_general_relativity_spin_orbit_acceleration.z;
-    //}
-    // Instead of the previous code, keep star tidal acceleration separated:
 
     sum_total_general_relativity_spin_orbit_acceleration.negate();
     host_particle
@@ -899,20 +808,18 @@ pub fn calculate_anderson1975_general_relativity_acceleration(
     let n_particles = particles.len() + more_particles.len();
     let mu = host_particle.mass_g;
     for (
-        ((jacobi_particle_acceleration, jacobi_particle_velocity), jacobi_particle_position),
+        jacobi_particle_acceleration, jacobi_particle_velocity, jacobi_particle_position,
         particle,
-    ) in jacobi_particles_accelerations[..n_particles]
-        .iter_mut()
-        .zip(jacobi_particles_velocities[..n_particles].iter())
-        .zip(jacobi_particles_positions[..n_particles].iter())
-        .zip(particles.iter().chain(more_particles.iter()))
+    ) in izip!(
+        &mut jacobi_particles_accelerations[..n_particles],
+        &jacobi_particles_velocities[..n_particles],
+        &jacobi_particles_positions[..n_particles],
+        particles.iter().chain(more_particles.iter())
+    )
     {
         if let GeneralRelativityEffect::OrbitingBody = particle.general_relativity.effect {
-            let mut vi = Axes::from(
-                jacobi_particle_velocity.x,
-                jacobi_particle_velocity.y,
-                jacobi_particle_velocity.z,
-            );
+            let mut vi = *jacobi_particle_velocity;
+
             let mut vi2 = jacobi_particle_velocity.x.powi(2)
                 + jacobi_particle_velocity.y.powi(2)
                 + jacobi_particle_velocity.z.powi(2);
@@ -952,15 +859,13 @@ pub fn calculate_anderson1975_general_relativity_acceleration(
             }
 
             let factor_b = (mu / ri - 1.5 * vi2) * mu / (ri * ri * ri) / SPEED_OF_LIGHT_2;
-            let rdotrdot = jacobi_particle_position.x * jacobi_particle_velocity.x
-                + jacobi_particle_position.y * jacobi_particle_velocity.y
-                + jacobi_particle_position.z * jacobi_particle_velocity.z;
+            let rdotrdot = jacobi_particle_position.dot(&jacobi_particle_velocity);
             let vidot = Axes::from(
                 jacobi_particle_acceleration.x + factor_b * jacobi_particle_position.x,
                 jacobi_particle_acceleration.y + factor_b * jacobi_particle_position.y,
                 jacobi_particle_acceleration.z + factor_b * jacobi_particle_position.z,
             );
-            let vdotvdot = vi.x * vidot.x + vi.y * vidot.y + vi.z * vidot.z;
+            let vdotvdot = vi.dot(&vidot);
             let factor_d = (vdotvdot - 3. * mu / (ri * ri * ri) * rdotrdot) / SPEED_OF_LIGHT_2;
             jacobi_particle_acceleration.x =
                 factor_b * (1. - factor_a) * jacobi_particle_position.x
@@ -1021,77 +926,70 @@ fn anderson1975_general_relativity_inertial_to_jacobi_posvelacc(
     [Axes; MAX_PARTICLES - 1],
     [Axes; MAX_PARTICLES - 1],
 ) {
-    let mut jacobi_star_position = Axes::new();
-    let mut jacobi_star_velocity = Axes::new();
-    let mut jacobi_star_acceleration = Axes::new();
     let mut jacobi_particles_positions = [Axes::new(); MAX_PARTICLES - 1];
     let mut jacobi_particles_velocities = [Axes::new(); MAX_PARTICLES - 1];
     let mut jacobi_particles_accelerations = [Axes::new(); MAX_PARTICLES - 1];
 
     let m0 = host_particle.mass;
     let mut eta = m0;
-    let mut s_x = eta * host_particle.inertial_position.x;
-    let mut s_y = eta * host_particle.inertial_position.y;
-    let mut s_z = eta * host_particle.inertial_position.z;
-    let mut s_vx = eta * host_particle.inertial_velocity.x;
-    let mut s_vy = eta * host_particle.inertial_velocity.y;
-    let mut s_vz = eta * host_particle.inertial_velocity.z;
-    let mut s_ax = eta * host_newtonian_inertial_accelerations.x;
-    let mut s_ay = eta * host_newtonian_inertial_accelerations.y;
-    let mut s_az = eta * host_newtonian_inertial_accelerations.z;
-    for (
-        (
-            ((particle, particle_newtonian_inertial_accelerations), jacobi_particle_position),
-            jacobi_particle_velocity,
-        ),
+    let mut position = host_particle.inertial_position;
+    position.mul(eta);
+    let mut velocity = host_particle.inertial_velocity;
+    velocity.mul(eta);
+    let mut acceleration = host_newtonian_inertial_accelerations;
+    acceleration.mul(eta);
+
+    for (particle, particle_newtonian_inertial_accelerations, jacobi_particle_position, jacobi_particle_velocity,
         jacobi_particle_acceleration,
-    ) in particles
-        .iter()
-        .chain(more_particles.iter()) // zip will pick the lowest common number of elements
-        .zip(newtonian_inertial_accelerations.iter())
-        .zip(jacobi_particles_positions.iter_mut())
-        .zip(jacobi_particles_velocities.iter_mut())
-        .zip(jacobi_particles_accelerations.iter_mut())
+    ) in izip!(
+        particles.iter().chain(more_particles.iter()), // zip will pick the lowest common number of elements
+        &newtonian_inertial_accelerations,
+        &mut jacobi_particles_positions,
+        &mut jacobi_particles_velocities,
+        &mut jacobi_particles_accelerations
+        )
     {
         if let GeneralRelativityEffect::OrbitingBody = particle.general_relativity.effect {
             let ei = 1. / eta;
             eta += particle.mass;
-            let pme = eta * ei;
-            jacobi_particle_position.x = particle.inertial_position.x - s_x * ei;
-            jacobi_particle_position.y = particle.inertial_position.y - s_y * ei;
-            jacobi_particle_position.z = particle.inertial_position.z - s_z * ei;
-            jacobi_particle_velocity.x = particle.inertial_velocity.x - s_vx * ei;
-            jacobi_particle_velocity.y = particle.inertial_velocity.y - s_vy * ei;
-            jacobi_particle_velocity.z = particle.inertial_velocity.z - s_vz * ei;
-            jacobi_particle_acceleration.x =
-                particle_newtonian_inertial_accelerations.x - s_ax * ei;
-            jacobi_particle_acceleration.y =
-                particle_newtonian_inertial_accelerations.y - s_ay * ei;
-            jacobi_particle_acceleration.z =
-                particle_newtonian_inertial_accelerations.z - s_az * ei;
-            s_x = s_x * pme + particle.mass * jacobi_particle_position.x;
-            s_y = s_y * pme + particle.mass * jacobi_particle_position.y;
-            s_z = s_z * pme + particle.mass * jacobi_particle_position.z;
-            s_vx = s_vx * pme + particle.mass * jacobi_particle_velocity.x;
-            s_vy = s_vy * pme + particle.mass * jacobi_particle_velocity.y;
-            s_vz = s_vz * pme + particle.mass * jacobi_particle_velocity.z;
-            s_ax = s_ax * pme + particle.mass * jacobi_particle_acceleration.x;
-            s_ay = s_ay * pme + particle.mass * jacobi_particle_acceleration.y;
-            s_az = s_az * pme + particle.mass * jacobi_particle_acceleration.z;
+            // multiply by ei first, then eta (pme = eta * ei);
+
+            position.mul(ei);
+            *jacobi_particle_position = particle.inertial_position;
+            jacobi_particle_position.sub(&position);
+
+            velocity.mul(ei);
+            *jacobi_particle_velocity = particle.inertial_velocity;
+            jacobi_particle_velocity.sub(&velocity);
+
+            acceleration.mul(ei);
+            *jacobi_particle_acceleration = *particle_newtonian_inertial_accelerations;
+            jacobi_particle_acceleration.sub(&acceleration);
+
+            position.mul(eta);
+            let mut tmp = *jacobi_particle_position;
+            tmp.mul(particle.mass);
+            position.add(&tmp);
+
+            velocity.mul(eta);
+            let mut tmp = *jacobi_particle_velocity;
+            tmp.mul(particle.mass);
+            velocity.add(&tmp);
+
+            acceleration.mul(eta);
+            let mut tmp = *jacobi_particle_acceleration;
+            tmp.mul(particle.mass);
+            acceleration.add(&tmp);
+            
         }
     }
-    let mtot = eta;
-    let mtot_i = 1. / mtot;
-    let jacobi_star_mass = mtot;
-    jacobi_star_position.x = s_x * mtot_i;
-    jacobi_star_position.y = s_y * mtot_i;
-    jacobi_star_position.z = s_z * mtot_i;
-    jacobi_star_velocity.x = s_vx * mtot_i;
-    jacobi_star_velocity.y = s_vy * mtot_i;
-    jacobi_star_velocity.z = s_vz * mtot_i;
-    jacobi_star_acceleration.x = s_ax * mtot_i;
-    jacobi_star_acceleration.y = s_ay * mtot_i;
-    jacobi_star_acceleration.z = s_az * mtot_i;
+    let jacobi_star_mass = eta;
+    position.mul(1. / eta);
+    velocity.mul(1. / eta);
+    acceleration.mul(1. / eta);
+    let jacobi_star_position = position;
+    let jacobi_star_velocity = velocity;
+    let jacobi_star_acceleration = acceleration;
     (
         jacobi_star_mass,
         jacobi_star_position,
@@ -1110,14 +1008,12 @@ fn anderson1975_general_relativity_jacobi_to_inertial_acc(
     jacobi_star_acceleration: Axes,
     jacobi_particles_accelerations: [Axes; MAX_PARTICLES - 1],
 ) -> (Axes, [Axes; MAX_PARTICLES - 1]) {
-    let mut star_acceleration = Axes::new();
     let mut particles_accelerations = [Axes::new(); MAX_PARTICLES - 1];
     let n_particles = particles.len() + more_particles.len();
 
     let mut eta = jacobi_star_mass;
-    let mut s_ax = eta * jacobi_star_acceleration.x;
-    let mut s_ay = eta * jacobi_star_acceleration.y;
-    let mut s_az = eta * jacobi_star_acceleration.z;
+    let mut s = jacobi_star_acceleration;
+    s.mul(eta);
     for ((particle, particle_acceleration), jacobi_particle_acceleration) in particles
         .iter()
         .chain(more_particles.iter())
@@ -1127,23 +1023,22 @@ fn anderson1975_general_relativity_jacobi_to_inertial_acc(
     {
         if let GeneralRelativityEffect::OrbitingBody = particle.general_relativity.effect {
             let ei = 1. / eta;
-            s_ax = (s_ax - particle.mass * jacobi_particle_acceleration.x) * ei;
-            s_ay = (s_ay - particle.mass * jacobi_particle_acceleration.y) * ei;
-            s_az = (s_az - particle.mass * jacobi_particle_acceleration.z) * ei;
-            particle_acceleration.x = jacobi_particle_acceleration.x + s_ax;
-            particle_acceleration.y = jacobi_particle_acceleration.y + s_ay;
-            particle_acceleration.z = jacobi_particle_acceleration.z + s_az;
+            let mut tmp = *jacobi_particle_acceleration;
+            tmp.mul(particle.mass);
+
+            s.sub(&tmp);
+            s.mul(ei);
+
+            *particle_acceleration = *jacobi_particle_acceleration;
+            particle_acceleration.add(&s);
             eta -= particle.mass;
-            s_ax *= eta;
-            s_ay *= eta;
-            s_az *= eta;
+            s.mul(eta);
         }
     }
     let mtot = eta;
     let mtot_i = 1. / mtot;
-    star_acceleration.x = s_ax * mtot_i;
-    star_acceleration.y = s_ay * mtot_i;
-    star_acceleration.z = s_az * mtot_i;
+    let mut star_acceleration = s;
+    star_acceleration.mul(mtot_i);
     (star_acceleration, particles_accelerations)
 }
 // [end] General Relativity based on REBOUNDx gr.c
@@ -1177,23 +1072,20 @@ fn get_anderson1975_newhall1983_newtonian_inertial_accelerations(
             .iter_mut()
             .zip(particles.iter_mut().chain(more_particles.iter_mut()))
         {
-            let dx = host_particle.inertial_position.x
-                - particle.general_relativity.coordinates.position.x;
-            let dy = host_particle.inertial_position.y
-                - particle.general_relativity.coordinates.position.y;
-            let dz = host_particle.inertial_position.z
-                - particle.general_relativity.coordinates.position.z;
-            let r2 = dx.powi(2) + dy.powi(2) + dz.powi(2);
-            let r = sqrt!(r2);
-            let prefac = G / (r2 * r);
+
+            let mut tmp = host_particle.inertial_position;
+            tmp.sub(&particle.general_relativity.coordinates.position);
+            let mut tmp2 = tmp;
+            let r = tmp.norm();
+            let prefac = G / r.powi(3);
             let prefac_mass_star = prefac * host_particle.mass;
             let prefac_mass_particle = prefac * particle.mass;
-            host_newtonian_inertial_accelerations.x -= prefac_mass_particle * dx;
-            host_newtonian_inertial_accelerations.y -= prefac_mass_particle * dy;
-            host_newtonian_inertial_accelerations.z -= prefac_mass_particle * dz;
-            newtonian_acceleration.x += prefac_mass_star * dx;
-            newtonian_acceleration.y += prefac_mass_star * dy;
-            newtonian_acceleration.z += prefac_mass_star * dz;
+
+            tmp.mul(prefac_mass_particle);
+            host_newtonian_inertial_accelerations.sub(&tmp);
+
+            tmp2.mul(prefac_mass_star);
+            newtonian_acceleration.add(&tmp2);
         }
     }
     (
@@ -1249,10 +1141,9 @@ pub fn calculate_newhall1983_general_relativity_acceleration(
                 && (particle_i.general_relativity.effect != GeneralRelativityEffect::Disabled
                     || particle_j.general_relativity.effect != GeneralRelativityEffect::Disabled)
             {
-                drs_i_j.x = particle_i.inertial_position.x - particle_j.inertial_position.x;
-                drs_i_j.y = particle_i.inertial_position.y - particle_j.inertial_position.y;
-                drs_i_j.z = particle_i.inertial_position.z - particle_j.inertial_position.z;
-                rs_i[j] = sqrt!(drs_i_j.x.powi(2) + drs_i_j.y.powi(2) + drs_i_j.z.powi(2));
+                *drs_i_j = particle_i.inertial_position;
+                drs_i_j.sub(&particle_j.inertial_position);
+                rs_i[j] = drs_i_j.norm();
                 //println!("i j: {} {} {:e}", i, j, rs_i[j]);
             }
         }

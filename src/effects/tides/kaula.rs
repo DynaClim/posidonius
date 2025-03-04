@@ -326,8 +326,8 @@ fn calculate_2d_constant(
     heliocentric_radius: f64,
     semi_major_axis: f64,
 ) -> f64 {
-    let (x, y, z) = particle.tides.coordinates.position.unpack();
-    let distance = sqrt!(x.powi(2) + y.powi(2) + z.powi(2));
+    let distance = particle.tides.coordinates.position.norm();
+    let (x, y, _z) = particle.tides.coordinates.position.unpack();
     let coplanar_distance = sqrt!(x.powi(2) + y.powi(2));
     let sin_theta = coplanar_distance / distance;
 

@@ -60,8 +60,22 @@ impl Axes {
     }
 
     #[inline(always)]
+    pub fn norm(&self) -> f64 {
+        sqrt!(self.x.powi(2) + self.y.powi(2) + self.z.powi(2))
+    }
+
+    #[inline(always)]
     pub fn dot(&self, other: &Self) -> f64 {
         self.x * other.x + self.y * other.y + self.z * other.z
+    }
+
+    #[inline(always)]
+    pub fn cross(&self, other: &Self) -> Self {
+        Self {
+            x: self.y * other.z - self.z * other.y,
+            y: self.z * other.x - self.x * other.z,
+            z: self.x * other.y - self.y * other.x,
+        }
     }
 
     #[inline(always)]

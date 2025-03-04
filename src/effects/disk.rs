@@ -124,19 +124,14 @@ pub fn inertial_to_heliocentric_coordinates(
                     .velocity
                     .sub(&host_particle.inertial_velocity);
 
-                particle.disk.parameters.internal.distance = {
-                    let (px, py, pz) = particle.disk.coordinates.position.unpack();
+                particle.disk.parameters.internal.distance = particle.disk.coordinates.position.norm();
 
-                    sqrt!(px.powi(2) + py.powi(2) + pz.powi(2))
-                };
-                particle.disk.parameters.internal.norm_velocity_vector_2 = {
-                    let (vx, vy, vz) = particle.disk.coordinates.velocity.unpack();
-                    let (host_vx, host_vy, host_vz) = particle.disk.coordinates.velocity.unpack();
+                let mut tmp = particle.disk.coordinates.velocity;
+                tmp.sub(&host_particle.disk.coordinates.velocity);
+                let norm = tmp.norm();
 
-                    (vx - host_vx).powi(2) + (vy - host_vy).powi(2) + (vz - host_vz).powi(2)
-                };
-                particle.disk.parameters.internal.norm_velocity_vector =
-                    sqrt!(particle.disk.parameters.internal.norm_velocity_vector_2);
+                particle.disk.parameters.internal.norm_velocity_vector = norm;
+                particle.disk.parameters.internal.norm_velocity_vector_2 = norm.powi(2);
             }
         }
     }
