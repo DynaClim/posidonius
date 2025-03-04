@@ -263,8 +263,7 @@ impl Universe {
     }
 
     fn roche_radius(particle: &Particle, smaller_particle: &Particle) -> f64 {
-        (smaller_particle.radius / 0.462)
-                        * (particle.mass / smaller_particle.mass).powf(1. / 3.)
+        (smaller_particle.radius / 0.462) * (particle.mass / smaller_particle.mass).powf(1. / 3.)
     }
 
     pub fn gravity_calculate_acceleration(&mut self, ignore_terms: IgnoreGravityTerms) {
@@ -464,15 +463,20 @@ impl Universe {
             self.particles.split_at_mut(self.hosts.index.most_massive);
         if let Some((host_particle, particles_right)) = particles_right.split_first_mut() {
             for particle in particles_left.iter_mut().chain(particles_right.iter_mut()) {
-
                 particle.heliocentric_position = particle.inertial_position;
-                particle.heliocentric_position.sub(&host_particle.inertial_position);
+                particle
+                    .heliocentric_position
+                    .sub(&host_particle.inertial_position);
 
                 particle.heliocentric_velocity = particle.inertial_velocity;
-                particle.heliocentric_velocity.sub(&host_particle.inertial_velocity);
+                particle
+                    .heliocentric_velocity
+                    .sub(&host_particle.inertial_velocity);
 
                 particle.heliocentric_distance = particle.heliocentric_position.norm();
-                particle.heliocentric_radial_velocity = particle.heliocentric_position.dot(&particle.heliocentric_velocity)
+                particle.heliocentric_radial_velocity = particle
+                    .heliocentric_position
+                    .dot(&particle.heliocentric_velocity)
                     / particle.heliocentric_distance;
 
                 let mut tmp = particle.heliocentric_velocity;
@@ -805,33 +809,40 @@ impl Universe {
         // Add the tidal+flattening+general relativity accelerations to the gravitational one (already computed)
         for particle in &mut self.particles[..self.n_particles] {
             if self.consider_effects.tides {
-                particle.inertial_additional_acceleration.add(&particle.tides.parameters.output.acceleration);
+                particle
+                    .inertial_additional_acceleration
+                    .add(&particle.tides.parameters.output.acceleration);
             }
 
             if self.consider_effects.disk {
-                particle.inertial_additional_acceleration.add(&
-                    particle.disk.parameters.output.acceleration);
+                particle
+                    .inertial_additional_acceleration
+                    .add(&particle.disk.parameters.output.acceleration);
             }
 
             if self.consider_effects.rotational_flattening {
-                particle.inertial_additional_acceleration.add(&particle
-                    .rotational_flattening
-                    .parameters
-                    .output
-                    .acceleration
-                    );
+                particle.inertial_additional_acceleration.add(
+                    &particle
+                        .rotational_flattening
+                        .parameters
+                        .output
+                        .acceleration,
+                );
             }
 
             if self.consider_effects.general_relativity {
-                particle.inertial_additional_acceleration.add(&
-                    particle.general_relativity.parameters.output.acceleration);
+                particle
+                    .inertial_additional_acceleration
+                    .add(&particle.general_relativity.parameters.output.acceleration);
             }
         }
     }
 
     pub fn apply_acceleration_corrections(&mut self) {
         for particle in &mut self.particles[..self.n_particles] {
-            particle.inertial_acceleration.add(&particle.inertial_additional_acceleration);
+            particle
+                .inertial_acceleration
+                .add(&particle.inertial_additional_acceleration);
         }
     }
 
@@ -847,19 +858,24 @@ impl Universe {
         for particle in &mut self.particles[..self.n_particles] {
             // - Equation 25 from Bolmont et al. 2015
 
-
             particle.dangular_momentum_dt = particle.tides.parameters.output.dangular_momentum_dt;
-            particle.dangular_momentum_dt.add(&particle
-.rotational_flattening
-.parameters
-.output
-.dangular_momentum_dt);
-            particle.dangular_momentum_dt.add(&particle
-                        .general_relativity
-                        .parameters
-                        .output
-                        .dangular_momentum_dt);
-            particle.dangular_momentum_dt.add(&particle.wind.parameters.output.dangular_momentum_dt);
+            particle.dangular_momentum_dt.add(
+                &particle
+                    .rotational_flattening
+                    .parameters
+                    .output
+                    .dangular_momentum_dt,
+            );
+            particle.dangular_momentum_dt.add(
+                &particle
+                    .general_relativity
+                    .parameters
+                    .output
+                    .dangular_momentum_dt,
+            );
+            particle
+                .dangular_momentum_dt
+                .add(&particle.wind.parameters.output.dangular_momentum_dt);
 
             //// Compensated summation to improve the accuracy of additions that involve
             //// one small and one large floating point number (already considered by IAS15)
@@ -912,8 +928,7 @@ impl Universe {
             for particle_b in &particles[i + 1..] {
                 let mut tmp = particle_a.heliocentric_position;
                 tmp.sub(&particle_b.heliocentric_position);
-                e_pot -= particle_b.mass_g * particle_a.mass
-                    / tmp.norm();
+                e_pot -= particle_b.mass_g * particle_a.mass / tmp.norm();
             }
         }
 
@@ -923,7 +938,9 @@ impl Universe {
     pub fn compute_total_angular_momentum(&self) -> f64 {
         let mut total_angular_momentum = Axes::new(); // L
         for particle in &self.particles[..self.n_particles] {
-            let mut tmp = particle.heliocentric_position.cross(&particle.heliocentric_velocity);
+            let mut tmp = particle
+                .heliocentric_position
+                .cross(&particle.heliocentric_velocity);
             tmp.mul(particle.mass);
             total_angular_momentum.add(&tmp);
         }
@@ -938,16 +955,13 @@ fn get_center_of_mass_of_pair(
     center_of_mass_mass: f64,
     particle: &Particle,
 ) -> f64 {
-
     let mut tmp = particle.heliocentric_position;
     tmp.mul(particle.mass);
-    *center_of_mass_position = *center_of_mass_position;
     center_of_mass_position.mul(center_of_mass_mass);
     center_of_mass_position.add(&tmp);
 
     let mut tmp = particle.heliocentric_velocity;
     tmp.mul(particle.mass);
-    *center_of_mass_velocity = *center_of_mass_velocity;
     center_of_mass_velocity.mul(center_of_mass_mass);
     center_of_mass_velocity.add(&tmp);
 

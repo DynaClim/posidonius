@@ -124,7 +124,8 @@ pub fn inertial_to_heliocentric_coordinates(
                     .velocity
                     .sub(&host_particle.inertial_velocity);
 
-                particle.disk.parameters.internal.distance = particle.disk.coordinates.position.norm();
+                particle.disk.parameters.internal.distance =
+                    particle.disk.coordinates.position.norm();
 
                 let mut tmp = particle.disk.coordinates.velocity;
                 tmp.sub(&host_particle.disk.coordinates.velocity);

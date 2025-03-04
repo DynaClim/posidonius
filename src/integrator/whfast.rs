@@ -419,7 +419,7 @@ impl WHFast {
             .universe
             .particles
             .iter()
-            .map(|particle| Particle::view(particle))
+            .map(Particle::view)
             .collect();
         let mut particles_final = particles_orig.clone();
         let mut inertial_velocity_changes: [Axes; MAX_PARTICLES] = [Axes::new(); MAX_PARTICLES];
@@ -468,13 +468,13 @@ impl WHFast {
                 //      https://en.wikipedia.org/wiki/Kahan_summation_algorithm
                 *inertial_velocity_change = particle_avg.inertial_additional_acceleration;
                 inertial_velocity_change.mul(dt);
-                inertial_velocity_change.sub(&inertial_velocity_error);
+                inertial_velocity_change.sub(inertial_velocity_error);
                 //
 
                 particle_final.inertial_velocity = particle_orig.inertial_velocity;
                 particle_final
                     .inertial_velocity
-                    .add(&inertial_velocity_change);
+                    .add(inertial_velocity_change);
 
                 if integrate_spin {
                     // Compensated summation to improve the accuracy of additions that involve
@@ -483,13 +483,13 @@ impl WHFast {
                     //      https://en.wikipedia.org/wiki/Kahan_summation_algorithm
                     *angular_momentum_change = particle_avg.dangular_momentum_dt;
                     angular_momentum_change.mul(dt);
-                    angular_momentum_change.sub(&angular_momentum_error);
+                    angular_momentum_change.sub(angular_momentum_error);
 
                     //
                     particle_final.angular_momentum = particle_orig.angular_momentum;
                     particle_final
                         .angular_momentum
-                        .add(&angular_momentum_change);
+                        .add(angular_momentum_change);
                 }
             }
             // Compare final with previous velocity/spin but make sure there is a minimum of
@@ -551,7 +551,7 @@ impl WHFast {
             //      https://en.wikipedia.org/wiki/Kahan_summation_algorithm
             *inertial_velocity_error = particle.inertial_velocity;
             inertial_velocity_error.sub(&particle_orig.inertial_velocity);
-            inertial_velocity_error.sub(&inertial_velocity_change);
+            inertial_velocity_error.sub(inertial_velocity_change);
 
             if integrate_spin {
                 // Use modified angular_momentum
@@ -563,7 +563,7 @@ impl WHFast {
                 //      https://en.wikipedia.org/wiki/Kahan_summation_algorithm
                 *angular_momentum_error = particle.angular_momentum;
                 angular_momentum_error.sub(&particle_orig.angular_momentum);
-                angular_momentum_error.sub(&angular_momentum_change);
+                angular_momentum_error.sub(angular_momentum_change);
             }
         }
     }

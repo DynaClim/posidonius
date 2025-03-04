@@ -284,7 +284,8 @@ pub fn inertial_to_heliocentric_coordinates(
                     .velocity
                     .sub(&host_particle.inertial_velocity);
 
-                particle.tides.parameters.internal.distance = particle.tides.coordinates.position.norm();
+                particle.tides.parameters.internal.distance =
+                    particle.tides.coordinates.position.norm();
                 particle.tides.parameters.internal.radial_velocity = particle
                     .tides
                     .coordinates
