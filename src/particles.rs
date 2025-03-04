@@ -5,7 +5,7 @@ pub use particle::{Particle, Reference};
 pub use universe::{ConsiderEffects, IgnoreGravityTerms, Universe};
 
 use serde::{Deserialize, Serialize};
-use std::ops::Sub;
+//use std::ops::Sub;
 
 pub fn calculate_spin(particles: &mut [Particle]) {
     for (i, particle) in particles.iter_mut().enumerate() {
@@ -24,6 +24,7 @@ pub struct Axes {
     pub z: f64,
 }
 
+/*
 impl Sub for Axes {
     type Output = Axes;
     fn sub(self, other: Axes) -> Axes {
@@ -34,7 +35,7 @@ impl Sub for Axes {
         }
     }
 }
-
+*/
 impl Axes {
     pub fn new() -> Self {
         Self::default()
@@ -60,6 +61,20 @@ impl Axes {
     }
 
     #[inline(always)]
+    pub fn mul(&mut self, factor: f64) {
+        self.x *= factor;
+        self.y *= factor;
+        self.z *= factor;
+    }
+
+    #[inline(always)]
+    pub fn div(&mut self, factor: f64) {
+        self.x /= factor;
+        self.y /= factor;
+        self.z /= factor;
+    }
+
+    #[inline(always)]
     pub fn norm(&self) -> f64 {
         sqrt!(self.x.powi(2) + self.y.powi(2) + self.z.powi(2))
     }
@@ -79,20 +94,6 @@ impl Axes {
     }
 
     #[inline(always)]
-    pub fn mul(&mut self, factor: f64) {
-        self.x *= factor;
-        self.y *= factor;
-        self.z *= factor;
-    }
-
-    #[inline(always)]
-    pub fn div(&mut self, factor: f64) {
-        self.x /= factor;
-        self.y /= factor;
-        self.z /= factor;
-    }
-
-    #[inline(always)]
     pub fn negate(&mut self) {
         self.mul(-1.)
     }
@@ -107,5 +108,87 @@ impl Axes {
     #[inline(always)]
     pub fn unpack(&self) -> (f64, f64, f64) {
         (self.x, self.y, self.z)
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_zero() {
+        let mut a = Axes::from(1., 2., 3.);
+        let zero = Axes::from(0., 0., 0.);
+        a.zero();
+        assert_eq!(&a, &zero);
+    }
+
+    #[test]
+    fn test_netage() {
+        let mut a = Axes::from(1., 2., 3.);
+        let b = Axes::from(-1., -2., -3.);
+        a.negate();
+        assert_eq!(&a, &b);
+    }
+
+    #[test]
+    fn test_add() {
+        let mut a = Axes::from(1., 2., 3.);
+        let b = Axes::from(-1., -2., -3.);
+        let zero = Axes::from(0., 0., 0.);
+        a.add(&b);
+        assert_eq!(&a, &zero);
+    }
+
+    #[test]
+    fn test_sub() {
+        let mut a = Axes::from(1., 2., 3.);
+        let b = Axes::from(1., 2., 3.);
+        let zero = Axes::from(0., 0., 0.);
+        a.sub(&b);
+        assert_eq!(&a, &zero);
+    }
+
+    #[test]
+    fn test_mul() {
+        let mut a = Axes::from(1., 2., 3.);
+        let b = Axes::from(-1., -2., -3.);
+        a.mul(-1.);
+        assert_eq!(&a, &b);
+    }
+
+    #[test]
+    fn test_div() {
+        let mut a = Axes::from(1., 2., 3.);
+        let b = Axes::from(0.5, 1., 1.5);
+        a.div(2.);
+        assert_eq!(&a, &b);
+    }
+
+    #[test]
+    fn test_norm() {
+        let a = Axes::from(3., 4., 12.);
+        let res = a.norm();
+        let expected = 13.;
+        assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn test_dot() {
+        let a = Axes::from(1., 2., 3.);
+        let b = Axes::from(0.5, 1., 1.5);
+        let res = a.dot(&b);
+        let expected = 7.;
+        assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn test_cross() {
+        let a = Axes::from(1., 2., 3.);
+        let b = Axes::from(0.5, 1., 1.5);
+        let res = a.cross(&b);
+        let zero = Axes::from(0., 0., 0.);
+        assert_eq!(zero, res);
     }
 }
