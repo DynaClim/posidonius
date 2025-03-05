@@ -5,8 +5,6 @@ pub use particle::{Particle, Reference};
 pub use universe::{ConsiderEffects, IgnoreGravityTerms, Universe};
 
 use serde::{Deserialize, Serialize};
-//use std::ops::Sub;
-
 pub fn calculate_spin(particles: &mut [Particle]) {
     for (i, particle) in particles.iter_mut().enumerate() {
         assert_ne!(
@@ -24,18 +22,6 @@ pub struct Axes {
     pub z: f64,
 }
 
-/*
-impl Sub for Axes {
-    type Output = Axes;
-    fn sub(self, other: Axes) -> Axes {
-        Self {
-            x: self.x - other.x,
-            y: self.y - other.y,
-            z: self.z - other.z,
-        }
-    }
-}
-*/
 impl Axes {
     pub fn new() -> Self {
         Self::default()
@@ -76,7 +62,7 @@ impl Axes {
 
     #[inline(always)]
     pub fn norm(&self) -> f64 {
-        sqrt!(self.x.powi(2) + self.y.powi(2) + self.z.powi(2))
+        sqrt!(self.dot(self))
     }
 
     #[inline(always)]

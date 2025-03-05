@@ -235,15 +235,18 @@ fn cartesian_projection_of_spherical_coordinates(
         trig_angles(particle)
     };
 
-    let tidal_force_x = radial_component * sin_theta * cos_phi
+    Axes::from(
+        radial_component * sin_theta * cos_phi
         + normal_component * cos_theta * cos_phi
-        - orthogonal_component * sin_phi;
-    let tidal_force_y = radial_component * sin_theta * sin_phi
-        + normal_component * cos_theta * sin_phi
-        + orthogonal_component * cos_phi;
-    let tidal_force_z = radial_component * cos_theta - normal_component * sin_theta;
+        - orthogonal_component * sin_phi,
 
-    Axes::from(tidal_force_x, tidal_force_y, tidal_force_z)
+        radial_component * sin_theta * sin_phi
+        + normal_component * cos_theta * sin_phi
+        + orthogonal_component * cos_phi,
+
+        radial_component * cos_theta
+        - normal_component * sin_theta
+    )
 }
 
 // Calculate tidal torque due to tidal forces
