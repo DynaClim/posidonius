@@ -1,12 +1,15 @@
+pub mod checks;
 pub mod planets;
 pub mod stars;
+pub mod tools;
 pub mod universe;
 
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-#[allow(dead_code)]
+use posidonius::LoveNumber;
+
 pub fn simulation_properties() -> (f64, f64, f64, f64, f64) {
     let time_step: f64 = 0.08; // in days
     let time_limit: f64 = time_step * 200.; // days
@@ -22,7 +25,6 @@ pub fn simulation_properties() -> (f64, f64, f64, f64, f64) {
     )
 }
 
-#[allow(dead_code)]
 pub fn get_data_dirname(test_name: &String) -> (String, String) {
     let rust_data_dirname = format!("tests/data/{test_name}/");
     let python_data_dirname = format!("posidonius/tests/data/{test_name}/");
@@ -98,19 +100,22 @@ pub fn load_kaula_parameters(
     real_part_love_number.copy_from_slice(&re_k2[..expected_size]);
     imaginary_part_love_number.copy_from_slice(&im_k2[..expected_size]);
 
+    let stellar_spectrum_spin_rate = if stellar_tide {
+        // Specified the initial spin rate of the star (stellar tide specific)
+        Some(spectrum_spin_rate)
+    } else {
+        None
+    };
+
     // Build and return the KaulaParameters struct
     Ok(posidonius::KaulaParameters {
-        love_number_excitation_frequency,
-        real_part_love_number,
-        imaginary_part_love_number,
-        num_datapoints: num_datapoints as f64,
-        stellar_tide,       // Specified the type of tides
-        spectrum_spin_rate, // Specified the initial spin rate of the star (stellar tide specific)
+        love_numbers: LoveNumber::new_from(
+            love_number_excitation_frequency,
+            real_part_love_number,
+            imaginary_part_love_number,
+            stellar_spectrum_spin_rate,
+        ),
         polynomials: posidonius::Polynomials::new(),
-        kaula_tidal_force: posidonius::Axes {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-        },
+        tidal_force: posidonius::Axes::new(),
     })
 }

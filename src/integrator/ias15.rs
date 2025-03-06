@@ -1,23 +1,19 @@
-use super::super::constants::{
+use super::Integrator;
+use super::output::{write_historic_snapshot, write_recovery_snapshot};
+use crate::constants::{
     INTEGRATOR_EPSILON, INTEGRATOR_EPSILON_GLOBAL, INTEGRATOR_FORCE_IS_VELOCITYDEPENDENT,
     INTEGRATOR_MAX_DT, INTEGRATOR_MIN_DT, MAX_PARTICLES, SAFETY_FACTOR,
 };
-use super::super::effects::EvolutionType;
-use super::super::effects::GeneralRelativityImplementation;
-use super::super::particles::IgnoreGravityTerms;
-use super::super::particles::Universe;
-use super::Integrator;
-use super::output::{write_historic_snapshot, write_recovery_snapshot};
+use crate::effects::{EvolutionType, GeneralRelativityImplementation};
+use crate::particles::{IgnoreGravityTerms, Universe};
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 use std::any::Any;
-use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
-use std::hash::{Hash, Hasher};
 use std::io::{BufWriter, Write};
 use std::path::Path;
 use time::{OffsetDateTime, format_description};
-
+use crate::Axes;
 ///<https://arxiv.org/abs/1409.4779>
 ///IAS15: A fast, adaptive, high-order integrator for gravitational dynamics, accurate to machine
 ///precision over a billion orbits
@@ -37,7 +33,6 @@ pub struct Ias15 {
     last_recovery_snapshot_time: f64,
     last_historic_snapshot_time: f64,
     pub n_historic_snapshots: usize,
-    pub hash: u64,
     //// Integrator IAS15 data:
     n_particles: usize,
     integrator_iterations_max_exceeded: i32, // Count how many times the iteration did not converge
@@ -227,15 +222,6 @@ pub struct Ias15 {
     s: [f64; 9], // Summation coefficients
 }
 
-impl Hash for Ias15 {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        // Hash only works with certain types (for instance, it does not work with f64 values)
-        // thus we convert the whole integrator to a string thanks to the debug trait
-        // and we hash that value
-        format!("{self:?}").hash(state);
-    }
-}
-
 impl Ias15 {
     pub fn new(
         time_step: f64,
@@ -252,7 +238,6 @@ impl Ias15 {
             last_recovery_snapshot_time: -1.,
             last_historic_snapshot_time: -1.,
             n_historic_snapshots: 0,
-            hash: 0,
             universe,
             current_time: 0.,
             current_iteration: 0,
@@ -556,11 +541,6 @@ impl Integrator for Ias15 {
     ) {
         self.last_recovery_snapshot_time = self.current_time;
         universe_history_writer.flush().unwrap();
-        // Compute hash for this universe at this moment of time
-        let mut s = DefaultHasher::new();
-        self.hash = 0;
-        self.hash(&mut s);
-        self.hash = s.finish();
         write_recovery_snapshot(snapshot_path, &self);
     }
 }
@@ -849,16 +829,18 @@ impl Ias15 {
 
                     //// Prepare particles arrays for force calculation
                     // Predict positions at interval n using self.b values
-                    for (i, particle) in self.universe.particles[..self.universe.n_particles]
+                    self.universe.particles[..self.universe.n_particles]
                         .iter_mut()
                         .enumerate()
+                        .for_each(|(i, particle)|
                     {
                         let k0: usize = 3 * i;
                         let k1: usize = 3 * i + 1;
                         let k2: usize = 3 * i + 2;
 
                         // Equation 7 in paper 2015MNRAS.446.1424R
-                        let xk0 = -self.csx[k0]
+                        particle.inertial_position = Axes::from(
+                            -self.csx[k0]
                             + (self.s[8] * self.b_6[k0]
                                 + self.s[7] * self.b_5[k0]
                                 + self.s[6] * self.b_4[k0]
@@ -867,10 +849,10 @@ impl Ias15 {
                                 + self.s[3] * self.b_1[k0]
                                 + self.s[2] * self.b_0[k0]
                                 + self.s[1] * self.a0[k0]
-                                + self.s[0] * self.v0[k0]);
-                        particle.inertial_position.x = xk0 + self.x0[k0];
+                                + self.s[0] * self.v0[k0])
+                            + self.x0[k0],
 
-                        let xk1 = -self.csx[k1]
+                            -self.csx[k1]
                             + (self.s[8] * self.b_6[k1]
                                 + self.s[7] * self.b_5[k1]
                                 + self.s[6] * self.b_4[k1]
@@ -879,10 +861,10 @@ impl Ias15 {
                                 + self.s[3] * self.b_1[k1]
                                 + self.s[2] * self.b_0[k1]
                                 + self.s[1] * self.a0[k1]
-                                + self.s[0] * self.v0[k1]);
-                        particle.inertial_position.y = xk1 + self.x0[k1];
+                                + self.s[0] * self.v0[k1])
+                            + self.x0[k1],
 
-                        let xk2 = -self.csx[k2]
+                            -self.csx[k2]
                             + (self.s[8] * self.b_6[k2]
                                 + self.s[7] * self.b_5[k2]
                                 + self.s[6] * self.b_4[k2]
@@ -891,9 +873,10 @@ impl Ias15 {
                                 + self.s[3] * self.b_1[k2]
                                 + self.s[2] * self.b_0[k2]
                                 + self.s[1] * self.a0[k2]
-                                + self.s[0] * self.v0[k2]);
-                        particle.inertial_position.z = xk2 + self.x0[k2];
-                    }
+                                + self.s[0] * self.v0[k2])
+                                + self.x0[k2]
+                        );
+                    });
 
                     if INTEGRATOR_FORCE_IS_VELOCITYDEPENDENT {
                         // If necessary, calculate velocity predictors too, from Eqn. 10 of Everhart
@@ -907,16 +890,18 @@ impl Ias15 {
                         self.s[7] = 7. * self.s[6] * h_n / 8.;
 
                         // Predict velocities at interval n using self.b values
-                        for (i, particle) in self.universe.particles[..self.universe.n_particles]
+                        self.universe.particles[..self.universe.n_particles]
                             .iter_mut()
                             .enumerate()
+                            .for_each(|(i, particle)|
                         {
                             let k0 = 3 * i;
                             let k1 = 3 * i + 1;
                             let k2 = 3 * i + 2;
 
                             // Equation 6 in paper 2015MNRAS.446.1424R
-                            let vk0 = -self.csv[k0]
+                            particle.inertial_velocity = Axes::from(
+                                -self.csv[k0]
                                 + self.s[7] * self.b_6[k0]
                                 + self.s[6] * self.b_5[k0]
                                 + self.s[5] * self.b_4[k0]
@@ -924,9 +909,10 @@ impl Ias15 {
                                 + self.s[3] * self.b_2[k0]
                                 + self.s[2] * self.b_1[k0]
                                 + self.s[1] * self.b_0[k0]
-                                + self.s[0] * self.a0[k0];
-                            particle.inertial_velocity.x = vk0 + self.v0[k0];
-                            let vk1 = -self.csv[k1]
+                                + self.s[0] * self.a0[k0]
+                                + self.v0[k0],
+
+                                -self.csv[k1]
                                 + self.s[7] * self.b_6[k1]
                                 + self.s[6] * self.b_5[k1]
                                 + self.s[5] * self.b_4[k1]
@@ -934,9 +920,10 @@ impl Ias15 {
                                 + self.s[3] * self.b_2[k1]
                                 + self.s[2] * self.b_1[k1]
                                 + self.s[1] * self.b_0[k1]
-                                + self.s[0] * self.a0[k1];
-                            particle.inertial_velocity.y = vk1 + self.v0[k1];
-                            let vk2 = -self.csv[k2]
+                                + self.s[0] * self.a0[k1]
+                                + self.v0[k1],
+
+                                -self.csv[k2]
                                 + self.s[7] * self.b_6[k2]
                                 + self.s[6] * self.b_5[k2]
                                 + self.s[5] * self.b_4[k2]
@@ -944,24 +931,25 @@ impl Ias15 {
                                 + self.s[3] * self.b_2[k2]
                                 + self.s[2] * self.b_1[k2]
                                 + self.s[1] * self.b_0[k2]
-                                + self.s[0] * self.a0[k2];
-                            particle.inertial_velocity.z = vk2 + self.v0[k2];
-                        }
+                                + self.s[0] * self.a0[k2]
+                                + self.v0[k2]
+                            );
+                        });
 
                         if integrate_spin {
                             // Spin integration
                             // Predict velocities at interval n using self.b values
-                            for (i, particle) in self.universe.particles
-                                [..self.universe.n_particles]
+                            self.universe.particles[..self.universe.n_particles]
                                 .iter_mut()
                                 .enumerate()
+                                .for_each(|(i, particle)|
                             {
                                 let k0 = 3 * i;
                                 let k1 = 3 * i + 1;
                                 let k2 = 3 * i + 2;
-
                                 // Equation 6 in paper 2015MNRAS.446.1424R
-                                let angular_momentum_k0 = -self.css[k0]
+                                particle.angular_momentum = Axes::from(
+                                -self.css[k0]
                                     + self.s[7] * self.sb_6[k0]
                                     + self.s[6] * self.sb_5[k0]
                                     + self.s[5] * self.sb_4[k0]
@@ -969,10 +957,10 @@ impl Ias15 {
                                     + self.s[3] * self.sb_2[k0]
                                     + self.s[2] * self.sb_1[k0]
                                     + self.s[1] * self.sb_0[k0]
-                                    + self.s[0] * self.dangular_momentum_dt0[k0];
-                                particle.angular_momentum.x =
-                                    angular_momentum_k0 + self.angular_momentum0[k0];
-                                let angular_momentum_k1 = -self.css[k1]
+                                    + self.s[0] * self.dangular_momentum_dt0[k0]
+                                    + self.angular_momentum0[k0],
+
+                                    -self.css[k1]
                                     + self.s[7] * self.sb_6[k1]
                                     + self.s[6] * self.sb_5[k1]
                                     + self.s[5] * self.sb_4[k1]
@@ -980,10 +968,10 @@ impl Ias15 {
                                     + self.s[3] * self.sb_2[k1]
                                     + self.s[2] * self.sb_1[k1]
                                     + self.s[1] * self.sb_0[k1]
-                                    + self.s[0] * self.dangular_momentum_dt0[k1];
-                                particle.angular_momentum.y =
-                                    angular_momentum_k1 + self.angular_momentum0[k1];
-                                let angular_momentum_k2 = -self.css[k2]
+                                    + self.s[0] * self.dangular_momentum_dt0[k1]
+                                    + self.angular_momentum0[k1],
+
+                                    -self.css[k2]
                                     + self.s[7] * self.sb_6[k2]
                                     + self.s[6] * self.sb_5[k2]
                                     + self.s[5] * self.sb_4[k2]
@@ -991,13 +979,12 @@ impl Ias15 {
                                     + self.s[3] * self.sb_2[k2]
                                     + self.s[2] * self.sb_1[k2]
                                     + self.s[1] * self.sb_0[k2]
-                                    + self.s[0] * self.dangular_momentum_dt0[k2];
-                                particle.angular_momentum.z =
-                                    angular_momentum_k2 + self.angular_momentum0[k2];
-                            }
+                                    + self.s[0] * self.dangular_momentum_dt0[k2]
+                                    + self.angular_momentum0[k2]
+                                );
+                            });
                         }
                     }
-
                     // Calculate accelerations.
                     let ignore_gravity_terms = IgnoreGravityTerms::None;
                     let ignored_gravity_terms = ignore_gravity_terms;

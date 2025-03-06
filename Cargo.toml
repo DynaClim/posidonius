@@ -6,7 +6,7 @@ homepage = "https://www.blancocuaresma.com/s/"
 repository = "https://github.com/marblestation/posidonius/"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
-edition = "2018"
+edition = "2024"
 
 [[bin]]
 path = "src/main.rs"

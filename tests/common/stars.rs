@@ -1,3 +1,4 @@
+use crate::common::checks::{check_uniform_viscosity_coefficient, evolution_warnings};
 use posidonius;
 
 // NewFeatures:solar_like_for_kaula_1, solar_like_for_kaula_2, red_dwarf_like_for_kaula
@@ -66,12 +67,14 @@ pub fn solar_like_for_kaula_1(
         star_velocity,
         star_spin,
     );
-    star.set_tides(star_tides);
-    star.set_rotational_flattening(star_rotational_flattening);
-    star.set_general_relativity(star_general_relativity);
-    star.set_wind(star_wind);
-    star.set_disk(star_disk);
-    star.set_evolution(star_evolution);
+    star.tides = star_tides;
+    star.rotational_flattening = star_rotational_flattening;
+    check_uniform_viscosity_coefficient(&star);
+    star.general_relativity = star_general_relativity;
+    star.wind = star_wind;
+    star.disk = star_disk;
+    star.evolution = star_evolution;
+    evolution_warnings(star_evolution);
     star
 }
 
@@ -140,12 +143,14 @@ pub fn solar_like_for_kaula_2(
         star_velocity,
         star_spin,
     );
-    star.set_tides(star_tides);
-    star.set_rotational_flattening(star_rotational_flattening);
-    star.set_general_relativity(star_general_relativity);
-    star.set_wind(star_wind);
-    star.set_disk(star_disk);
-    star.set_evolution(star_evolution);
+    star.tides = star_tides;
+    star.rotational_flattening = star_rotational_flattening;
+    check_uniform_viscosity_coefficient(&star);
+    star.general_relativity = star_general_relativity;
+    star.wind = star_wind;
+    star.disk = star_disk;
+    star.evolution = star_evolution;
+    evolution_warnings(star_evolution);
     star
 }
 
@@ -215,12 +220,14 @@ pub fn red_dwarf_like_for_kaula(
         star_velocity,
         star_spin,
     );
-    star.set_tides(star_tides);
-    star.set_rotational_flattening(star_rotational_flattening);
-    star.set_general_relativity(star_general_relativity);
-    star.set_wind(star_wind);
-    star.set_disk(star_disk);
-    star.set_evolution(star_evolution);
+    star.tides = star_tides;
+    star.rotational_flattening = star_rotational_flattening;
+    check_uniform_viscosity_coefficient(&star);
+    star.general_relativity = star_general_relativity;
+    star.wind = star_wind;
+    star.disk = star_disk;
+    star.evolution = star_evolution;
+    evolution_warnings(star_evolution);
     star
 }
 
@@ -310,12 +317,14 @@ pub fn solar_like(
         star_velocity,
         star_spin,
     );
-    star.set_tides(star_tides);
-    star.set_rotational_flattening(star_rotational_flattening);
-    star.set_general_relativity(star_general_relativity);
-    star.set_wind(star_wind);
-    star.set_disk(star_disk);
-    star.set_evolution(star_evolution);
+    star.tides = star_tides;
+    star.rotational_flattening = star_rotational_flattening;
+    check_uniform_viscosity_coefficient(&star);
+    star.general_relativity = star_general_relativity;
+    star.wind = star_wind;
+    star.disk = star_disk;
+    star.evolution = star_evolution;
+    evolution_warnings(star_evolution);
     star
 }
 
@@ -419,12 +428,14 @@ pub fn solar_like_with_disk(
         star_velocity,
         star_spin,
     );
-    star.set_tides(star_tides);
-    star.set_rotational_flattening(star_rotational_flattening);
-    star.set_general_relativity(star_general_relativity);
-    star.set_wind(star_wind);
-    star.set_disk(star_disk);
-    star.set_evolution(star_evolution);
+    star.tides = star_tides;
+    star.rotational_flattening = star_rotational_flattening;
+    check_uniform_viscosity_coefficient(&star);
+    star.general_relativity = star_general_relativity;
+    star.wind = star_wind;
+    star.disk = star_disk;
+    star.evolution = star_evolution;
+    evolution_warnings(star_evolution);
     star
 }
 
@@ -564,12 +575,14 @@ pub fn brown_dwarf(
         star_velocity,
         star_spin,
     );
-    star.set_tides(star_tides);
-    star.set_rotational_flattening(star_rotational_flattening);
-    star.set_general_relativity(star_general_relativity);
-    star.set_wind(star_wind);
-    star.set_disk(star_disk);
-    star.set_evolution(star_evolution);
+    star.tides = star_tides;
+    star.rotational_flattening = star_rotational_flattening;
+    check_uniform_viscosity_coefficient(&star);
+    star.general_relativity = star_general_relativity;
+    star.wind = star_wind;
+    star.disk = star_disk;
+    star.evolution = star_evolution;
+    evolution_warnings(star_evolution);
     star
 }
 
@@ -655,12 +668,14 @@ pub fn m_dwarf(
         star_velocity,
         star_spin,
     );
-    star.set_tides(star_tides);
-    star.set_rotational_flattening(star_rotational_flattening);
-    star.set_general_relativity(star_general_relativity);
-    star.set_wind(star_wind);
-    star.set_disk(star_disk);
-    star.set_evolution(star_evolution);
+    star.tides = star_tides;
+    star.rotational_flattening = star_rotational_flattening;
+    check_uniform_viscosity_coefficient(&star);
+    star.general_relativity = star_general_relativity;
+    star.wind = star_wind;
+    star.disk = star_disk;
+    star.evolution = star_evolution;
+    evolution_warnings(star_evolution);
     star
 }
 
@@ -738,12 +753,14 @@ pub fn solar_like_primary(
         primary_star_velocity,
         primary_star_spin,
     );
-    primary_star.set_tides(primary_star_tides);
-    primary_star.set_rotational_flattening(primary_star_rotational_flattening);
-    primary_star.set_general_relativity(primary_star_general_relativity);
-    primary_star.set_wind(primary_star_wind);
-    primary_star.set_disk(primary_star_disk);
-    primary_star.set_evolution(primary_star_evolution);
+    primary_star.tides = primary_star_tides;
+    primary_star.rotational_flattening = primary_star_rotational_flattening;
+    primary_star.general_relativity = primary_star_general_relativity;
+    primary_star.wind = primary_star_wind;
+    primary_star.disk = primary_star_disk;
+    primary_star.evolution = primary_star_evolution;
+    evolution_warnings(primary_star_evolution);
+    check_uniform_viscosity_coefficient(&primary_star);
     primary_star
 }
 
@@ -772,25 +789,14 @@ pub fn solar_like_secondary(
     p += n; // Convert to longitude of perihelion !!
     let q = a * (1.0 - e); // perihelion distance
     let gm: f64 = posidonius::constants::G * (primary_star.mass + secondary_star_mass);
-    let (x, y, z, vx, vy, vz) =
-        posidonius::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
-
-    let secondary_star_position = posidonius::Axes { x, y, z };
-    let secondary_star_velocity = posidonius::Axes {
-        x: vx,
-        y: vy,
-        z: vz,
-    };
+    let (secondary_star_position, secondary_star_velocity) =
+        super::tools::calculate_cartesian_coordinates(gm, q, e, i, p, n, l);
 
     // Initialization of stellar spin
     let secondary_star_rotation_period: f64 = 8.; // hours
     let secondary_star_angular_frequency =
         posidonius::constants::TWO_PI / (secondary_star_rotation_period / 24.); // days^-1
-    let secondary_star_spin = posidonius::Axes {
-        x: 0.,
-        y: 0.,
-        z: secondary_star_angular_frequency,
-    };
+    let secondary_star_spin = posidonius::Axes::from(0., 0., secondary_star_angular_frequency);
 
     let secondary_star_love_number: f64 = 0.03; // Sun
     // Disipation factor (sigma)
@@ -838,11 +844,14 @@ pub fn solar_like_secondary(
         secondary_star_velocity,
         secondary_star_spin,
     );
-    secondary_star.set_tides(secondary_star_tides);
-    secondary_star.set_rotational_flattening(secondary_star_rotational_flattening);
-    secondary_star.set_general_relativity(secondary_star_general_relativity);
-    secondary_star.set_wind(secondary_star_wind);
-    secondary_star.set_disk(secondary_star_disk);
-    secondary_star.set_evolution(secondary_star_evolution);
+    secondary_star.tides = secondary_star_tides;
+    secondary_star.rotational_flattening = secondary_star_rotational_flattening;
+    secondary_star.general_relativity = secondary_star_general_relativity;
+    secondary_star.wind = secondary_star_wind;
+    secondary_star.disk = secondary_star_disk;
+    secondary_star.evolution = secondary_star_evolution;
+
+    check_uniform_viscosity_coefficient(&secondary_star);
+    evolution_warnings(secondary_star_evolution);
     secondary_star
 }

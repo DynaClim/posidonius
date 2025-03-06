@@ -1,13 +1,11 @@
-use super::super::constants::{G, MAX_DISTANCE_2, MAX_PARTICLES};
-use super::super::effects::{
-    disk, evolution, general_relativity, rotational_flattening, tides, wind,
-};
-use super::super::{DiskEffect, RotationalFlatteningEffect, TidesEffect, WindEffect};
-use super::super::{EvolutionType, Evolver};
-use super::super::{GeneralRelativityEffect, GeneralRelativityImplementation};
-use super::Axes;
-use super::Particle;
-use super::common;
+use super::{Axes, calculate_spin};
+use crate::Particle;
+use crate::constants::{G, MAX_DISTANCE_2, MAX_PARTICLES};
+use crate::effects::{DiskEffect, RotationalFlatteningEffect, TidesEffect, WindEffect};
+use crate::effects::{disk, evolution, general_relativity, rotational_flattening, tides, wind};
+use evolution::{EvolutionType, Evolver};
+use general_relativity::{GeneralRelativityEffect, GeneralRelativityImplementation};
+
 use itertools::izip;
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
@@ -85,6 +83,7 @@ impl Universe {
 
         // Initialize general relativity factor
         let mut general_relativity_implementation = GeneralRelativityImplementation::Disabled;
+
         if consider_effects.general_relativity {
             let (particles_left, particles_right) =
                 particles.split_at_mut(hosts.index.general_relativity);
@@ -113,18 +112,10 @@ impl Universe {
         let (center_of_mass_position, center_of_mass_velocity) =
             calculate_center_of_mass(&particles);
         for particle in &mut particles {
-            particle.inertial_position.x =
-                particle.heliocentric_position.x - center_of_mass_position.x;
-            particle.inertial_position.y =
-                particle.heliocentric_position.y - center_of_mass_position.y;
-            particle.inertial_position.z =
-                particle.heliocentric_position.z - center_of_mass_position.z;
-            particle.inertial_velocity.x =
-                particle.heliocentric_velocity.x - center_of_mass_velocity.x;
-            particle.inertial_velocity.y =
-                particle.heliocentric_velocity.y - center_of_mass_velocity.y;
-            particle.inertial_velocity.z =
-                particle.heliocentric_velocity.z - center_of_mass_velocity.z;
+            particle.inertial_position = particle.heliocentric_position;
+            particle.inertial_position.sub(&center_of_mass_position);
+            particle.inertial_velocity = particle.heliocentric_velocity;
+            particle.inertial_velocity.sub(&center_of_mass_velocity);
         }
 
         // OPTIMIZATION: Transform vector to array
@@ -136,13 +127,15 @@ impl Universe {
             (n_particles <= MAX_PARTICLES),
             "Only {MAX_PARTICLES} bodies are allowed, you need to increase the MAX_PARTICLE constant."
         );
-        let mut transformed_particles = [Particle::new_dummy(); MAX_PARTICLES];
+        let mut transformed_particles = [Particle::default(); MAX_PARTICLES];
         let mut particles_evolvers: Vec<Evolver> = Vec::with_capacity(n_particles);
-        for i in 0..n_particles {
-            transformed_particles[i] = particles[i];
-            transformed_particles[i].id = i;
+        for (i, (transformed_particle, particle)) in
+            izip!(&mut transformed_particles, &mut particles).enumerate()
+        {
+            *transformed_particle = *particle;
+            transformed_particle.id = i;
             particles_evolvers.push(Evolver::new(
-                transformed_particles[i].evolution,
+                transformed_particle.evolution,
                 initial_time,
                 time_limit,
             ));
@@ -217,9 +210,8 @@ impl Universe {
                     );
                     particle.moment_of_inertia =
                         particle.mass * particle.radius_of_gyration_2 * particle.radius.powi(2);
-                    particle.angular_momentum.x = particle.spin.x * particle.moment_of_inertia;
-                    particle.angular_momentum.y = particle.spin.y * particle.moment_of_inertia;
-                    particle.angular_momentum.z = particle.spin.z * particle.moment_of_inertia;
+                    particle.angular_momentum = particle.spin;
+                    particle.angular_momentum.mul(particle.moment_of_inertia);
                 }
             }
         }
@@ -261,15 +253,17 @@ impl Universe {
                 // Faber et al, 2005; Pacynski, 1971
                 if particle_a.mass > particle_b.mass {
                     // particle a is the most massive of both
-                    *roche_radius = (particle_b.radius / 0.462)
-                        * (particle_a.mass / particle_b.mass).powf(1. / 3.);
+                    *roche_radius = Self::roche_radius(particle_a, particle_b);
                 } else {
                     // particle b is the most massive of both
-                    *roche_radius = (particle_a.radius / 0.462)
-                        * (particle_b.mass / particle_a.mass).powf(1. / 3.);
+                    *roche_radius = Self::roche_radius(particle_b, particle_a);
                 }
             }
         }
+    }
+
+    fn roche_radius(particle: &Particle, smaller_particle: &Particle) -> f64 {
+        (smaller_particle.radius / 0.462) * (particle.mass / smaller_particle.mass).powf(1. / 3.)
     }
 
     pub fn gravity_calculate_acceleration(&mut self, ignore_terms: IgnoreGravityTerms) {
@@ -453,7 +447,7 @@ impl Universe {
                 &mut self.particles_evolvers,
             );
         }
-        common::calculate_spin(particles); // uses moment of inertia to compute spin
+        calculate_spin(particles); // uses moment of inertia to compute spin
         if evolution && self.consider_effects.evolution {
             // Evolve quantities that require a computed spin
             evolution::calculate_particles_spin_dependent_evolving_quantities(
@@ -469,37 +463,27 @@ impl Universe {
             self.particles.split_at_mut(self.hosts.index.most_massive);
         if let Some((host_particle, particles_right)) = particles_right.split_first_mut() {
             for particle in particles_left.iter_mut().chain(particles_right.iter_mut()) {
-                particle.heliocentric_position.x =
-                    particle.inertial_position.x - host_particle.inertial_position.x;
-                particle.heliocentric_position.y =
-                    particle.inertial_position.y - host_particle.inertial_position.y;
-                particle.heliocentric_position.z =
-                    particle.inertial_position.z - host_particle.inertial_position.z;
-                particle.heliocentric_velocity.x =
-                    particle.inertial_velocity.x - host_particle.inertial_velocity.x;
-                particle.heliocentric_velocity.y =
-                    particle.inertial_velocity.y - host_particle.inertial_velocity.y;
-                particle.heliocentric_velocity.z =
-                    particle.inertial_velocity.z - host_particle.inertial_velocity.z;
-                particle.heliocentric_distance = sqrt!(
-                    particle.heliocentric_position.x.powi(2)
-                        + particle.heliocentric_position.y.powi(2)
-                        + particle.heliocentric_position.z.powi(2)
-                );
-                particle.heliocentric_radial_velocity = (particle.heliocentric_position.x
-                    * particle.heliocentric_velocity.x
-                    + particle.heliocentric_position.y * particle.heliocentric_velocity.y
-                    + particle.heliocentric_position.z * particle.heliocentric_velocity.z)
+                particle.heliocentric_position = particle.inertial_position;
+                particle
+                    .heliocentric_position
+                    .sub(&host_particle.inertial_position);
+
+                particle.heliocentric_velocity = particle.inertial_velocity;
+                particle
+                    .heliocentric_velocity
+                    .sub(&host_particle.inertial_velocity);
+
+                particle.heliocentric_distance = particle.heliocentric_position.norm();
+                particle.heliocentric_radial_velocity = particle
+                    .heliocentric_position
+                    .dot(&particle.heliocentric_velocity)
                     / particle.heliocentric_distance;
-                particle.heliocentric_norm_velocity_vector_2 = (particle.heliocentric_velocity.x
-                    - host_particle.heliocentric_velocity.x)
-                    .powi(2)
-                    + (particle.heliocentric_velocity.y - host_particle.heliocentric_velocity.y)
-                        .powi(2)
-                    + (particle.heliocentric_velocity.z - host_particle.heliocentric_velocity.z)
-                        .powi(2);
-                particle.heliocentric_norm_velocity_vector =
-                    sqrt!(particle.heliocentric_norm_velocity_vector_2);
+
+                let mut tmp = particle.heliocentric_velocity;
+                tmp.sub(&host_particle.heliocentric_velocity);
+                particle.heliocentric_norm_velocity_vector = tmp.norm();
+                let (x, y, z) = tmp.unpack();
+                particle.heliocentric_norm_velocity_vector_2 = x.powi(2) + y.powi(2) + z.powi(2);
             }
             host_particle.heliocentric_position.zero();
             host_particle.heliocentric_velocity.zero();
@@ -735,7 +719,7 @@ impl Universe {
 
                         if self.consider_effects.rotational_flattening {
                             rotational_flattening::calculate_radial_component_of_the_force_induced_by_rotational_flattening(tidal_host_particle, particles_left, particles_right);
-                            rotational_flattening::calculate_acceleration_induced_by_rotational_flattering(tidal_host_particle, particles_left, particles_right);
+                            rotational_flattening::calculate_acceleration_induced_by_rotational_flattening(tidal_host_particle, particles_left, particles_right);
                         }
                     }
 
@@ -825,60 +809,40 @@ impl Universe {
         // Add the tidal+flattening+general relativity accelerations to the gravitational one (already computed)
         for particle in &mut self.particles[..self.n_particles] {
             if self.consider_effects.tides {
-                particle.inertial_additional_acceleration.x +=
-                    particle.tides.parameters.output.acceleration.x;
-                particle.inertial_additional_acceleration.y +=
-                    particle.tides.parameters.output.acceleration.y;
-                particle.inertial_additional_acceleration.z +=
-                    particle.tides.parameters.output.acceleration.z;
+                particle
+                    .inertial_additional_acceleration
+                    .add(&particle.tides.parameters.output.acceleration);
             }
 
             if self.consider_effects.disk {
-                particle.inertial_additional_acceleration.x +=
-                    particle.disk.parameters.output.acceleration.x;
-                particle.inertial_additional_acceleration.y +=
-                    particle.disk.parameters.output.acceleration.y;
-                particle.inertial_additional_acceleration.z +=
-                    particle.disk.parameters.output.acceleration.z;
+                particle
+                    .inertial_additional_acceleration
+                    .add(&particle.disk.parameters.output.acceleration);
             }
 
             if self.consider_effects.rotational_flattening {
-                particle.inertial_additional_acceleration.x += particle
-                    .rotational_flattening
-                    .parameters
-                    .output
-                    .acceleration
-                    .x;
-                particle.inertial_additional_acceleration.y += particle
-                    .rotational_flattening
-                    .parameters
-                    .output
-                    .acceleration
-                    .y;
-                particle.inertial_additional_acceleration.z += particle
-                    .rotational_flattening
-                    .parameters
-                    .output
-                    .acceleration
-                    .z;
+                particle.inertial_additional_acceleration.add(
+                    &particle
+                        .rotational_flattening
+                        .parameters
+                        .output
+                        .acceleration,
+                );
             }
 
             if self.consider_effects.general_relativity {
-                particle.inertial_additional_acceleration.x +=
-                    particle.general_relativity.parameters.output.acceleration.x;
-                particle.inertial_additional_acceleration.y +=
-                    particle.general_relativity.parameters.output.acceleration.y;
-                particle.inertial_additional_acceleration.z +=
-                    particle.general_relativity.parameters.output.acceleration.z;
+                particle
+                    .inertial_additional_acceleration
+                    .add(&particle.general_relativity.parameters.output.acceleration);
             }
         }
     }
 
     pub fn apply_acceleration_corrections(&mut self) {
         for particle in &mut self.particles[..self.n_particles] {
-            particle.inertial_acceleration.x += particle.inertial_additional_acceleration.x;
-            particle.inertial_acceleration.y += particle.inertial_additional_acceleration.y;
-            particle.inertial_acceleration.z += particle.inertial_additional_acceleration.z;
+            particle
+                .inertial_acceleration
+                .add(&particle.inertial_additional_acceleration);
         }
     }
 
@@ -893,51 +857,25 @@ impl Universe {
         //for (particle, dangular_momentum_dt_error) in self.particles[..self.n_particles].iter_mut().zip(dangular_momentum_dt_errors.iter_mut()) {
         for particle in &mut self.particles[..self.n_particles] {
             // - Equation 25 from Bolmont et al. 2015
-            particle.dangular_momentum_dt.x =
-                particle.tides.parameters.output.dangular_momentum_dt.x
-                    + particle
-                        .rotational_flattening
-                        .parameters
-                        .output
-                        .dangular_momentum_dt
-                        .x
-                    + particle
-                        .general_relativity
-                        .parameters
-                        .output
-                        .dangular_momentum_dt
-                        .x
-                    + particle.wind.parameters.output.dangular_momentum_dt.x;
-            particle.dangular_momentum_dt.y =
-                particle.tides.parameters.output.dangular_momentum_dt.y
-                    + particle
-                        .rotational_flattening
-                        .parameters
-                        .output
-                        .dangular_momentum_dt
-                        .y
-                    + particle
-                        .general_relativity
-                        .parameters
-                        .output
-                        .dangular_momentum_dt
-                        .y
-                    + particle.wind.parameters.output.dangular_momentum_dt.y;
-            particle.dangular_momentum_dt.z =
-                particle.tides.parameters.output.dangular_momentum_dt.z
-                    + particle
-                        .rotational_flattening
-                        .parameters
-                        .output
-                        .dangular_momentum_dt
-                        .z
-                    + particle
-                        .general_relativity
-                        .parameters
-                        .output
-                        .dangular_momentum_dt
-                        .z
-                    + particle.wind.parameters.output.dangular_momentum_dt.z;
+
+            particle.dangular_momentum_dt = particle.tides.parameters.output.dangular_momentum_dt;
+            particle.dangular_momentum_dt.add(
+                &particle
+                    .rotational_flattening
+                    .parameters
+                    .output
+                    .dangular_momentum_dt,
+            );
+            particle.dangular_momentum_dt.add(
+                &particle
+                    .general_relativity
+                    .parameters
+                    .output
+                    .dangular_momentum_dt,
+            );
+            particle
+                .dangular_momentum_dt
+                .add(&particle.wind.parameters.output.dangular_momentum_dt);
 
             //// Compensated summation to improve the accuracy of additions that involve
             //// one small and one large floating point number (already considered by IAS15)
@@ -988,11 +926,9 @@ impl Universe {
         // Gravitationl potential energy
         for (i, particle_a) in particles.iter().enumerate() {
             for particle_b in &particles[i + 1..] {
-                let dx = particle_a.heliocentric_position.x - particle_b.heliocentric_position.x;
-                let dy = particle_a.heliocentric_position.y - particle_b.heliocentric_position.y;
-                let dz = particle_a.heliocentric_position.z - particle_b.heliocentric_position.z;
-                e_pot -= particle_b.mass_g * particle_a.mass
-                    / sqrt!(dx.powi(2) + dy.powi(2) + dz.powi(2));
+                let mut tmp = particle_a.heliocentric_position;
+                tmp.sub(&particle_b.heliocentric_position);
+                e_pot -= particle_b.mass_g * particle_a.mass / tmp.norm();
             }
         }
 
@@ -1002,22 +938,14 @@ impl Universe {
     pub fn compute_total_angular_momentum(&self) -> f64 {
         let mut total_angular_momentum = Axes::new(); // L
         for particle in &self.particles[..self.n_particles] {
-            total_angular_momentum.x += particle.mass
-                * (particle.heliocentric_position.y * particle.heliocentric_velocity.z
-                    - particle.heliocentric_position.z * particle.heliocentric_velocity.y);
-            total_angular_momentum.y += particle.mass
-                * (particle.heliocentric_position.z * particle.heliocentric_velocity.x
-                    - particle.heliocentric_position.x * particle.heliocentric_velocity.z);
-            total_angular_momentum.z += particle.mass
-                * (particle.heliocentric_position.x * particle.heliocentric_velocity.y
-                    - particle.heliocentric_position.y * particle.heliocentric_velocity.x);
+            let mut tmp = particle
+                .heliocentric_position
+                .cross(&particle.heliocentric_velocity);
+            tmp.mul(particle.mass);
+            total_angular_momentum.add(&tmp);
         }
 
-        sqrt!(
-            total_angular_momentum.x.powi(2)
-                + total_angular_momentum.y.powi(2)
-                + total_angular_momentum.z.powi(2)
-        )
+        total_angular_momentum.norm()
     }
 }
 
@@ -1027,28 +955,22 @@ fn get_center_of_mass_of_pair(
     center_of_mass_mass: f64,
     particle: &Particle,
 ) -> f64 {
-    center_of_mass_position.x = center_of_mass_position.x * center_of_mass_mass
-        + particle.heliocentric_position.x * particle.mass;
-    center_of_mass_position.y = center_of_mass_position.y * center_of_mass_mass
-        + particle.heliocentric_position.y * particle.mass;
-    center_of_mass_position.z = center_of_mass_position.z * center_of_mass_mass
-        + particle.heliocentric_position.z * particle.mass;
-    center_of_mass_velocity.x = center_of_mass_velocity.x * center_of_mass_mass
-        + particle.heliocentric_velocity.x * particle.mass;
-    center_of_mass_velocity.y = center_of_mass_velocity.y * center_of_mass_mass
-        + particle.heliocentric_velocity.y * particle.mass;
-    center_of_mass_velocity.z = center_of_mass_velocity.z * center_of_mass_mass
-        + particle.heliocentric_velocity.z * particle.mass;
+    let mut tmp = particle.heliocentric_position;
+    tmp.mul(particle.mass);
+    center_of_mass_position.mul(center_of_mass_mass);
+    center_of_mass_position.add(&tmp);
+
+    let mut tmp = particle.heliocentric_velocity;
+    tmp.mul(particle.mass);
+    center_of_mass_velocity.mul(center_of_mass_mass);
+    center_of_mass_velocity.add(&tmp);
 
     let new_center_of_mass_mass = center_of_mass_mass + particle.mass;
     if new_center_of_mass_mass > 0. {
-        center_of_mass_position.x /= new_center_of_mass_mass;
-        center_of_mass_position.y /= new_center_of_mass_mass;
-        center_of_mass_position.z /= new_center_of_mass_mass;
-        center_of_mass_velocity.x /= new_center_of_mass_mass;
-        center_of_mass_velocity.y /= new_center_of_mass_mass;
-        center_of_mass_velocity.z /= new_center_of_mass_mass;
+        center_of_mass_position.div(new_center_of_mass_mass);
+        center_of_mass_velocity.div(new_center_of_mass_mass);
     }
+
     new_center_of_mass_mass
 }
 

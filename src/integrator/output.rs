@@ -1,9 +1,7 @@
-use super::super::Integrator;
-use super::super::constants::MIN_ORBITAL_PERIOD_TIME_STEP_RATIO;
-use super::super::particles::Reference;
-use super::super::particles::Universe;
-use super::super::tools::calculate_keplerian_orbital_elements;
-use super::super::{Axes, TidalModel, TidesEffect};
+use crate::constants::MIN_ORBITAL_PERIOD_TIME_STEP_RATIO;
+use crate::particles::{Reference, Universe};
+use crate::tools::calculate_keplerian_orbital_elements;
+use crate::{Axes, Integrator, TidalModel, TidesEffect};
 use bincode;
 use serde::Serialize;
 use serde_json;
@@ -167,16 +165,7 @@ pub fn write_historic_snapshot<T: Write>(
 
         if MIN_ORBITAL_PERIOD_TIME_STEP_RATIO > 0. {
             let reference_particle_index;
-            let (
-                _semimajor_axis,
-                _perihelion_distance,
-                _eccentricity,
-                _inclination,
-                _longitude_of_perihelion,
-                _longitude_of_ascending_node,
-                _mean_anomaly,
-                orbital_period,
-            ) = match particle.reference {
+            let keplerian_elements = match particle.reference {
                 Reference::MostMassiveParticle => {
                     reference_particle_index = universe.hosts.index.most_massive;
                     let reference_particle = &universe.particles[reference_particle_index];
@@ -210,7 +199,8 @@ pub fn write_historic_snapshot<T: Write>(
             // Control once in a while (when historic point is written) that the
             // time step is small enough to correctly integrate an orbit
             if current_particle_index != reference_particle_index
-                && orbital_period <= time_step * MIN_ORBITAL_PERIOD_TIME_STEP_RATIO
+                && keplerian_elements.orbital_period
+                    <= time_step * MIN_ORBITAL_PERIOD_TIME_STEP_RATIO
             {
                 println!("\n");
                 panic!(
@@ -225,7 +215,7 @@ pub fn write_historic_snapshot<T: Write>(
                         .unwrap(),
                     current_particle_index,
                     reference_particle_index,
-                    orbital_period,
+                    keplerian_elements.orbital_period,
                     time_step * MIN_ORBITAL_PERIOD_TIME_STEP_RATIO,
                     time_step
                 );

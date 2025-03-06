@@ -1,7 +1,6 @@
-use super::super::constants::SUN_DYN_FREQ_2;
-use super::super::constants::{M2AU, R_SUN};
-use super::super::tools::linear_interpolation;
-use super::super::{Particle, TidalModel, TidesEffect};
+use crate::constants::{M2AU, R_SUN, SUN_DYN_FREQ_2};
+use crate::tools::linear_interpolation;
+use crate::{Particle, TidalModel, TidesEffect};
 use csv;
 use serde::{Deserialize, Serialize};
 

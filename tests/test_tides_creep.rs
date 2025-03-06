@@ -2,6 +2,7 @@
 extern crate serde_derive;
 
 mod common;
+use crate::common::checks::check_uniform_viscosity_coefficient;
 use std::path::Path;
 
 fn enabled_tides_case() -> posidonius::WHFast {
@@ -38,8 +39,9 @@ fn enabled_tides_case() -> posidonius::WHFast {
     let disabled_rotational_flattening =
         posidonius::RotationalFlattening::new(posidonius::RotationalFlatteningEffect::Disabled);
     for particle in &mut particles {
-        particle.set_tides(disabled_tides);
-        particle.set_rotational_flattening(disabled_rotational_flattening);
+        particle.tides = disabled_tides;
+        particle.rotational_flattening = disabled_rotational_flattening;
+        check_uniform_viscosity_coefficient(&particle);
     }
     //////////////////////////////////////////////////////////////////////////////////
     let star_tides = disabled_tides;
@@ -60,12 +62,15 @@ fn enabled_tides_case() -> posidonius::WHFast {
     ));
     if let Some((star, planets)) = particles.split_first_mut() {
         // Change from constant time lag to disabled:
-        star.set_tides(star_tides);
-        star.set_rotational_flattening(star_rotational_flattening);
+        star.tides = star_tides;
+        star.rotational_flattening = star_rotational_flattening;
+        check_uniform_viscosity_coefficient(&star);
+
         // Change from constant time lag to creep:
         for planet in planets.iter_mut() {
-            planet.set_rotational_flattening(planet_rotational_flattening);
-            planet.set_tides(planet_tides);
+            planet.rotational_flattening = planet_rotational_flattening;
+            planet.tides = planet_tides;
+            check_uniform_viscosity_coefficient(&planet);
         }
     }
     //////////////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,5 @@
-use super::super::super::Axes;
-use super::super::super::Particle;
-use super::common::RotationalFlatteningEffect;
-use super::common::RotationalFlatteningModel;
+use super::{RotationalFlatteningEffect, RotationalFlatteningModel};
+use crate::{Axes, Particle};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
@@ -242,7 +240,7 @@ pub fn calculate_torque_induced_by_rotational_flattening(
     )
 }
 
-pub fn calculate_acceleration_induced_by_rotational_flattering(
+pub fn calculate_acceleration_induced_by_rotational_flattening(
     rotational_flattening_host_particle: &Particle,
     particle: &Particle,
 ) -> Axes {

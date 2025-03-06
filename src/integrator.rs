@@ -3,9 +3,9 @@ mod leapfrog;
 pub mod output;
 pub mod whfast;
 
-pub use self::ias15::*;
-pub use self::leapfrog::*;
-pub use self::whfast::WHFast;
+pub use ias15::*;
+pub use leapfrog::*;
+pub use whfast::WHFast;
 
 use std::any::Any;
 use std::fs::File;

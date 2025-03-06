@@ -100,8 +100,8 @@ fn create_kaula_universe() -> posidonius::Universe {
     let disabled_rotational_flattening =
         posidonius::RotationalFlattening::new(posidonius::RotationalFlatteningEffect::Disabled);
     for particle in &mut particles {
-        particle.set_tides(disabled_tides);
-        particle.set_rotational_flattening(disabled_rotational_flattening);
+        particle.tides = disabled_tides;
+        particle.rotational_flattening = disabled_rotational_flattening;
     }
     //////////////////////////////////////////////////////////////////////////////////
     // Load star data
@@ -128,9 +128,9 @@ fn create_kaula_universe() -> posidonius::Universe {
     //
     if let Some((star, planets)) = particles.split_first_mut() {
         // Change from constant time lag to kaula:
-        star.set_tides(star_tides);
+        star.tides = star_tides;
         for planet in planets.iter_mut() {
-            planet.set_tides(planet_tides);
+            planet.tides = planet_tides;
         }
     }
     //////////////////////////////////////////////////////////////////////////////////
