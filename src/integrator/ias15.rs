@@ -251,7 +251,7 @@ pub struct Ias15 {
     css: [Axes; MAX_PARTICLES], // spin
 
     #[serde(skip)]
-    csb: [[f64; 3 * MAX_PARTICLES]; 7], // spin
+    csb: [[Axes; MAX_PARTICLES]; 7], // spin
     #[serde(skip)]
     cssb: [[Axes; MAX_PARTICLES]; 7], // spin
 
@@ -383,8 +383,8 @@ impl Ias15 {
             angular_momentum0: [Axes::new(); MAX_PARTICLES],
             csx: [Axes::new(); MAX_PARTICLES],
             csv: [Axes::new(); MAX_PARTICLES],
-            csb: [[0.0; 3 * MAX_PARTICLES]; 7],
             css: [Axes::new(); MAX_PARTICLES],
+            csb: [[Axes::new(); MAX_PARTICLES]; 7],
             cssb: [[Axes::new(); MAX_PARTICLES]; 7],
             s: [0.; 9],
         }
@@ -1104,10 +1104,13 @@ impl Ias15 {
                                 );
                                 let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
                                 self.g[0][k] = gk / r[0];
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[0][k], self.csb[0][k], self.g[0][k] - tmp);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[0][k],
+                                    self.csb[0][k / 3].get_by_index(k % 3),
+                                    self.g[0][k] - tmp,
+                                );
                                 self.b[0][k] = tmp_b;
-                                self.csb[0][k] = tmp_csb;
+                                self.csb[0][k / 3].set_by_index(k % 3, tmp_csb);
 
                                 if integrate_spin {
                                     let stmp = self.sg[0][k];
@@ -1139,14 +1142,21 @@ impl Ias15 {
                                 let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
                                 self.g[1][k] = (gk / r[1] - self.g[0][k]) / r[2];
                                 tmp = self.g[1][k] - tmp;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[0][k], self.csb[0][k], tmp * c[0]);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[0][k],
+                                    self.csb[0][k / 3].get_by_index(k % 3),
+                                    tmp * c[0],
+                                );
                                 self.b[0][k] = tmp_b;
-                                self.csb[0][k] = tmp_csb;
+                                self.csb[0][k / 3].set_by_index(k % 3, tmp_csb);
 
-                                let (tmp_b, tmp_csb) = add_cs(self.b[1][k], self.csb[1][k], tmp);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[1][k],
+                                    self.csb[1][k / 3].get_by_index(k % 3),
+                                    tmp,
+                                );
                                 self.b[1][k] = tmp_b;
-                                self.csb[1][k] = tmp_csb;
+                                self.csb[1][k / 3].set_by_index(k % 3, tmp_csb);
 
                                 if integrate_spin {
                                     let mut stmp = self.sg[1][k];
@@ -1187,17 +1197,27 @@ impl Ias15 {
                                 self.g[2][k] =
                                     ((gk / r[3] - self.g[0][k]) / r[4] - self.g[1][k]) / r[5];
                                 tmp = self.g[2][k] - tmp;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[0][k], self.csb[0][k], tmp * c[1]);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[0][k],
+                                    self.csb[0][k / 3].get_by_index(k % 3),
+                                    tmp * c[1],
+                                );
                                 self.b[0][k] = tmp_b;
-                                self.csb[0][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[1][k], self.csb[1][k], tmp * c[2]);
+                                self.csb[0][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[1][k],
+                                    self.csb[1][k / 3].get_by_index(k % 3),
+                                    tmp * c[2],
+                                );
                                 self.b[1][k] = tmp_b;
-                                self.csb[1][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[2][k], self.csb[2][k], tmp);
+                                self.csb[1][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[2][k],
+                                    self.csb[2][k / 3].get_by_index(k % 3),
+                                    tmp,
+                                );
                                 self.b[2][k] = tmp_b;
-                                self.csb[2][k] = tmp_csb;
+                                self.csb[2][k / 3].set_by_index(k % 3, tmp_csb);
 
                                 if integrate_spin {
                                     let mut stmp = self.sg[2][k];
@@ -1249,21 +1269,34 @@ impl Ias15 {
                                     - self.g[2][k])
                                     / r[9];
                                 tmp = self.g[3][k] - tmp;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[0][k], self.csb[0][k], tmp * c[3]);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[0][k],
+                                    self.csb[0][k / 3].get_by_index(k % 3),
+                                    tmp * c[3],
+                                );
                                 self.b[0][k] = tmp_b;
-                                self.csb[0][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[1][k], self.csb[1][k], tmp * c[4]);
+                                self.csb[0][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[1][k],
+                                    self.csb[1][k / 3].get_by_index(k % 3),
+                                    tmp * c[4],
+                                );
                                 self.b[1][k] = tmp_b;
-                                self.csb[1][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[2][k], self.csb[2][k], tmp * c[5]);
+                                self.csb[1][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[2][k],
+                                    self.csb[2][k / 3].get_by_index(k % 3),
+                                    tmp * c[5],
+                                );
                                 self.b[2][k] = tmp_b;
-                                self.csb[2][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[3][k], self.csb[3][k], tmp);
+                                self.csb[2][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[3][k],
+                                    self.csb[3][k / 3].get_by_index(k % 3),
+                                    tmp,
+                                );
                                 self.b[3][k] = tmp_b;
-                                self.csb[3][k] = tmp_csb;
+                                self.csb[3][k / 3].set_by_index(k % 3, tmp_csb);
 
                                 if integrate_spin {
                                     let mut stmp = self.sg[3][k];
@@ -1327,25 +1360,41 @@ impl Ias15 {
                                     - self.g[3][k])
                                     / r[14];
                                 tmp = self.g[4][k] - tmp;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[0][k], self.csb[0][k], tmp * c[6]);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[0][k],
+                                    self.csb[0][k / 3].get_by_index(k % 3),
+                                    tmp * c[6],
+                                );
                                 self.b[0][k] = tmp_b;
-                                self.csb[0][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[1][k], self.csb[1][k], tmp * c[7]);
+                                self.csb[0][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[1][k],
+                                    self.csb[1][k / 3].get_by_index(k % 3),
+                                    tmp * c[7],
+                                );
                                 self.b[1][k] = tmp_b;
-                                self.csb[1][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[2][k], self.csb[2][k], tmp * c[8]);
+                                self.csb[1][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[2][k],
+                                    self.csb[2][k / 3].get_by_index(k % 3),
+                                    tmp * c[8],
+                                );
                                 self.b[2][k] = tmp_b;
-                                self.csb[2][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[3][k], self.csb[3][k], tmp * c[9]);
+                                self.csb[2][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[3][k],
+                                    self.csb[3][k / 3].get_by_index(k % 3),
+                                    tmp * c[9],
+                                );
                                 self.b[3][k] = tmp_b;
-                                self.csb[3][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[4][k], self.csb[4][k], tmp);
+                                self.csb[3][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[4][k],
+                                    self.csb[4][k / 3].get_by_index(k % 3),
+                                    tmp,
+                                );
                                 self.b[4][k] = tmp_b;
-                                self.csb[4][k] = tmp_csb;
+                                self.csb[4][k / 3].set_by_index(k % 3, tmp_csb);
 
                                 if integrate_spin {
                                     let mut stmp = self.sg[4][k];
@@ -1420,29 +1469,48 @@ impl Ias15 {
                                     - self.g[4][k])
                                     / r[20];
                                 tmp = self.g[5][k] - tmp;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[0][k], self.csb[0][k], tmp * c[10]);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[0][k],
+                                    self.csb[0][k / 3].get_by_index(k % 3),
+                                    tmp * c[10],
+                                );
                                 self.b[0][k] = tmp_b;
-                                self.csb[0][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[1][k], self.csb[1][k], tmp * c[11]);
+                                self.csb[0][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[1][k],
+                                    self.csb[1][k / 3].get_by_index(k % 3),
+                                    tmp * c[11],
+                                );
                                 self.b[1][k] = tmp_b;
-                                self.csb[1][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[2][k], self.csb[2][k], tmp * c[12]);
+                                self.csb[1][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[2][k],
+                                    self.csb[2][k / 3].get_by_index(k % 3),
+                                    tmp * c[12],
+                                );
                                 self.b[2][k] = tmp_b;
-                                self.csb[2][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[3][k], self.csb[3][k], tmp * c[13]);
+                                self.csb[2][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[3][k],
+                                    self.csb[3][k / 3].get_by_index(k % 3),
+                                    tmp * c[13],
+                                );
                                 self.b[3][k] = tmp_b;
-                                self.csb[3][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[4][k], self.csb[4][k], tmp * c[14]);
+                                self.csb[3][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[4][k],
+                                    self.csb[4][k / 3].get_by_index(k % 3),
+                                    tmp * c[14],
+                                );
                                 self.b[4][k] = tmp_b;
-                                self.csb[4][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[5][k], self.csb[5][k], tmp);
+                                self.csb[4][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[5][k],
+                                    self.csb[5][k / 3].get_by_index(k % 3),
+                                    tmp,
+                                );
                                 self.b[5][k] = tmp_b;
-                                self.csb[5][k] = tmp_csb;
+                                self.csb[5][k / 3].set_by_index(k % 3, tmp_csb);
 
                                 if integrate_spin {
                                     let mut stmp = self.sg[5][k];
@@ -1532,33 +1600,55 @@ impl Ias15 {
                                     - self.g[5][k])
                                     / r[27];
                                 tmp = self.g[6][k] - tmp;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[0][k], self.csb[0][k], tmp * c[15]);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[0][k],
+                                    self.csb[0][k / 3].get_by_index(k % 3),
+                                    tmp * c[15],
+                                );
                                 self.b[0][k] = tmp_b;
-                                self.csb[0][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[1][k], self.csb[1][k], tmp * c[16]);
+                                self.csb[0][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[1][k],
+                                    self.csb[1][k / 3].get_by_index(k % 3),
+                                    tmp * c[16],
+                                );
                                 self.b[1][k] = tmp_b;
-                                self.csb[1][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[2][k], self.csb[2][k], tmp * c[17]);
+                                self.csb[1][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[2][k],
+                                    self.csb[2][k / 3].get_by_index(k % 3),
+                                    tmp * c[17],
+                                );
                                 self.b[2][k] = tmp_b;
-                                self.csb[2][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[3][k], self.csb[3][k], tmp * c[18]);
+                                self.csb[2][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[3][k],
+                                    self.csb[3][k / 3].get_by_index(k % 3),
+                                    tmp * c[18],
+                                );
                                 self.b[3][k] = tmp_b;
-                                self.csb[3][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[4][k], self.csb[4][k], tmp * c[19]);
+                                self.csb[3][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[4][k],
+                                    self.csb[4][k / 3].get_by_index(k % 3),
+                                    tmp * c[19],
+                                );
                                 self.b[4][k] = tmp_b;
-                                self.csb[4][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) =
-                                    add_cs(self.b[5][k], self.csb[5][k], tmp * c[20]);
+                                self.csb[4][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[5][k],
+                                    self.csb[5][k / 3].get_by_index(k % 3),
+                                    tmp * c[20],
+                                );
                                 self.b[5][k] = tmp_b;
-                                self.csb[5][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[6][k], self.csb[6][k], tmp);
+                                self.csb[5][k / 3].set_by_index(k % 3, tmp_csb);
+                                let (tmp_b, tmp_csb) = add_cs(
+                                    self.b[6][k],
+                                    self.csb[6][k / 3].get_by_index(k % 3),
+                                    tmp,
+                                );
                                 self.b[6][k] = tmp_b;
-                                self.csb[6][k] = tmp_csb;
+                                self.csb[6][k / 3].set_by_index(k % 3, tmp_csb);
 
                                 let mut stmp = 0.;
                                 if integrate_spin {
