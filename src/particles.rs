@@ -100,6 +100,11 @@ impl Axes {
     pub fn get_by_index(&self, idx: usize) -> f64 {
         [self.x, self.y, self.z][idx]
     }
+
+    #[inline(always)]
+    pub fn set_by_index(&mut self, idx: usize, val: f64) {
+        [self.x, self.y, self.z][idx] = val;
+    }
 }
 
 #[cfg(test)]

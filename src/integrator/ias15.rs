@@ -253,7 +253,7 @@ pub struct Ias15 {
     #[serde(skip)]
     csb: [[f64; 3 * MAX_PARTICLES]; 7], // spin
     #[serde(skip)]
-    cssb: [[f64; 3 * MAX_PARTICLES]; 7], // spin
+    cssb: [[Axes; MAX_PARTICLES]; 7], // spin
 
     s: [f64; 9], // Summation coefficients
 }
@@ -385,7 +385,7 @@ impl Ias15 {
             csv: [Axes::new(); MAX_PARTICLES],
             csb: [[0.0; 3 * MAX_PARTICLES]; 7],
             css: [Axes::new(); MAX_PARTICLES],
-            cssb: [[0.0; 3 * MAX_PARTICLES]; 7],
+            cssb: [[Axes::new(); MAX_PARTICLES]; 7],
             s: [0.; 9],
         }
     }
@@ -1120,11 +1120,11 @@ impl Ias15 {
                                     self.sg[0][k] = sgk / r[0];
                                     let (tmp_sb, tmp_cssb) = add_cs(
                                         self.sb[0][k],
-                                        self.cssb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
                                         self.sg[0][k] - stmp,
                                     );
                                     self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k] = tmp_cssb;
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
                                 }
                             }
                         }
@@ -1158,14 +1158,20 @@ impl Ias15 {
                                     let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
                                     self.sg[1][k] = (sgk / r[1] - self.sg[0][k]) / r[2];
                                     stmp = self.sg[1][k] - stmp;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[0][k], self.cssb[0][k], stmp * c[0]);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
+                                        stmp * c[0],
+                                    );
                                     self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[1][k], self.cssb[1][k], stmp);
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[1][k],
+                                        self.cssb[1][k / 3].get_by_index(k % 3),
+                                        stmp,
+                                    );
                                     self.sb[1][k] = tmp_sb;
-                                    self.cssb[1][k] = tmp_cssb;
+                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
                                 }
                             }
                         }
@@ -1205,18 +1211,27 @@ impl Ias15 {
                                         - self.sg[1][k])
                                         / r[5];
                                     stmp = self.sg[2][k] - stmp;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[0][k], self.cssb[0][k], stmp * c[1]);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
+                                        stmp * c[1],
+                                    );
                                     self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[1][k], self.cssb[1][k], stmp * c[2]);
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[1][k],
+                                        self.cssb[1][k / 3].get_by_index(k % 3),
+                                        stmp * c[2],
+                                    );
                                     self.sb[1][k] = tmp_sb;
-                                    self.cssb[1][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[2][k], self.cssb[2][k], stmp);
+                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[2][k],
+                                        self.cssb[2][k / 3].get_by_index(k % 3),
+                                        stmp,
+                                    );
                                     self.sb[2][k] = tmp_sb;
-                                    self.cssb[2][k] = tmp_cssb;
+                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
                                 }
                             }
                         }
@@ -1264,22 +1279,34 @@ impl Ias15 {
                                         - self.sg[2][k])
                                         / r[9];
                                     stmp = self.sg[3][k] - stmp;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[0][k], self.cssb[0][k], stmp * c[3]);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
+                                        stmp * c[3],
+                                    );
                                     self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[1][k], self.cssb[1][k], stmp * c[4]);
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[1][k],
+                                        self.cssb[1][k / 3].get_by_index(k % 3),
+                                        stmp * c[4],
+                                    );
                                     self.sb[1][k] = tmp_sb;
-                                    self.cssb[1][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[2][k], self.cssb[2][k], stmp * c[5]);
+                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[2][k],
+                                        self.cssb[2][k / 3].get_by_index(k % 3),
+                                        stmp * c[5],
+                                    );
                                     self.sb[2][k] = tmp_sb;
-                                    self.cssb[2][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[3][k], self.cssb[3][k], stmp);
+                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[3][k],
+                                        self.cssb[3][k / 3].get_by_index(k % 3),
+                                        stmp,
+                                    );
                                     self.sb[3][k] = tmp_sb;
-                                    self.cssb[3][k] = tmp_cssb;
+                                    self.cssb[3][k / 3].set_by_index(k % 3, tmp_cssb);
                                 }
                             }
                         }
@@ -1336,26 +1363,41 @@ impl Ias15 {
                                         - self.sg[3][k])
                                         / r[14];
                                     stmp = self.sg[4][k] - stmp;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[0][k], self.cssb[0][k], stmp * c[6]);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
+                                        stmp * c[6],
+                                    );
                                     self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[1][k], self.cssb[1][k], stmp * c[7]);
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[1][k],
+                                        self.cssb[1][k / 3].get_by_index(k % 3),
+                                        stmp * c[7],
+                                    );
                                     self.sb[1][k] = tmp_sb;
-                                    self.cssb[1][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[2][k], self.cssb[2][k], stmp * c[8]);
+                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[2][k],
+                                        self.cssb[2][k / 3].get_by_index(k % 3),
+                                        stmp * c[8],
+                                    );
                                     self.sb[2][k] = tmp_sb;
-                                    self.cssb[2][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[3][k], self.cssb[3][k], stmp * c[9]);
+                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[3][k],
+                                        self.cssb[3][k / 3].get_by_index(k % 3),
+                                        stmp * c[9],
+                                    );
                                     self.sb[3][k] = tmp_sb;
-                                    self.cssb[3][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[4][k], self.cssb[4][k], stmp);
+                                    self.cssb[3][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[4][k],
+                                        self.cssb[4][k / 3].get_by_index(k % 3),
+                                        stmp,
+                                    );
                                     self.sb[4][k] = tmp_sb;
-                                    self.cssb[4][k] = tmp_cssb;
+                                    self.cssb[4][k / 3].set_by_index(k % 3, tmp_cssb);
                                 }
                             }
                         }
@@ -1420,30 +1462,48 @@ impl Ias15 {
                                         - self.sg[4][k])
                                         / r[20];
                                     stmp = self.sg[5][k] - stmp;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[0][k], self.cssb[0][k], stmp * c[10]);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
+                                        stmp * c[10],
+                                    );
                                     self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[1][k], self.cssb[1][k], stmp * c[11]);
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[1][k],
+                                        self.cssb[1][k / 3].get_by_index(k % 3),
+                                        stmp * c[11],
+                                    );
                                     self.sb[1][k] = tmp_sb;
-                                    self.cssb[1][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[2][k], self.cssb[2][k], stmp * c[12]);
+                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[2][k],
+                                        self.cssb[2][k / 3].get_by_index(k % 3),
+                                        stmp * c[12],
+                                    );
                                     self.sb[2][k] = tmp_sb;
-                                    self.cssb[2][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[3][k], self.cssb[3][k], stmp * c[13]);
+                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[3][k],
+                                        self.cssb[3][k / 3].get_by_index(k % 3),
+                                        stmp * c[13],
+                                    );
                                     self.sb[3][k] = tmp_sb;
-                                    self.cssb[3][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[4][k], self.cssb[4][k], stmp * c[14]);
+                                    self.cssb[3][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[4][k],
+                                        self.cssb[4][k / 3].get_by_index(k % 3),
+                                        stmp * c[14],
+                                    );
                                     self.sb[4][k] = tmp_sb;
-                                    self.cssb[4][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[5][k], self.cssb[5][k], stmp);
+                                    self.cssb[4][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[5][k],
+                                        self.cssb[5][k / 3].get_by_index(k % 3),
+                                        stmp,
+                                    );
                                     self.sb[5][k] = tmp_sb;
-                                    self.cssb[5][k] = tmp_cssb;
+                                    self.cssb[5][k / 3].set_by_index(k % 3, tmp_cssb);
                                 }
                             }
                         }
@@ -1521,34 +1581,55 @@ impl Ias15 {
                                         - self.sg[5][k])
                                         / r[27];
                                     stmp = self.sg[6][k] - stmp;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[0][k], self.cssb[0][k], stmp * c[15]);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
+                                        stmp * c[15],
+                                    );
                                     self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[1][k], self.cssb[1][k], stmp * c[16]);
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[1][k],
+                                        self.cssb[1][k / 3].get_by_index(k % 3),
+                                        stmp * c[16],
+                                    );
                                     self.sb[1][k] = tmp_sb;
-                                    self.cssb[1][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[2][k], self.cssb[2][k], stmp * c[17]);
+                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[2][k],
+                                        self.cssb[2][k / 3].get_by_index(k % 3),
+                                        stmp * c[17],
+                                    );
                                     self.sb[2][k] = tmp_sb;
-                                    self.cssb[2][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[3][k], self.cssb[3][k], stmp * c[18]);
+                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[3][k],
+                                        self.cssb[3][k / 3].get_by_index(k % 3),
+                                        stmp * c[18],
+                                    );
                                     self.sb[3][k] = tmp_sb;
-                                    self.cssb[3][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[4][k], self.cssb[4][k], stmp * c[19]);
+                                    self.cssb[3][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[4][k],
+                                        self.cssb[4][k / 3].get_by_index(k % 3),
+                                        stmp * c[19],
+                                    );
                                     self.sb[4][k] = tmp_sb;
-                                    self.cssb[4][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[5][k], self.cssb[5][k], stmp * c[20]);
+                                    self.cssb[4][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[5][k],
+                                        self.cssb[5][k / 3].get_by_index(k % 3),
+                                        stmp * c[20],
+                                    );
                                     self.sb[5][k] = tmp_sb;
-                                    self.cssb[5][k] = tmp_cssb;
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[6][k], self.cssb[6][k], stmp);
+                                    self.cssb[5][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[6][k],
+                                        self.cssb[6][k / 3].get_by_index(k % 3),
+                                        stmp,
+                                    );
                                     self.sb[6][k] = tmp_sb;
-                                    self.cssb[6][k] = tmp_cssb;
+                                    self.cssb[6][k / 3].set_by_index(k % 3, tmp_cssb);
                                 }
 
                                 // Monitor change in self.b[6][k] relative to self.at[k]. The predictor corrector scheme is converged if it is close to 0.
