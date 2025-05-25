@@ -95,6 +95,11 @@ impl Axes {
     pub fn unpack(&self) -> (f64, f64, f64) {
         (self.x, self.y, self.z)
     }
+
+    #[inline(always)]
+    pub fn get_by_index(&self, idx: usize) -> f64 {
+        [self.x, self.y, self.z][idx]
+    }
 }
 
 #[cfg(test)]

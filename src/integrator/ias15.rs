@@ -140,7 +140,7 @@ pub struct Ias15 {
     v0: [Axes; MAX_PARTICLES], // Temporary buffer for velocity (used for initial values at h=0)
 
     #[serde(skip)]
-    a0: [f64; 3 * MAX_PARTICLES], // Temporary buffer for acceleration (used for initial values at h=0)
+    a0: [Axes; MAX_PARTICLES], // Temporary buffer for acceleration (used for initial values at h=0)
     /*
         // spin coeff
          //#[serde(with = "BigArray")]
@@ -331,7 +331,7 @@ impl Ias15 {
             at: [0.; 3 * MAX_PARTICLES],
             x0: [Axes::new(); MAX_PARTICLES],
             v0: [Axes::new(); MAX_PARTICLES],
-            a0: [0.; 3 * MAX_PARTICLES],
+            a0: [Axes::new(); MAX_PARTICLES],
             sb: [[0.; 3 * MAX_PARTICLES]; 7],
             sg: [[0.; 3 * MAX_PARTICLES]; 7],
             se: [[0.; 3 * MAX_PARTICLES]; 7],
@@ -738,20 +738,20 @@ impl Ias15 {
             || consider_dangular_momentum_dt_from_general_relativity;
 
         loop {
-            for (k, (particle, position, velocity, angular_momentum)) in izip!(
-                &self.universe.particles,
-                &mut self.x0,
-                &mut self.v0,
-                &mut self.angular_momentum0,
-            )
-            .take(self.universe.n_particles)
-            .enumerate()
+            for (k, (particle, position, velocity, angular_momentum, inertial_acceleration)) in
+                izip!(
+                    &self.universe.particles,
+                    &mut self.x0,
+                    &mut self.v0,
+                    &mut self.angular_momentum0,
+                    &mut self.a0,
+                )
+                .take(self.universe.n_particles)
+                .enumerate()
             {
                 *position = particle.inertial_position;
                 *velocity = particle.inertial_velocity;
-                self.a0[3 * k] = particle.inertial_acceleration.x;
-                self.a0[3 * k + 1] = particle.inertial_acceleration.y;
-                self.a0[3 * k + 2] = particle.inertial_acceleration.z;
+                *inertial_acceleration = particle.inertial_acceleration;
 
                 if integrate_spin {
                     self.dangular_momentum_dt0[3 * k] = particle.dangular_momentum_dt.x;
@@ -760,7 +760,6 @@ impl Ias15 {
                     *angular_momentum = particle.angular_momentum;
                 }
             }
-
 
             // Find g values from b values predicted at the last call (Eqs. 7 of Everhart)
             let [g0, g1, g2, g3, g4, g5, g6] = &mut self.g;
@@ -781,20 +780,8 @@ impl Ias15 {
                 b5_i,
                 b6_i,
             ) in izip!(
-                &mut *g0,
-                &mut *g1,
-                &mut *g2,
-                &mut *g3,
-                &mut *g4,
-                &mut *g5,
-                &mut *g6,
-                b0,
-                b1,
-                b2,
-                b3,
-                b4,
-                b5,
-                b6,
+                &mut *g0, &mut *g1, &mut *g2, &mut *g3, &mut *g4, &mut *g5, &mut *g6, b0, b1, b2,
+                b3, b4, b5, b6,
             )
             .take(self.n_particles)
             {
@@ -832,20 +819,8 @@ impl Ias15 {
                     sb5_i,
                     sb6_i,
                 ) in izip!(
-                    &mut *sg0,
-                    &mut *sg1,
-                    &mut *sg2,
-                    &mut *sg3,
-                    &mut *sg4,
-                    &mut *sg5,
-                    &mut *sg6,
-                    sb0,
-                    sb1,
-                    sb2,
-                    sb3,
-                    sb4,
-                    sb5,
-                    sb6,
+                    &mut *sg0, &mut *sg1, &mut *sg2, &mut *sg3, &mut *sg4, &mut *sg5, &mut *sg6,
+                    sb0, sb1, sb2, sb3, sb4, sb5, sb6,
                 )
                 .take(self.n_particles)
                 {
@@ -940,7 +915,7 @@ impl Ias15 {
                             let k0: usize = 3 * i;
                             let k1: usize = 3 * i + 1;
                             let k2: usize = 3 * i + 2;
-
+                            let inertial_acceleration = &self.a0[i];
                             // Equation 7 in paper 2015MNRAS.446.1424R
                             particle.inertial_position = Axes::from(
                                 -self.csx[i].x
@@ -951,7 +926,7 @@ impl Ias15 {
                                         + self.s[4] * self.b[2][k0]
                                         + self.s[3] * self.b[1][k0]
                                         + self.s[2] * self.b[0][k0]
-                                        + self.s[1] * self.a0[k0]
+                                        + self.s[1] * inertial_acceleration.x
                                         + self.s[0] * self.v0[i].x)
                                     + self.x0[i].x,
                                 -self.csx[i].y
@@ -962,7 +937,7 @@ impl Ias15 {
                                         + self.s[4] * self.b[2][k1]
                                         + self.s[3] * self.b[1][k1]
                                         + self.s[2] * self.b[0][k1]
-                                        + self.s[1] * self.a0[k1]
+                                        + self.s[1] * inertial_acceleration.y
                                         + self.s[0] * self.v0[i].y)
                                     + self.x0[i].y,
                                 -self.csx[i].z
@@ -973,7 +948,7 @@ impl Ias15 {
                                         + self.s[4] * self.b[2][k2]
                                         + self.s[3] * self.b[1][k2]
                                         + self.s[2] * self.b[0][k2]
-                                        + self.s[1] * self.a0[k2]
+                                        + self.s[1] * inertial_acceleration.z
                                         + self.s[0] * self.v0[i].z)
                                     + self.x0[i].z,
                             );
@@ -998,6 +973,7 @@ impl Ias15 {
                                 let k0 = 3 * i;
                                 let k1 = 3 * i + 1;
                                 let k2 = 3 * i + 2;
+                                let inertial_acceleration = &self.a0[i];
 
                                 // Equation 6 in paper 2015MNRAS.446.1424R
                                 particle.inertial_velocity = Axes::from(
@@ -1009,7 +985,7 @@ impl Ias15 {
                                         + self.s[3] * self.b[2][k0]
                                         + self.s[2] * self.b[1][k0]
                                         + self.s[1] * self.b[0][k0]
-                                        + self.s[0] * self.a0[k0]
+                                        + self.s[0] * inertial_acceleration.x
                                         + self.v0[i].x,
                                     -self.csv[i].y
                                         + self.s[7] * self.b[6][k1]
@@ -1019,7 +995,7 @@ impl Ias15 {
                                         + self.s[3] * self.b[2][k1]
                                         + self.s[2] * self.b[1][k1]
                                         + self.s[1] * self.b[0][k1]
-                                        + self.s[0] * self.a0[k1]
+                                        + self.s[0] * inertial_acceleration.y
                                         + self.v0[i].y,
                                     -self.csv[i].z
                                         + self.s[7] * self.b[6][k2]
@@ -1029,7 +1005,7 @@ impl Ias15 {
                                         + self.s[3] * self.b[2][k2]
                                         + self.s[2] * self.b[1][k2]
                                         + self.s[1] * self.b[0][k2]
-                                        + self.s[0] * self.a0[k2]
+                                        + self.s[0] * inertial_acceleration.z
                                         + self.v0[i].z,
                                 );
                             });
@@ -1121,7 +1097,11 @@ impl Ias15 {
                         1 => {
                             for k in 0..3 * self.n_particles {
                                 let tmp = self.g[0][k];
-                                let (gk, gk_cs) = add_cs(self.at[k], always_zero, -self.a0[k]);
+                                let (gk, gk_cs) = add_cs(
+                                    self.at[k],
+                                    always_zero,
+                                    -self.a0[k / 3].get_by_index(k % 3),
+                                );
                                 let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
                                 self.g[0][k] = gk / r[0];
                                 let (tmp_b, tmp_csb) =
@@ -1138,8 +1118,11 @@ impl Ias15 {
                                     );
                                     let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
                                     self.sg[0][k] = sgk / r[0];
-                                    let (tmp_sb, tmp_cssb) =
-                                        add_cs(self.sb[0][k], self.cssb[0][k], self.sg[0][k] - stmp);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k],
+                                        self.sg[0][k] - stmp,
+                                    );
                                     self.sb[0][k] = tmp_sb;
                                     self.cssb[0][k] = tmp_cssb;
                                 }
@@ -1148,11 +1131,16 @@ impl Ias15 {
                         2 => {
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[1][k];
-                                let (gk, gk_cs) = add_cs(self.at[k], always_zero, -self.a0[k]);
+                                let (gk, gk_cs) = add_cs(
+                                    self.at[k],
+                                    always_zero,
+                                    -self.a0[k / 3].get_by_index(k % 3),
+                                );
                                 let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
                                 self.g[1][k] = (gk / r[1] - self.g[0][k]) / r[2];
                                 tmp = self.g[1][k] - tmp;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[0][k], self.csb[0][k], tmp * c[0]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[0][k], self.csb[0][k], tmp * c[0]);
                                 self.b[0][k] = tmp_b;
                                 self.csb[0][k] = tmp_csb;
 
@@ -1184,15 +1172,21 @@ impl Ias15 {
                         3 => {
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[2][k];
-                                let (gk, gk_cs) = add_cs(self.at[k], always_zero, -self.a0[k]);
+                                let (gk, gk_cs) = add_cs(
+                                    self.at[k],
+                                    always_zero,
+                                    -self.a0[k / 3].get_by_index(k % 3),
+                                );
                                 let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
                                 self.g[2][k] =
                                     ((gk / r[3] - self.g[0][k]) / r[4] - self.g[1][k]) / r[5];
                                 tmp = self.g[2][k] - tmp;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[0][k], self.csb[0][k], tmp * c[1]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[0][k], self.csb[0][k], tmp * c[1]);
                                 self.b[0][k] = tmp_b;
                                 self.csb[0][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[1][k], self.csb[1][k], tmp * c[2]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[1][k], self.csb[1][k], tmp * c[2]);
                                 self.b[1][k] = tmp_b;
                                 self.csb[1][k] = tmp_csb;
                                 let (tmp_b, tmp_csb) = add_cs(self.b[2][k], self.csb[2][k], tmp);
@@ -1229,20 +1223,27 @@ impl Ias15 {
                         4 => {
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[3][k];
-                                let (gk, gk_cs) = add_cs(self.at[k], always_zero, -self.a0[k]);
+                                let (gk, gk_cs) = add_cs(
+                                    self.at[k],
+                                    always_zero,
+                                    -self.a0[k / 3].get_by_index(k % 3),
+                                );
                                 let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
                                 self.g[3][k] = (((gk / r[6] - self.g[0][k]) / r[7] - self.g[1][k])
                                     / r[8]
                                     - self.g[2][k])
                                     / r[9];
                                 tmp = self.g[3][k] - tmp;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[0][k], self.csb[0][k], tmp * c[3]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[0][k], self.csb[0][k], tmp * c[3]);
                                 self.b[0][k] = tmp_b;
                                 self.csb[0][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[1][k], self.csb[1][k], tmp * c[4]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[1][k], self.csb[1][k], tmp * c[4]);
                                 self.b[1][k] = tmp_b;
                                 self.csb[1][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[2][k], self.csb[2][k], tmp * c[5]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[2][k], self.csb[2][k], tmp * c[5]);
                                 self.b[2][k] = tmp_b;
                                 self.csb[2][k] = tmp_csb;
                                 let (tmp_b, tmp_csb) = add_cs(self.b[3][k], self.csb[3][k], tmp);
@@ -1285,7 +1286,11 @@ impl Ias15 {
                         5 => {
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[4][k];
-                                let (gk, gk_cs) = add_cs(self.at[k], always_zero, -self.a0[k]);
+                                let (gk, gk_cs) = add_cs(
+                                    self.at[k],
+                                    always_zero,
+                                    -self.a0[k / 3].get_by_index(k % 3),
+                                );
                                 let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
                                 self.g[4][k] = ((((gk / r[10] - self.g[0][k]) / r[11]
                                     - self.g[1][k])
@@ -1295,16 +1300,20 @@ impl Ias15 {
                                     - self.g[3][k])
                                     / r[14];
                                 tmp = self.g[4][k] - tmp;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[0][k], self.csb[0][k], tmp * c[6]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[0][k], self.csb[0][k], tmp * c[6]);
                                 self.b[0][k] = tmp_b;
                                 self.csb[0][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[1][k], self.csb[1][k], tmp * c[7]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[1][k], self.csb[1][k], tmp * c[7]);
                                 self.b[1][k] = tmp_b;
                                 self.csb[1][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[2][k], self.csb[2][k], tmp * c[8]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[2][k], self.csb[2][k], tmp * c[8]);
                                 self.b[2][k] = tmp_b;
                                 self.csb[2][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[3][k], self.csb[3][k], tmp * c[9]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[3][k], self.csb[3][k], tmp * c[9]);
                                 self.b[3][k] = tmp_b;
                                 self.csb[3][k] = tmp_csb;
                                 let (tmp_b, tmp_csb) = add_cs(self.b[4][k], self.csb[4][k], tmp);
@@ -1353,7 +1362,11 @@ impl Ias15 {
                         6 => {
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[5][k];
-                                let (gk, gk_cs) = add_cs(self.at[k], always_zero, -self.a0[k]);
+                                let (gk, gk_cs) = add_cs(
+                                    self.at[k],
+                                    always_zero,
+                                    -self.a0[k / 3].get_by_index(k % 3),
+                                );
                                 let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
                                 self.g[5][k] = (((((gk / r[15] - self.g[0][k]) / r[16]
                                     - self.g[1][k])
@@ -1365,19 +1378,24 @@ impl Ias15 {
                                     - self.g[4][k])
                                     / r[20];
                                 tmp = self.g[5][k] - tmp;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[0][k], self.csb[0][k], tmp * c[10]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[0][k], self.csb[0][k], tmp * c[10]);
                                 self.b[0][k] = tmp_b;
                                 self.csb[0][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[1][k], self.csb[1][k], tmp * c[11]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[1][k], self.csb[1][k], tmp * c[11]);
                                 self.b[1][k] = tmp_b;
                                 self.csb[1][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[2][k], self.csb[2][k], tmp * c[12]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[2][k], self.csb[2][k], tmp * c[12]);
                                 self.b[2][k] = tmp_b;
                                 self.csb[2][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[3][k], self.csb[3][k], tmp * c[13]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[3][k], self.csb[3][k], tmp * c[13]);
                                 self.b[3][k] = tmp_b;
                                 self.csb[3][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[4][k], self.csb[4][k], tmp * c[14]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[4][k], self.csb[4][k], tmp * c[14]);
                                 self.b[4][k] = tmp_b;
                                 self.csb[4][k] = tmp_csb;
                                 let (tmp_b, tmp_csb) = add_cs(self.b[5][k], self.csb[5][k], tmp);
@@ -1436,7 +1454,11 @@ impl Ias15 {
                             let mut maxb6kstmp = 0.0;
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[6][k];
-                                let (gk, gk_cs) = add_cs(self.at[k], always_zero, -self.a0[k]);
+                                let (gk, gk_cs) = add_cs(
+                                    self.at[k],
+                                    always_zero,
+                                    -self.a0[k / 3].get_by_index(k % 3),
+                                );
                                 let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
                                 self.g[6][k] = ((((((gk / r[21] - self.g[0][k]) / r[22]
                                     - self.g[1][k])
@@ -1450,22 +1472,28 @@ impl Ias15 {
                                     - self.g[5][k])
                                     / r[27];
                                 tmp = self.g[6][k] - tmp;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[0][k], self.csb[0][k], tmp * c[15]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[0][k], self.csb[0][k], tmp * c[15]);
                                 self.b[0][k] = tmp_b;
                                 self.csb[0][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[1][k], self.csb[1][k], tmp * c[16]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[1][k], self.csb[1][k], tmp * c[16]);
                                 self.b[1][k] = tmp_b;
                                 self.csb[1][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[2][k], self.csb[2][k], tmp * c[17]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[2][k], self.csb[2][k], tmp * c[17]);
                                 self.b[2][k] = tmp_b;
                                 self.csb[2][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[3][k], self.csb[3][k], tmp * c[18]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[3][k], self.csb[3][k], tmp * c[18]);
                                 self.b[3][k] = tmp_b;
                                 self.csb[3][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[4][k], self.csb[4][k], tmp * c[19]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[4][k], self.csb[4][k], tmp * c[19]);
                                 self.b[4][k] = tmp_b;
                                 self.csb[4][k] = tmp_csb;
-                                let (tmp_b, tmp_csb) = add_cs(self.b[5][k], self.csb[5][k], tmp * c[20]);
+                                let (tmp_b, tmp_csb) =
+                                    add_cs(self.b[5][k], self.csb[5][k], tmp * c[20]);
                                 self.b[5][k] = tmp_b;
                                 self.csb[5][k] = tmp_csb;
                                 let (tmp_b, tmp_csb) = add_cs(self.b[6][k], self.csb[6][k], tmp);
@@ -1726,20 +1754,21 @@ impl Ias15 {
                 if abs!(dt_new / dt_done) < SAFETY_FACTOR {
                     // New timestep is significantly smaller.
                     // Reset particles
-                    for (k, (particle, position, velocity, angular_momentum)) in izip!(
+                    for (
+                        k,
+                        (particle, position, velocity, angular_momentum, inertial_acceleration),
+                    ) in izip!(
                         &mut self.universe.particles[..self.universe.n_particles],
                         &self.x0,
                         &self.v0,
                         &self.angular_momentum0,
+                        &self.a0,
                     )
                     .enumerate()
                     {
                         particle.inertial_position = *position; // Set inital position
                         particle.inertial_velocity = *velocity; // Set inital velocity
-
-                        particle.inertial_acceleration.x = self.a0[3 * k]; // Set inital acceleration
-                        particle.inertial_acceleration.y = self.a0[3 * k + 1];
-                        particle.inertial_acceleration.z = self.a0[3 * k + 2];
+                        particle.inertial_acceleration = *inertial_acceleration; // Set inital acceleration
 
                         if integrate_spin {
                             particle.dangular_momentum_dt.x = self.dangular_momentum_dt0[3 * k]; // Set inital dangular_momentum_dt
@@ -1795,7 +1824,7 @@ impl Ias15 {
                             add_cs(tmp_x0, tmp_csx, self.b[i][k0] / (j * f) as f64 * dt_done2);
                     }
 
-                    (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.a0[k0] / 2. * dt_done2);
+                    (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.a0[i].x / 2. * dt_done2);
                     (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.v0[i].x * dt_done);
                     self.csx[i].x = tmp_csx;
                     self.x0[i].x = tmp_x0;
@@ -1809,7 +1838,7 @@ impl Ias15 {
                             add_cs(tmp_x0, tmp_csx, self.b[i][k1] / (j * f) as f64 * dt_done2);
                     }
 
-                    (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.a0[k1] / 2. * dt_done2);
+                    (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.a0[i].y / 2. * dt_done2);
                     (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.v0[i].y * dt_done);
                     self.csx[i].y = tmp_csx;
                     self.x0[i].y = tmp_x0;
@@ -1823,7 +1852,7 @@ impl Ias15 {
                             add_cs(tmp_x0, tmp_csx, self.b[i][k2] / (j * f) as f64 * dt_done2);
                     }
 
-                    (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.a0[k2] / 2. * dt_done2);
+                    (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.a0[i].z / 2. * dt_done2);
                     (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.v0[i].z * dt_done);
                     self.csx[i].z = tmp_csx;
                     self.x0[i].z = tmp_x0;
@@ -1835,7 +1864,7 @@ impl Ias15 {
                         (tmp_v0, tmp_csv) =
                             add_cs(tmp_v0, tmp_csv, self.b[i][k0] / (j as f64) * dt_done);
                     }
-                    (tmp_v0, tmp_csv) = add_cs(tmp_v0, tmp_csv, self.a0[k0] * dt_done);
+                    (tmp_v0, tmp_csv) = add_cs(tmp_v0, tmp_csv, self.a0[i].x * dt_done);
                     self.csv[i].x = tmp_csv;
                     self.v0[i].x = tmp_v0;
 
@@ -1846,7 +1875,7 @@ impl Ias15 {
                         (tmp_v0, tmp_csv) =
                             add_cs(tmp_v0, tmp_csv, self.b[i][k1] / (j as f64) * dt_done);
                     }
-                    (tmp_v0, tmp_csv) = add_cs(tmp_v0, tmp_csv, self.a0[k1] * dt_done);
+                    (tmp_v0, tmp_csv) = add_cs(tmp_v0, tmp_csv, self.a0[i].y * dt_done);
                     self.csv[i].y = tmp_csv;
                     self.v0[i].y = tmp_v0;
 
@@ -1858,7 +1887,7 @@ impl Ias15 {
                         (tmp_v0, tmp_csv) =
                             add_cs(tmp_v0, tmp_csv, self.b[i][k2] / (j as f64) * dt_done);
                     }
-                    (tmp_v0, tmp_csv) = add_cs(tmp_v0, tmp_csv, self.a0[k2] * dt_done);
+                    (tmp_v0, tmp_csv) = add_cs(tmp_v0, tmp_csv, self.a0[i].z * dt_done);
 
                     self.csv[i].z = tmp_csv;
                     self.v0[i].z = tmp_v0;
@@ -1994,8 +2023,6 @@ impl Ias15 {
             let q6 = ratio.powi(6);
             let q7 = ratio.powi(7);
 
-
-            
             let [e0, e1, e2, e3, e4, e5, e6] = &mut self.e;
 
             for (
@@ -2114,7 +2141,7 @@ impl Ias15 {
             }
 
             for i in 0..7 {
-                for (b_i, e_i, br_i, er_i, ) in
+                for (b_i, e_i, br_i, er_i) in
                     izip!(&mut self.b[i], &self.e[i], &self.br[i], &self.er[i])
                         .take(self.n_particles)
                 {
