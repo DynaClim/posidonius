@@ -131,14 +131,13 @@ pub struct Ias15 {
     e: [[f64; 3 * MAX_PARTICLES]; 7],
     #[serde(skip)]
     er: [[f64; 3 * MAX_PARTICLES]; 7], // Previous g
+
     #[serde(skip)]
     at: [Axes; MAX_PARTICLES], // Temporary buffer for acceleration
-
     #[serde(skip)]
     x0: [Axes; MAX_PARTICLES], // Temporary buffer for position (used for initial values at h=0)
     #[serde(skip)]
     v0: [Axes; MAX_PARTICLES], // Temporary buffer for velocity (used for initial values at h=0)
-
     #[serde(skip)]
     a0: [Axes; MAX_PARTICLES], // Temporary buffer for acceleration (used for initial values at h=0)
     /*
@@ -237,7 +236,7 @@ pub struct Ias15 {
     ser: [[f64; 3 * MAX_PARTICLES]; 7], // Previous g
 
     #[serde(skip)]
-    dangular_momentum_dtt: [f64; 3 * MAX_PARTICLES], // Temporary buffer for dangular_momentum_dt
+    dangular_momentum_dtt: [Axes; MAX_PARTICLES], // Temporary buffer for dangular_momentum_dt
     #[serde(skip)]
     dangular_momentum_dt0: [f64; 3 * MAX_PARTICLES], // Temporary buffer for dangular_momentum_dt (used for initial values at h=0)
 
@@ -379,7 +378,7 @@ impl Ias15 {
                          ser_5: [0.; 3 * MAX_PARTICLES],
                          ser_6: [0.; 3 * MAX_PARTICLES],
             */
-            dangular_momentum_dtt: [0.; 3 * MAX_PARTICLES],
+            dangular_momentum_dtt: [Axes::new(); MAX_PARTICLES],
             dangular_momentum_dt0: [0.; 3 * MAX_PARTICLES],
             angular_momentum0: [Axes::new(); MAX_PARTICLES],
             csx: [Axes::new(); MAX_PARTICLES],
@@ -1075,19 +1074,16 @@ impl Ias15 {
                     );
                     self.universe.apply_acceleration_corrections();
 
-                    for (k, (particle, inertial_acceleration)) in izip!(
+                    for (particle, inertial_acceleration, dangular_momentum_dtt) in izip!(
                         &self.universe.particles[..self.universe.n_particles],
                         &mut self.at,
-                    )
-                    .enumerate()
-                    {
+                        &mut self.dangular_momentum_dtt
+                    ) {
                         *inertial_acceleration = particle.inertial_acceleration;
 
                         if integrate_spin {
                             // angular_momentum_dt = dmoment_of_inertia_spin_dt
-                            self.dangular_momentum_dtt[3 * k] = particle.dangular_momentum_dt.x;
-                            self.dangular_momentum_dtt[3 * k + 1] = particle.dangular_momentum_dt.y;
-                            self.dangular_momentum_dtt[3 * k + 2] = particle.dangular_momentum_dt.z;
+                            *dangular_momentum_dtt = particle.dangular_momentum_dt;
                         }
                     }
 
@@ -1112,7 +1108,7 @@ impl Ias15 {
                                 if integrate_spin {
                                     let stmp = self.sg[0][k];
                                     let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k],
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
                                         -self.dangular_momentum_dt0[k],
                                     );
@@ -1151,7 +1147,7 @@ impl Ias15 {
                                 if integrate_spin {
                                     let mut stmp = self.sg[1][k];
                                     let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k],
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
                                         -self.dangular_momentum_dt0[k],
                                     );
@@ -1196,7 +1192,7 @@ impl Ias15 {
                                 if integrate_spin {
                                     let mut stmp = self.sg[2][k];
                                     let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k],
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
                                         -self.dangular_momentum_dt0[k],
                                     );
@@ -1253,7 +1249,7 @@ impl Ias15 {
                                 if integrate_spin {
                                     let mut stmp = self.sg[3][k];
                                     let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k],
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
                                         -self.dangular_momentum_dt0[k],
                                     );
@@ -1323,7 +1319,7 @@ impl Ias15 {
                                 if integrate_spin {
                                     let mut stmp = self.sg[4][k];
                                     let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k],
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
                                         -self.dangular_momentum_dt0[k],
                                     );
@@ -1405,7 +1401,7 @@ impl Ias15 {
                                 if integrate_spin {
                                     let mut stmp = self.sg[5][k];
                                     let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k],
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
                                         -self.dangular_momentum_dt0[k],
                                     );
@@ -1504,7 +1500,7 @@ impl Ias15 {
                                 if integrate_spin {
                                     stmp = self.sg[6][k];
                                     let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k],
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
                                         -self.dangular_momentum_dt0[k],
                                     );
@@ -1563,8 +1559,9 @@ impl Ias15 {
                                         maxb6ktmp = b6ktmp;
                                     }
                                     if integrate_spin {
-                                        let dangular_momentum_dttk =
-                                            abs!(self.dangular_momentum_dtt[k]);
+                                        let dangular_momentum_dttk = abs!(
+                                            self.dangular_momentum_dtt[k / 3].get_by_index(k % 3)
+                                        );
                                         if dangular_momentum_dttk.is_normal()
                                             && dangular_momentum_dttk > max_dangular_momentum_dtk
                                         {
@@ -1587,7 +1584,8 @@ impl Ias15 {
                                     }
                                     //
                                     if integrate_spin {
-                                        let dangular_momentum_dttk = self.dangular_momentum_dtt[k];
+                                        let dangular_momentum_dttk =
+                                            self.dangular_momentum_dtt[k / 3].get_by_index(k % 3);
                                         let b6kstmp = stmp;
                                         let errorks = abs!(b6kstmp / dangular_momentum_dttk);
                                         if errorks.is_normal()
@@ -1687,7 +1685,8 @@ impl Ias15 {
                             }
                             //
                             if integrate_spin {
-                                let dangular_momentum_dttk = abs!(self.dangular_momentum_dtt[k]);
+                                let dangular_momentum_dttk =
+                                    abs!(self.dangular_momentum_dtt[k / 3].get_by_index(k % 3));
                                 if dangular_momentum_dttk.is_normal()
                                     && dangular_momentum_dttk > maxak
                                 {
@@ -1714,7 +1713,8 @@ impl Ias15 {
                         }
                         //
                         if integrate_spin {
-                            let dangular_momentum_dttk = self.dangular_momentum_dtt[k];
+                            let dangular_momentum_dttk =
+                                self.dangular_momentum_dtt[k / 3].get_by_index(k % 3);
                             let b6ks = self.sb[6][k];
                             let errorks = abs!(b6ks / dangular_momentum_dttk);
                             if errorks.is_normal() && errorks > integrator_error {
