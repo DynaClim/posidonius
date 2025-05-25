@@ -238,7 +238,7 @@ pub struct Ias15 {
     #[serde(skip)]
     dangular_momentum_dtt: [Axes; MAX_PARTICLES], // Temporary buffer for dangular_momentum_dt
     #[serde(skip)]
-    dangular_momentum_dt0: [f64; 3 * MAX_PARTICLES], // Temporary buffer for dangular_momentum_dt (used for initial values at h=0)
+    dangular_momentum_dt0: [Axes; MAX_PARTICLES], // Temporary buffer for dangular_momentum_dt (used for initial values at h=0)
 
     #[serde(skip)]
     angular_momentum0: [Axes; MAX_PARTICLES], // Temporary buffer for angular_momentum (used for initial values at h=0)
@@ -379,7 +379,7 @@ impl Ias15 {
                          ser_6: [0.; 3 * MAX_PARTICLES],
             */
             dangular_momentum_dtt: [Axes::new(); MAX_PARTICLES],
-            dangular_momentum_dt0: [0.; 3 * MAX_PARTICLES],
+            dangular_momentum_dt0: [Axes::new(); MAX_PARTICLES],
             angular_momentum0: [Axes::new(); MAX_PARTICLES],
             csx: [Axes::new(); MAX_PARTICLES],
             csv: [Axes::new(); MAX_PARTICLES],
@@ -737,25 +737,29 @@ impl Ias15 {
             || consider_dangular_momentum_dt_from_general_relativity;
 
         loop {
-            for (k, (particle, position, velocity, angular_momentum, inertial_acceleration)) in
-                izip!(
-                    &self.universe.particles,
-                    &mut self.x0,
-                    &mut self.v0,
-                    &mut self.angular_momentum0,
-                    &mut self.a0,
-                )
-                .take(self.universe.n_particles)
-                .enumerate()
+            for (
+                particle,
+                position,
+                velocity,
+                angular_momentum,
+                inertial_acceleration,
+                dangular_momentum_dt0,
+            ) in izip!(
+                &self.universe.particles,
+                &mut self.x0,
+                &mut self.v0,
+                &mut self.angular_momentum0,
+                &mut self.a0,
+                &mut self.dangular_momentum_dt0,
+            )
+            .take(self.universe.n_particles)
             {
                 *position = particle.inertial_position;
                 *velocity = particle.inertial_velocity;
                 *inertial_acceleration = particle.inertial_acceleration;
 
                 if integrate_spin {
-                    self.dangular_momentum_dt0[3 * k] = particle.dangular_momentum_dt.x;
-                    self.dangular_momentum_dt0[3 * k + 1] = particle.dangular_momentum_dt.y;
-                    self.dangular_momentum_dt0[3 * k + 2] = particle.dangular_momentum_dt.z;
+                    *dangular_momentum_dt0 = particle.dangular_momentum_dt;
                     *angular_momentum = particle.angular_momentum;
                 }
             }
@@ -1029,7 +1033,7 @@ impl Ias15 {
                                             + self.s[3] * self.sb[2][k0]
                                             + self.s[2] * self.sb[1][k0]
                                             + self.s[1] * self.sb[0][k0]
-                                            + self.s[0] * self.dangular_momentum_dt0[k0]
+                                            + self.s[0] * self.dangular_momentum_dt0[i].x
                                             + self.angular_momentum0[i].x,
                                         -self.css[i].y
                                             + self.s[7] * self.sb[6][k1]
@@ -1039,7 +1043,7 @@ impl Ias15 {
                                             + self.s[3] * self.sb[2][k1]
                                             + self.s[2] * self.sb[1][k1]
                                             + self.s[1] * self.sb[0][k1]
-                                            + self.s[0] * self.dangular_momentum_dt0[k1]
+                                            + self.s[0] * self.dangular_momentum_dt0[i].y
                                             + self.angular_momentum0[i].y,
                                         -self.css[i].z
                                             + self.s[7] * self.sb[6][k2]
@@ -1049,7 +1053,7 @@ impl Ias15 {
                                             + self.s[3] * self.sb[2][k2]
                                             + self.s[2] * self.sb[1][k2]
                                             + self.s[1] * self.sb[0][k2]
-                                            + self.s[0] * self.dangular_momentum_dt0[k2]
+                                            + self.s[0] * self.dangular_momentum_dt0[i].z
                                             + self.angular_momentum0[i].z,
                                     );
                                 });
@@ -1110,7 +1114,7 @@ impl Ias15 {
                                     let (sgk, sgk_cs) = add_cs(
                                         self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
-                                        -self.dangular_momentum_dt0[k],
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
                                     );
                                     let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
                                     self.sg[0][k] = sgk / r[0];
@@ -1149,7 +1153,7 @@ impl Ias15 {
                                     let (sgk, sgk_cs) = add_cs(
                                         self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
-                                        -self.dangular_momentum_dt0[k],
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
                                     );
                                     let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
                                     self.sg[1][k] = (sgk / r[1] - self.sg[0][k]) / r[2];
@@ -1194,7 +1198,7 @@ impl Ias15 {
                                     let (sgk, sgk_cs) = add_cs(
                                         self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
-                                        -self.dangular_momentum_dt0[k],
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
                                     );
                                     let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
                                     self.sg[2][k] = ((sgk / r[3] - self.sg[0][k]) / r[4]
@@ -1251,7 +1255,7 @@ impl Ias15 {
                                     let (sgk, sgk_cs) = add_cs(
                                         self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
-                                        -self.dangular_momentum_dt0[k],
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
                                     );
                                     let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
                                     self.sg[3][k] = (((sgk / r[6] - self.sg[0][k]) / r[7]
@@ -1321,7 +1325,7 @@ impl Ias15 {
                                     let (sgk, sgk_cs) = add_cs(
                                         self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
-                                        -self.dangular_momentum_dt0[k],
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
                                     );
                                     let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
                                     self.sg[4][k] = ((((sgk / r[10] - self.sg[0][k]) / r[11]
@@ -1403,7 +1407,7 @@ impl Ias15 {
                                     let (sgk, sgk_cs) = add_cs(
                                         self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
-                                        -self.dangular_momentum_dt0[k],
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
                                     );
                                     let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
                                     self.sg[5][k] = (((((sgk / r[15] - self.sg[0][k]) / r[16]
@@ -1502,7 +1506,7 @@ impl Ias15 {
                                     let (sgk, sgk_cs) = add_cs(
                                         self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
                                         always_zero,
-                                        -self.dangular_momentum_dt0[k],
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
                                     );
                                     let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
                                     self.sg[6][k] = ((((((sgk / r[21] - self.sg[0][k]) / r[22]
@@ -1755,26 +1759,26 @@ impl Ias15 {
                     // New timestep is significantly smaller.
                     // Reset particles
                     for (
-                        k,
-                        (particle, position, velocity, angular_momentum, inertial_acceleration),
+                        particle,
+                        position,
+                        velocity,
+                        angular_momentum,
+                        inertial_acceleration,
+                        dangular_momentum_dt0,
                     ) in izip!(
                         &mut self.universe.particles[..self.universe.n_particles],
                         &self.x0,
                         &self.v0,
                         &self.angular_momentum0,
                         &self.a0,
-                    )
-                    .enumerate()
-                    {
+                        &self.dangular_momentum_dt0,
+                    ) {
                         particle.inertial_position = *position; // Set inital position
                         particle.inertial_velocity = *velocity; // Set inital velocity
                         particle.inertial_acceleration = *inertial_acceleration; // Set inital acceleration
 
                         if integrate_spin {
-                            particle.dangular_momentum_dt.x = self.dangular_momentum_dt0[3 * k]; // Set inital dangular_momentum_dt
-                            particle.dangular_momentum_dt.y = self.dangular_momentum_dt0[3 * k + 1];
-                            particle.dangular_momentum_dt.z = self.dangular_momentum_dt0[3 * k + 2];
-
+                            particle.dangular_momentum_dt = *dangular_momentum_dt0; // Set inital dangular_momentum_dt
                             particle.angular_momentum = *angular_momentum; // Set inital angular_momentum
                         }
                     }
@@ -1910,7 +1914,7 @@ impl Ias15 {
                         (tmp_angular_momentum0, tmp_css) = add_cs(
                             tmp_angular_momentum0,
                             tmp_css,
-                            self.dangular_momentum_dt0[k0] * dt_done,
+                            self.dangular_momentum_dt0[i].x * dt_done,
                         );
                         self.css[i].x = tmp_css;
                         self.angular_momentum0[i].x = tmp_angular_momentum0;
@@ -1932,7 +1936,7 @@ impl Ias15 {
                         (tmp_angular_momentum0, tmp_css) = add_cs(
                             tmp_angular_momentum0,
                             tmp_css,
-                            self.dangular_momentum_dt0[k1] * dt_done,
+                            self.dangular_momentum_dt0[i].y * dt_done,
                         );
                         self.css[i].y = tmp_css;
                         self.angular_momentum0[i].y = tmp_angular_momentum0;
@@ -1954,7 +1958,7 @@ impl Ias15 {
                         (tmp_angular_momentum0, tmp_css) = add_cs(
                             tmp_angular_momentum0,
                             tmp_css,
-                            self.dangular_momentum_dt0[k2] * dt_done,
+                            self.dangular_momentum_dt0[i].z * dt_done,
                         );
                         self.css[i].z = tmp_css;
                         self.angular_momentum0[i].z = tmp_angular_momentum0;
