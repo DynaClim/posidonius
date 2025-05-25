@@ -15,6 +15,9 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 use time::{OffsetDateTime, format_description};
+
+const ZERO: f64 = 0.0;
+
 ///<https://arxiv.org/abs/1409.4779>
 ///IAS15: A fast, adaptive, high-order integrator for gravitational dynamics, accurate to machine
 ///precision over a billion orbits
@@ -38,89 +41,7 @@ pub struct Ias15 {
     n_particles: usize,
     integrator_iterations_max_exceeded: i32, // Count how many times the iteration did not converge
     time_step_last_success: f64,             // Last accepted timestep (corresponding to br and er)
-    /*
-         //#[serde(with = "BigArray")]
-         //b: [[f64; 3*MAX_PARTICLES]; 7], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         b_0: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         b_1: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         b_2: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         b_3: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         b_4: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         b_5: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         b_6: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         //#[serde(with = "BigArray")]
-         //br: [[f64; 3*MAX_PARTICLES]; 7], // Previous b
-         #[serde(with = "BigArray")]
-         br_0: [f64; 3 * MAX_PARTICLES], // Previous b
-         #[serde(with = "BigArray")]
-         br_1: [f64; 3 * MAX_PARTICLES], // Previous b
-         #[serde(with = "BigArray")]
-         br_2: [f64; 3 * MAX_PARTICLES], // Previous b
-         #[serde(with = "BigArray")]
-         br_3: [f64; 3 * MAX_PARTICLES], // Previous b
-         #[serde(with = "BigArray")]
-         br_4: [f64; 3 * MAX_PARTICLES], // Previous b
-         #[serde(with = "BigArray")]
-         br_5: [f64; 3 * MAX_PARTICLES], // Previous b
-         #[serde(with = "BigArray")]
-         br_6: [f64; 3 * MAX_PARTICLES], // Previous b
-         //#[serde(with = "BigArray")]
-         //g: [[f64; 3*MAX_PARTICLES]; 7], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         g_0: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         g_1: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         g_2: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         g_3: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         g_4: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         g_5: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         g_6: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         //#[serde(with = "BigArray")]
-         //e: [[f64; 3*MAX_PARTICLES]; 7],
-         #[serde(with = "BigArray")]
-         e_0: [f64; 3 * MAX_PARTICLES],
-         #[serde(with = "BigArray")]
-         e_1: [f64; 3 * MAX_PARTICLES],
-         #[serde(with = "BigArray")]
-         e_2: [f64; 3 * MAX_PARTICLES],
-         #[serde(with = "BigArray")]
-         e_3: [f64; 3 * MAX_PARTICLES],
-         #[serde(with = "BigArray")]
-         e_4: [f64; 3 * MAX_PARTICLES],
-         #[serde(with = "BigArray")]
-         e_5: [f64; 3 * MAX_PARTICLES],
-         #[serde(with = "BigArray")]
-         e_6: [f64; 3 * MAX_PARTICLES],
-         //#[serde(with = "BigArray")]
-         //er: [[f64; 3*MAX_PARTICLES]; 7], // Previous g
-         #[serde(with = "BigArray")]
-         er_0: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-         er_1: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-         er_2: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-         er_3: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-         er_4: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-         er_5: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-         er_6: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-    */
+
     #[serde(skip)]
     b: [[f64; 3 * MAX_PARTICLES]; 7], // Coefficient b: acceleration dimension
     #[serde(skip)]
@@ -133,98 +54,6 @@ pub struct Ias15 {
     er: [[f64; 3 * MAX_PARTICLES]; 7], // Previous g
 
     #[serde(skip)]
-    at: [Axes; MAX_PARTICLES], // Temporary buffer for acceleration
-    #[serde(skip)]
-    x0: [Axes; MAX_PARTICLES], // Temporary buffer for position (used for initial values at h=0)
-    #[serde(skip)]
-    v0: [Axes; MAX_PARTICLES], // Temporary buffer for velocity (used for initial values at h=0)
-    #[serde(skip)]
-    a0: [Axes; MAX_PARTICLES], // Temporary buffer for acceleration (used for initial values at h=0)
-    /*
-        // spin coeff
-         //#[serde(with = "BigArray")]
-         //sb: [[f64; 3*MAX_PARTICLES]; 7], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         sb_0: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         sb_1: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         sb_2: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         sb_3: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         sb_4: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         sb_5: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         #[serde(with = "BigArray")]
-         sb_6: [f64; 3 * MAX_PARTICLES], // Coefficient b: acceleration dimension
-         //#[serde(with = "BigArray")]
-         //sbr: [[f64; 3*MAX_PARTICLES]; 7], // Previous b
-         #[serde(with = "BigArray")]
-         sbr_0: [f64; 3 * MAX_PARTICLES], // Previous b
-         #[serde(with = "BigArray")]
-         sbr_1: [f64; 3 * MAX_PARTICLES], // Previous b
-         #[serde(with = "BigArray")]
-         sbr_2: [f64; 3 * MAX_PARTICLES], // Previous b
-         #[serde(with = "BigArray")]
-         sbr_3: [f64; 3 * MAX_PARTICLES], // Previous b
-         #[serde(with = "BigArray")]
-         sbr_4: [f64; 3 * MAX_PARTICLES], // Previous b
-         #[serde(with = "BigArray")]
-         sbr_5: [f64; 3 * MAX_PARTICLES], // Previous b
-         #[serde(with = "BigArray")]
-         sbr_6: [f64; 3 * MAX_PARTICLES], // Previous b
-         //#[serde(with = "BigArray")]
-         //sg: [[f64; 3*MAX_PARTICLES]; 7], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         sg_0: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         sg_1: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         sg_2: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         sg_3: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         sg_4: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         sg_5: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         #[serde(with = "BigArray")]
-         sg_6: [f64; 3 * MAX_PARTICLES], // Coefficient g (it can also be expressed in terms of b)
-         //#[serde(with = "BigArray")]
-         //se: [[f64; 3*MAX_PARTICLES]; 7],
-         #[serde(with = "BigArray")]
-         se_0: [f64; 3 * MAX_PARTICLES],
-         #[serde(with = "BigArray")]
-         se_1: [f64; 3 * MAX_PARTICLES],
-         #[serde(with = "BigArray")]
-         se_2: [f64; 3 * MAX_PARTICLES],
-         #[serde(with = "BigArray")]
-         se_3: [f64; 3 * MAX_PARTICLES],
-         #[serde(with = "BigArray")]
-         se_4: [f64; 3 * MAX_PARTICLES],
-         #[serde(with = "BigArray")]
-         se_5: [f64; 3 * MAX_PARTICLES],
-         #[serde(with = "BigArray")]
-         se_6: [f64; 3 * MAX_PARTICLES],
-         //#[serde(with = "BigArray")]
-         //ser: [[f64; 3*MAX_PARTICLES]; 7], // Previous g
-         #[serde(with = "BigArray")]
-         ser_0: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-         ser_1: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-         ser_2: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-         ser_3: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-         ser_4: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-         ser_5: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-         ser_6: [f64; 3 * MAX_PARTICLES], // Previous g
-         #[serde(with = "BigArray")]
-    */
-    #[serde(skip)]
     sb: [[f64; 3 * MAX_PARTICLES]; 7], // Coefficient b: acceleration dimension
     #[serde(skip)]
     sbr: [[f64; 3 * MAX_PARTICLES]; 7], // Previous b
@@ -234,6 +63,15 @@ pub struct Ias15 {
     se: [[f64; 3 * MAX_PARTICLES]; 7],
     #[serde(skip)]
     ser: [[f64; 3 * MAX_PARTICLES]; 7], // Previous g
+
+    #[serde(skip)]
+    at: [Axes; MAX_PARTICLES], // Temporary buffer for acceleration
+    #[serde(skip)]
+    x0: [Axes; MAX_PARTICLES], // Temporary buffer for position (used for initial values at h=0)
+    #[serde(skip)]
+    v0: [Axes; MAX_PARTICLES], // Temporary buffer for velocity (used for initial values at h=0)
+    #[serde(skip)]
+    a0: [Axes; MAX_PARTICLES], // Temporary buffer for acceleration (used for initial values at h=0)
 
     #[serde(skip)]
     dangular_momentum_dtt: [Axes; MAX_PARTICLES], // Temporary buffer for dangular_momentum_dt
@@ -280,112 +118,34 @@ impl Ias15 {
             n_particles,
             integrator_iterations_max_exceeded: 0,
             time_step_last_success: 0.,
+
             b: [[0.; 3 * MAX_PARTICLES]; 7],
             g: [[0.; 3 * MAX_PARTICLES]; 7],
             e: [[0.; 3 * MAX_PARTICLES]; 7],
             br: [[0.; 3 * MAX_PARTICLES]; 7],
             er: [[0.; 3 * MAX_PARTICLES]; 7],
-            /*
-                         //b :   [[0.; 3*MAX_PARTICLES]; 7],
-                         b_0: [0.; 3 * MAX_PARTICLES],
-                         b_1: [0.; 3 * MAX_PARTICLES],
-                         b_2: [0.; 3 * MAX_PARTICLES],
-                         b_3: [0.; 3 * MAX_PARTICLES],
-                         b_4: [0.; 3 * MAX_PARTICLES],
-                         b_5: [0.; 3 * MAX_PARTICLES],
-                         b_6: [0.; 3 * MAX_PARTICLES],
-                         //g  :  [[0.; 3*MAX_PARTICLES]; 7],
-                         g_0: [0.; 3 * MAX_PARTICLES],
-                         g_1: [0.; 3 * MAX_PARTICLES],
-                         g_2: [0.; 3 * MAX_PARTICLES],
-                         g_3: [0.; 3 * MAX_PARTICLES],
-                         g_4: [0.; 3 * MAX_PARTICLES],
-                         g_5: [0.; 3 * MAX_PARTICLES],
-                         g_6: [0.; 3 * MAX_PARTICLES],
-                         //e  :  [[0.; 3*MAX_PARTICLES]; 7],
-                         e_0: [0.; 3 * MAX_PARTICLES],
-                         e_1: [0.; 3 * MAX_PARTICLES],
-                         e_2: [0.; 3 * MAX_PARTICLES],
-                         e_3: [0.; 3 * MAX_PARTICLES],
-                         e_4: [0.; 3 * MAX_PARTICLES],
-                         e_5: [0.; 3 * MAX_PARTICLES],
-                         e_6: [0.; 3 * MAX_PARTICLES],
-                         //br :  [[0.; 3*MAX_PARTICLES]; 7],
-                         br_0: [0.; 3 * MAX_PARTICLES],
-                         br_1: [0.; 3 * MAX_PARTICLES],
-                         br_2: [0.; 3 * MAX_PARTICLES],
-                         br_3: [0.; 3 * MAX_PARTICLES],
-                         br_4: [0.; 3 * MAX_PARTICLES],
-                         br_5: [0.; 3 * MAX_PARTICLES],
-                         br_6: [0.; 3 * MAX_PARTICLES],
-                         //er :  [[0.; 3*MAX_PARTICLES]; 7],
-                         er_0: [0.; 3 * MAX_PARTICLES],
-                         er_1: [0.; 3 * MAX_PARTICLES],
-                         er_2: [0.; 3 * MAX_PARTICLES],
-                         er_3: [0.; 3 * MAX_PARTICLES],
-                         er_4: [0.; 3 * MAX_PARTICLES],
-                         er_5: [0.; 3 * MAX_PARTICLES],
-                         er_6: [0.; 3 * MAX_PARTICLES],
-            */
-            at: [Axes::new(); MAX_PARTICLES],
-            x0: [Axes::new(); MAX_PARTICLES],
-            v0: [Axes::new(); MAX_PARTICLES],
-            a0: [Axes::new(); MAX_PARTICLES],
+
             sb: [[0.; 3 * MAX_PARTICLES]; 7],
             sg: [[0.; 3 * MAX_PARTICLES]; 7],
             se: [[0.; 3 * MAX_PARTICLES]; 7],
             sbr: [[0.; 3 * MAX_PARTICLES]; 7],
             ser: [[0.; 3 * MAX_PARTICLES]; 7],
-            /*
-                         //sb :   [[0.; 3*MAX_PARTICLES]; 7],
-                         sb_0: [0.; 3 * MAX_PARTICLES],
-                         sb_1: [0.; 3 * MAX_PARTICLES],
-                         sb_2: [0.; 3 * MAX_PARTICLES],
-                         sb_3: [0.; 3 * MAX_PARTICLES],
-                         sb_4: [0.; 3 * MAX_PARTICLES],
-                         sb_5: [0.; 3 * MAX_PARTICLES],
-                         sb_6: [0.; 3 * MAX_PARTICLES],
-                         //sg  :  [[0.; 3*MAX_PARTICLES]; 7],
-                         sg_0: [0.; 3 * MAX_PARTICLES],
-                         sg_1: [0.; 3 * MAX_PARTICLES],
-                         sg_2: [0.; 3 * MAX_PARTICLES],
-                         sg_3: [0.; 3 * MAX_PARTICLES],
-                         sg_4: [0.; 3 * MAX_PARTICLES],
-                         sg_5: [0.; 3 * MAX_PARTICLES],
-                         sg_6: [0.; 3 * MAX_PARTICLES],
-                         //se  :  [[0.; 3*MAX_PARTICLES]; 7],
-                         se_0: [0.; 3 * MAX_PARTICLES],
-                         se_1: [0.; 3 * MAX_PARTICLES],
-                         se_2: [0.; 3 * MAX_PARTICLES],
-                         se_3: [0.; 3 * MAX_PARTICLES],
-                         se_4: [0.; 3 * MAX_PARTICLES],
-                         se_5: [0.; 3 * MAX_PARTICLES],
-                         se_6: [0.; 3 * MAX_PARTICLES],
-                         //sbr :  [[0.; 3*MAX_PARTICLES]; 7],
-                         sbr_0: [0.; 3 * MAX_PARTICLES],
-                         sbr_1: [0.; 3 * MAX_PARTICLES],
-                         sbr_2: [0.; 3 * MAX_PARTICLES],
-                         sbr_3: [0.; 3 * MAX_PARTICLES],
-                         sbr_4: [0.; 3 * MAX_PARTICLES],
-                         sbr_5: [0.; 3 * MAX_PARTICLES],
-                         sbr_6: [0.; 3 * MAX_PARTICLES],
-                         //ser :  [[0.; 3*MAX_PARTICLES]; 7],
-                         ser_0: [0.; 3 * MAX_PARTICLES],
-                         ser_1: [0.; 3 * MAX_PARTICLES],
-                         ser_2: [0.; 3 * MAX_PARTICLES],
-                         ser_3: [0.; 3 * MAX_PARTICLES],
-                         ser_4: [0.; 3 * MAX_PARTICLES],
-                         ser_5: [0.; 3 * MAX_PARTICLES],
-                         ser_6: [0.; 3 * MAX_PARTICLES],
-            */
+
+            at: [Axes::new(); MAX_PARTICLES],
+            x0: [Axes::new(); MAX_PARTICLES],
+            v0: [Axes::new(); MAX_PARTICLES],
+            a0: [Axes::new(); MAX_PARTICLES],
+
             dangular_momentum_dtt: [Axes::new(); MAX_PARTICLES],
             dangular_momentum_dt0: [Axes::new(); MAX_PARTICLES],
             angular_momentum0: [Axes::new(); MAX_PARTICLES],
+
             csx: [Axes::new(); MAX_PARTICLES],
             csv: [Axes::new(); MAX_PARTICLES],
             css: [Axes::new(); MAX_PARTICLES],
             csb: [[Axes::new(); MAX_PARTICLES]; 7],
             cssb: [[Axes::new(); MAX_PARTICLES]; 7],
+
             s: [0.; 9],
         }
     }
@@ -1091,18 +851,22 @@ impl Ias15 {
                         }
                     }
 
+                    let mut maxak = 0.0;
+                    let mut maxb6ktmp = 0.0;
+                    let mut max_dangular_momentum_dtk = 0.0;
+                    let mut maxb6kstmp = 0.0;
+
                     // Update G values using Eqs. 4 of Everhart, and update B values using Eqs. 5
-                    let always_zero = 0.;
                     match n {
                         1 => {
                             for k in 0..3 * self.n_particles {
                                 let tmp = self.g[0][k];
                                 let (gk, gk_cs) = add_cs(
                                     self.at[k / 3].get_by_index(k % 3),
-                                    always_zero,
+                                    ZERO,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
-                                let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
+                                let (gk, _) = add_cs(gk, gk_cs, ZERO);
                                 self.g[0][k] = gk / r[0];
                                 let (tmp_b, tmp_csb) = add_cs(
                                     self.b[0][k],
@@ -1111,24 +875,6 @@ impl Ias15 {
                                 );
                                 self.b[0][k] = tmp_b;
                                 self.csb[0][k / 3].set_by_index(k % 3, tmp_csb);
-
-                                if integrate_spin {
-                                    let stmp = self.sg[0][k];
-                                    let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
-                                        always_zero,
-                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
-                                    );
-                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
-                                    self.sg[0][k] = sgk / r[0];
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[0][k],
-                                        self.cssb[0][k / 3].get_by_index(k % 3),
-                                        self.sg[0][k] - stmp,
-                                    );
-                                    self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
-                                }
                             }
                         }
                         2 => {
@@ -1136,10 +882,10 @@ impl Ias15 {
                                 let mut tmp = self.g[1][k];
                                 let (gk, gk_cs) = add_cs(
                                     self.at[k / 3].get_by_index(k % 3),
-                                    always_zero,
+                                    ZERO,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
-                                let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
+                                let (gk, _) = add_cs(gk, gk_cs, ZERO);
                                 self.g[1][k] = (gk / r[1] - self.g[0][k]) / r[2];
                                 tmp = self.g[1][k] - tmp;
                                 let (tmp_b, tmp_csb) = add_cs(
@@ -1157,32 +903,6 @@ impl Ias15 {
                                 );
                                 self.b[1][k] = tmp_b;
                                 self.csb[1][k / 3].set_by_index(k % 3, tmp_csb);
-
-                                if integrate_spin {
-                                    let mut stmp = self.sg[1][k];
-                                    let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
-                                        always_zero,
-                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
-                                    );
-                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
-                                    self.sg[1][k] = (sgk / r[1] - self.sg[0][k]) / r[2];
-                                    stmp = self.sg[1][k] - stmp;
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[0][k],
-                                        self.cssb[0][k / 3].get_by_index(k % 3),
-                                        stmp * c[0],
-                                    );
-                                    self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[1][k],
-                                        self.cssb[1][k / 3].get_by_index(k % 3),
-                                        stmp,
-                                    );
-                                    self.sb[1][k] = tmp_sb;
-                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
-                                }
                             }
                         }
                         3 => {
@@ -1190,10 +910,10 @@ impl Ias15 {
                                 let mut tmp = self.g[2][k];
                                 let (gk, gk_cs) = add_cs(
                                     self.at[k / 3].get_by_index(k % 3),
-                                    always_zero,
+                                    ZERO,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
-                                let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
+                                let (gk, _) = add_cs(gk, gk_cs, ZERO);
                                 self.g[2][k] =
                                     ((gk / r[3] - self.g[0][k]) / r[4] - self.g[1][k]) / r[5];
                                 tmp = self.g[2][k] - tmp;
@@ -1218,41 +938,6 @@ impl Ias15 {
                                 );
                                 self.b[2][k] = tmp_b;
                                 self.csb[2][k / 3].set_by_index(k % 3, tmp_csb);
-
-                                if integrate_spin {
-                                    let mut stmp = self.sg[2][k];
-                                    let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
-                                        always_zero,
-                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
-                                    );
-                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
-                                    self.sg[2][k] = ((sgk / r[3] - self.sg[0][k]) / r[4]
-                                        - self.sg[1][k])
-                                        / r[5];
-                                    stmp = self.sg[2][k] - stmp;
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[0][k],
-                                        self.cssb[0][k / 3].get_by_index(k % 3),
-                                        stmp * c[1],
-                                    );
-                                    self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[1][k],
-                                        self.cssb[1][k / 3].get_by_index(k % 3),
-                                        stmp * c[2],
-                                    );
-                                    self.sb[1][k] = tmp_sb;
-                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[2][k],
-                                        self.cssb[2][k / 3].get_by_index(k % 3),
-                                        stmp,
-                                    );
-                                    self.sb[2][k] = tmp_sb;
-                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
-                                }
                             }
                         }
                         4 => {
@@ -1260,10 +945,10 @@ impl Ias15 {
                                 let mut tmp = self.g[3][k];
                                 let (gk, gk_cs) = add_cs(
                                     self.at[k / 3].get_by_index(k % 3),
-                                    always_zero,
+                                    ZERO,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
-                                let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
+                                let (gk, _) = add_cs(gk, gk_cs, ZERO);
                                 self.g[3][k] = (((gk / r[6] - self.g[0][k]) / r[7] - self.g[1][k])
                                     / r[8]
                                     - self.g[2][k])
@@ -1297,50 +982,6 @@ impl Ias15 {
                                 );
                                 self.b[3][k] = tmp_b;
                                 self.csb[3][k / 3].set_by_index(k % 3, tmp_csb);
-
-                                if integrate_spin {
-                                    let mut stmp = self.sg[3][k];
-                                    let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
-                                        always_zero,
-                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
-                                    );
-                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
-                                    self.sg[3][k] = (((sgk / r[6] - self.sg[0][k]) / r[7]
-                                        - self.sg[1][k])
-                                        / r[8]
-                                        - self.sg[2][k])
-                                        / r[9];
-                                    stmp = self.sg[3][k] - stmp;
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[0][k],
-                                        self.cssb[0][k / 3].get_by_index(k % 3),
-                                        stmp * c[3],
-                                    );
-                                    self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[1][k],
-                                        self.cssb[1][k / 3].get_by_index(k % 3),
-                                        stmp * c[4],
-                                    );
-                                    self.sb[1][k] = tmp_sb;
-                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[2][k],
-                                        self.cssb[2][k / 3].get_by_index(k % 3),
-                                        stmp * c[5],
-                                    );
-                                    self.sb[2][k] = tmp_sb;
-                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[3][k],
-                                        self.cssb[3][k / 3].get_by_index(k % 3),
-                                        stmp,
-                                    );
-                                    self.sb[3][k] = tmp_sb;
-                                    self.cssb[3][k / 3].set_by_index(k % 3, tmp_cssb);
-                                }
                             }
                         }
                         5 => {
@@ -1348,10 +989,10 @@ impl Ias15 {
                                 let mut tmp = self.g[4][k];
                                 let (gk, gk_cs) = add_cs(
                                     self.at[k / 3].get_by_index(k % 3),
-                                    always_zero,
+                                    ZERO,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
-                                let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
+                                let (gk, _) = add_cs(gk, gk_cs, ZERO);
                                 self.g[4][k] = ((((gk / r[10] - self.g[0][k]) / r[11]
                                     - self.g[1][k])
                                     / r[12]
@@ -1395,59 +1036,6 @@ impl Ias15 {
                                 );
                                 self.b[4][k] = tmp_b;
                                 self.csb[4][k / 3].set_by_index(k % 3, tmp_csb);
-
-                                if integrate_spin {
-                                    let mut stmp = self.sg[4][k];
-                                    let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
-                                        always_zero,
-                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
-                                    );
-                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
-                                    self.sg[4][k] = ((((sgk / r[10] - self.sg[0][k]) / r[11]
-                                        - self.sg[1][k])
-                                        / r[12]
-                                        - self.sg[2][k])
-                                        / r[13]
-                                        - self.sg[3][k])
-                                        / r[14];
-                                    stmp = self.sg[4][k] - stmp;
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[0][k],
-                                        self.cssb[0][k / 3].get_by_index(k % 3),
-                                        stmp * c[6],
-                                    );
-                                    self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[1][k],
-                                        self.cssb[1][k / 3].get_by_index(k % 3),
-                                        stmp * c[7],
-                                    );
-                                    self.sb[1][k] = tmp_sb;
-                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[2][k],
-                                        self.cssb[2][k / 3].get_by_index(k % 3),
-                                        stmp * c[8],
-                                    );
-                                    self.sb[2][k] = tmp_sb;
-                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[3][k],
-                                        self.cssb[3][k / 3].get_by_index(k % 3),
-                                        stmp * c[9],
-                                    );
-                                    self.sb[3][k] = tmp_sb;
-                                    self.cssb[3][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[4][k],
-                                        self.cssb[4][k / 3].get_by_index(k % 3),
-                                        stmp,
-                                    );
-                                    self.sb[4][k] = tmp_sb;
-                                    self.cssb[4][k / 3].set_by_index(k % 3, tmp_cssb);
-                                }
                             }
                         }
                         6 => {
@@ -1455,10 +1043,10 @@ impl Ias15 {
                                 let mut tmp = self.g[5][k];
                                 let (gk, gk_cs) = add_cs(
                                     self.at[k / 3].get_by_index(k % 3),
-                                    always_zero,
+                                    ZERO,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
-                                let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
+                                let (gk, _) = add_cs(gk, gk_cs, ZERO);
                                 self.g[5][k] = (((((gk / r[15] - self.g[0][k]) / r[16]
                                     - self.g[1][k])
                                     / r[17]
@@ -1511,83 +1099,17 @@ impl Ias15 {
                                 );
                                 self.b[5][k] = tmp_b;
                                 self.csb[5][k / 3].set_by_index(k % 3, tmp_csb);
-
-                                if integrate_spin {
-                                    let mut stmp = self.sg[5][k];
-                                    let (sgk, sgk_cs) = add_cs(
-                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
-                                        always_zero,
-                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
-                                    );
-                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
-                                    self.sg[5][k] = (((((sgk / r[15] - self.sg[0][k]) / r[16]
-                                        - self.sg[1][k])
-                                        / r[17]
-                                        - self.sg[2][k])
-                                        / r[18]
-                                        - self.sg[3][k])
-                                        / r[19]
-                                        - self.sg[4][k])
-                                        / r[20];
-                                    stmp = self.sg[5][k] - stmp;
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[0][k],
-                                        self.cssb[0][k / 3].get_by_index(k % 3),
-                                        stmp * c[10],
-                                    );
-                                    self.sb[0][k] = tmp_sb;
-                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[1][k],
-                                        self.cssb[1][k / 3].get_by_index(k % 3),
-                                        stmp * c[11],
-                                    );
-                                    self.sb[1][k] = tmp_sb;
-                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[2][k],
-                                        self.cssb[2][k / 3].get_by_index(k % 3),
-                                        stmp * c[12],
-                                    );
-                                    self.sb[2][k] = tmp_sb;
-                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[3][k],
-                                        self.cssb[3][k / 3].get_by_index(k % 3),
-                                        stmp * c[13],
-                                    );
-                                    self.sb[3][k] = tmp_sb;
-                                    self.cssb[3][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[4][k],
-                                        self.cssb[4][k / 3].get_by_index(k % 3),
-                                        stmp * c[14],
-                                    );
-                                    self.sb[4][k] = tmp_sb;
-                                    self.cssb[4][k / 3].set_by_index(k % 3, tmp_cssb);
-                                    let (tmp_sb, tmp_cssb) = add_cs(
-                                        self.sb[5][k],
-                                        self.cssb[5][k / 3].get_by_index(k % 3),
-                                        stmp,
-                                    );
-                                    self.sb[5][k] = tmp_sb;
-                                    self.cssb[5][k / 3].set_by_index(k % 3, tmp_cssb);
-                                }
                             }
                         }
                         7 => {
-                            let mut maxak = 0.0;
-                            let mut maxb6ktmp = 0.0;
-                            let mut max_dangular_momentum_dtk = 0.0;
-                            let mut maxb6kstmp = 0.0;
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[6][k];
                                 let (gk, gk_cs) = add_cs(
                                     self.at[k / 3].get_by_index(k % 3),
-                                    always_zero,
+                                    ZERO,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
-                                let (gk, _gk_cs) = add_cs(gk, gk_cs, always_zero);
+                                let (gk, _) = add_cs(gk, gk_cs, ZERO);
                                 self.g[6][k] = ((((((gk / r[21] - self.g[0][k]) / r[22]
                                     - self.g[1][k])
                                     / r[23]
@@ -1650,15 +1172,289 @@ impl Ias15 {
                                 self.b[6][k] = tmp_b;
                                 self.csb[6][k / 3].set_by_index(k % 3, tmp_csb);
 
-                                let mut stmp = 0.;
-                                if integrate_spin {
-                                    stmp = self.sg[6][k];
+                                // Monitor change in self.b[6][k] relative to self.at[k]. The predictor corrector scheme is converged if it is close to 0.
+                                if INTEGRATOR_EPSILON_GLOBAL {
+                                    // global error estimate (equation 9)
+                                    let ak = abs!(self.at[k / 3].get_by_index(k % 3));
+                                    if ak.is_normal() && ak > maxak {
+                                        maxak = ak;
+                                    }
+                                    let b6ktmp = abs!(tmp); // change of b6ktmp coefficient
+                                    if b6ktmp.is_normal() && b6ktmp > maxb6ktmp {
+                                        maxb6ktmp = b6ktmp;
+                                    }
+                                } else {
+                                    // local error estimate (equation 9)
+                                    let ak = self.at[k / 3].get_by_index(k % 3);
+                                    let b6ktmp = tmp;
+                                    let errork = abs!(b6ktmp / ak);
+                                    predictor_corrector_error = if errork.is_normal()
+                                        && errork > predictor_corrector_error
+                                    {
+                                        errork
+                                    } else {
+                                        0.0
+                                    }
+                                }
+                            }
+                        }
+                        _ => unreachable!(),
+                    } // end match
+                    if integrate_spin {
+                        match n {
+                            1 => {
+                                for k in 0..3 * self.n_particles {
+                                    let stmp = self.sg[0][k];
                                     let (sgk, sgk_cs) = add_cs(
                                         self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
-                                        always_zero,
+                                        ZERO,
                                         -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
                                     );
-                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, always_zero);
+                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, ZERO);
+                                    self.sg[0][k] = sgk / r[0];
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
+                                        self.sg[0][k] - stmp,
+                                    );
+                                    self.sb[0][k] = tmp_sb;
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
+                                }
+                            }
+                            2 => {
+                                for k in 0..3 * self.n_particles {
+                                    let mut stmp = self.sg[1][k];
+                                    let (sgk, sgk_cs) = add_cs(
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
+                                        ZERO,
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
+                                    );
+                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, ZERO);
+                                    self.sg[1][k] = (sgk / r[1] - self.sg[0][k]) / r[2];
+                                    stmp = self.sg[1][k] - stmp;
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
+                                        stmp * c[0],
+                                    );
+                                    self.sb[0][k] = tmp_sb;
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[1][k],
+                                        self.cssb[1][k / 3].get_by_index(k % 3),
+                                        stmp,
+                                    );
+                                    self.sb[1][k] = tmp_sb;
+                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
+                                }
+                            }
+                            3 => {
+                                for k in 0..3 * self.n_particles {
+                                    let mut stmp = self.sg[2][k];
+                                    let (sgk, sgk_cs) = add_cs(
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
+                                        ZERO,
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
+                                    );
+                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, ZERO);
+                                    self.sg[2][k] = ((sgk / r[3] - self.sg[0][k]) / r[4]
+                                        - self.sg[1][k])
+                                        / r[5];
+                                    stmp = self.sg[2][k] - stmp;
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
+                                        stmp * c[1],
+                                    );
+                                    self.sb[0][k] = tmp_sb;
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[1][k],
+                                        self.cssb[1][k / 3].get_by_index(k % 3),
+                                        stmp * c[2],
+                                    );
+                                    self.sb[1][k] = tmp_sb;
+                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[2][k],
+                                        self.cssb[2][k / 3].get_by_index(k % 3),
+                                        stmp,
+                                    );
+                                    self.sb[2][k] = tmp_sb;
+                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
+                                }
+                            }
+                            4 => {
+                                for k in 0..3 * self.n_particles {
+                                    let mut stmp = self.sg[3][k];
+                                    let (sgk, sgk_cs) = add_cs(
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
+                                        ZERO,
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
+                                    );
+                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, ZERO);
+                                    self.sg[3][k] = (((sgk / r[6] - self.sg[0][k]) / r[7]
+                                        - self.sg[1][k])
+                                        / r[8]
+                                        - self.sg[2][k])
+                                        / r[9];
+                                    stmp = self.sg[3][k] - stmp;
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
+                                        stmp * c[3],
+                                    );
+                                    self.sb[0][k] = tmp_sb;
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[1][k],
+                                        self.cssb[1][k / 3].get_by_index(k % 3),
+                                        stmp * c[4],
+                                    );
+                                    self.sb[1][k] = tmp_sb;
+                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[2][k],
+                                        self.cssb[2][k / 3].get_by_index(k % 3),
+                                        stmp * c[5],
+                                    );
+                                    self.sb[2][k] = tmp_sb;
+                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[3][k],
+                                        self.cssb[3][k / 3].get_by_index(k % 3),
+                                        stmp,
+                                    );
+                                    self.sb[3][k] = tmp_sb;
+                                    self.cssb[3][k / 3].set_by_index(k % 3, tmp_cssb);
+                                }
+                            }
+                            5 => {
+                                for k in 0..3 * self.n_particles {
+                                    let mut stmp = self.sg[4][k];
+                                    let (sgk, sgk_cs) = add_cs(
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
+                                        ZERO,
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
+                                    );
+                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, ZERO);
+                                    self.sg[4][k] = ((((sgk / r[10] - self.sg[0][k]) / r[11]
+                                        - self.sg[1][k])
+                                        / r[12]
+                                        - self.sg[2][k])
+                                        / r[13]
+                                        - self.sg[3][k])
+                                        / r[14];
+                                    stmp = self.sg[4][k] - stmp;
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
+                                        stmp * c[6],
+                                    );
+                                    self.sb[0][k] = tmp_sb;
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[1][k],
+                                        self.cssb[1][k / 3].get_by_index(k % 3),
+                                        stmp * c[7],
+                                    );
+                                    self.sb[1][k] = tmp_sb;
+                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[2][k],
+                                        self.cssb[2][k / 3].get_by_index(k % 3),
+                                        stmp * c[8],
+                                    );
+                                    self.sb[2][k] = tmp_sb;
+                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[3][k],
+                                        self.cssb[3][k / 3].get_by_index(k % 3),
+                                        stmp * c[9],
+                                    );
+                                    self.sb[3][k] = tmp_sb;
+                                    self.cssb[3][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[4][k],
+                                        self.cssb[4][k / 3].get_by_index(k % 3),
+                                        stmp,
+                                    );
+                                    self.sb[4][k] = tmp_sb;
+                                    self.cssb[4][k / 3].set_by_index(k % 3, tmp_cssb);
+                                }
+                            }
+                            6 => {
+                                for k in 0..3 * self.n_particles {
+                                    let mut stmp = self.sg[5][k];
+                                    let (sgk, sgk_cs) = add_cs(
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
+                                        ZERO,
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
+                                    );
+                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, ZERO);
+                                    self.sg[5][k] = (((((sgk / r[15] - self.sg[0][k]) / r[16]
+                                        - self.sg[1][k])
+                                        / r[17]
+                                        - self.sg[2][k])
+                                        / r[18]
+                                        - self.sg[3][k])
+                                        / r[19]
+                                        - self.sg[4][k])
+                                        / r[20];
+                                    stmp = self.sg[5][k] - stmp;
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[0][k],
+                                        self.cssb[0][k / 3].get_by_index(k % 3),
+                                        stmp * c[10],
+                                    );
+                                    self.sb[0][k] = tmp_sb;
+                                    self.cssb[0][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[1][k],
+                                        self.cssb[1][k / 3].get_by_index(k % 3),
+                                        stmp * c[11],
+                                    );
+                                    self.sb[1][k] = tmp_sb;
+                                    self.cssb[1][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[2][k],
+                                        self.cssb[2][k / 3].get_by_index(k % 3),
+                                        stmp * c[12],
+                                    );
+                                    self.sb[2][k] = tmp_sb;
+                                    self.cssb[2][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[3][k],
+                                        self.cssb[3][k / 3].get_by_index(k % 3),
+                                        stmp * c[13],
+                                    );
+                                    self.sb[3][k] = tmp_sb;
+                                    self.cssb[3][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[4][k],
+                                        self.cssb[4][k / 3].get_by_index(k % 3),
+                                        stmp * c[14],
+                                    );
+                                    self.sb[4][k] = tmp_sb;
+                                    self.cssb[4][k / 3].set_by_index(k % 3, tmp_cssb);
+                                    let (tmp_sb, tmp_cssb) = add_cs(
+                                        self.sb[5][k],
+                                        self.cssb[5][k / 3].get_by_index(k % 3),
+                                        stmp,
+                                    );
+                                    self.sb[5][k] = tmp_sb;
+                                    self.cssb[5][k / 3].set_by_index(k % 3, tmp_cssb);
+                                }
+                            }
+                            7 => {
+                                for k in 0..3 * self.n_particles {
+                                    let mut stmp = self.sg[6][k];
+                                    let (sgk, sgk_cs) = add_cs(
+                                        self.dangular_momentum_dtt[k / 3].get_by_index(k % 3),
+                                        ZERO,
+                                        -self.dangular_momentum_dt0[k / 3].get_by_index(k % 3),
+                                    );
+                                    let (sgk, _sgk_cs) = add_cs(sgk, sgk_cs, ZERO);
                                     self.sg[6][k] = ((((((sgk / r[21] - self.sg[0][k]) / r[22]
                                         - self.sg[1][k])
                                         / r[23]
@@ -1720,20 +1516,10 @@ impl Ias15 {
                                     );
                                     self.sb[6][k] = tmp_sb;
                                     self.cssb[6][k / 3].set_by_index(k % 3, tmp_cssb);
-                                }
 
-                                // Monitor change in self.b[6][k] relative to self.at[k]. The predictor corrector scheme is converged if it is close to 0.
-                                if INTEGRATOR_EPSILON_GLOBAL {
-                                    // global error estimate (equation 9)
-                                    let ak = abs!(self.at[k / 3].get_by_index(k % 3));
-                                    if ak.is_normal() && ak > maxak {
-                                        maxak = ak;
-                                    }
-                                    let b6ktmp = abs!(tmp); // change of b6ktmp coefficient
-                                    if b6ktmp.is_normal() && b6ktmp > maxb6ktmp {
-                                        maxb6ktmp = b6ktmp;
-                                    }
-                                    if integrate_spin {
+                                    // Monitor change in self.b[6][k] relative to self.at[k]. The predictor corrector scheme is converged if it is close to 0.
+                                    if INTEGRATOR_EPSILON_GLOBAL {
+                                        // global error estimate (equation 9)
                                         let dangular_momentum_dttk = abs!(
                                             self.dangular_momentum_dtt[k / 3].get_by_index(k % 3)
                                         );
@@ -1746,54 +1532,30 @@ impl Ias15 {
                                         if b6kstmp.is_normal() && b6kstmp > maxb6kstmp {
                                             maxb6kstmp = b6kstmp;
                                         }
-                                    }
-                                } else {
-                                    // local error estimate (equation 9)
-                                    let mut predictor_corrector_error_a = 0.;
-                                    let mut predictor_corrector_error_s = 0.;
-                                    let ak = self.at[k / 3].get_by_index(k % 3);
-                                    let b6ktmp = tmp;
-                                    let errork = abs!(b6ktmp / ak);
-                                    if errork.is_normal() && errork > predictor_corrector_error {
-                                        predictor_corrector_error_a = errork;
-                                    }
-                                    //
-                                    if integrate_spin {
+                                    } else {
+                                        // local error estimate (equation 9)
                                         let dangular_momentum_dttk =
                                             self.dangular_momentum_dtt[k / 3].get_by_index(k % 3);
                                         let b6kstmp = stmp;
                                         let errorks = abs!(b6kstmp / dangular_momentum_dttk);
-                                        if errorks.is_normal()
+                                        predictor_corrector_error = if errorks.is_normal()
                                             && errorks > predictor_corrector_error
                                         {
-                                            predictor_corrector_error_s = errorks;
-                                        }
+                                            errorks
+                                        } else {
+                                            0.0
+                                        };
                                     }
-                                    predictor_corrector_error = max!(
-                                        predictor_corrector_error_a,
-                                        predictor_corrector_error_s
-                                    );
                                 }
                             }
-                            if INTEGRATOR_EPSILON_GLOBAL {
-                                predictor_corrector_error = max!(maxb6ktmp, maxb6kstmp)
-                                    / max!(maxak, max_dangular_momentum_dtk);
-                            }
-                        }
-                        _ => {
-                            println!(
-                                "[WARNING {} UTC] This should not happen because the loop stops at 7!",
-                                OffsetDateTime::now_utc()
-                                    .format(
-                                        &format_description::parse(
-                                            "[year].[month].[day] [hour]:[minute]:[second]"
-                                        )
-                                        .unwrap()
-                                    )
-                                    .unwrap()
-                            );
-                        }
-                    } // end match
+                            _ => unreachable!(),
+                        } // end match
+                    } // end if integrate_spin
+
+                    if INTEGRATOR_EPSILON_GLOBAL && n == 7 {
+                        predictor_corrector_error =
+                            max!(maxb6ktmp, maxb6kstmp) / max!(maxak, max_dangular_momentum_dtk);
+                    }
                 } // end loop over interval using Gauss-Radau spacings
             } // end predictor corrector loop
 
@@ -2199,6 +1961,7 @@ impl Ias15 {
             let q7 = ratio.powi(7);
 
             let [e0, e1, e2, e3, e4, e5, e6] = &mut self.e;
+            let [br0, br1, br2, br3, br4, br5, br6] = &self.br;
 
             for (
                 e0_i,
@@ -2208,28 +1971,16 @@ impl Ias15 {
                 e4_i,
                 e5_i,
                 e6_i,
-                br6_i,
-                br5_i,
-                br4_i,
-                br3_i,
-                br2_i,
-                br1_i,
                 br0_i,
+                br1_i,
+                br2_i,
+                br3_i,
+                br4_i,
+                br5_i,
+                br6_i,
             ) in izip!(
-                &mut *e0,
-                &mut *e1,
-                &mut *e2,
-                &mut *e3,
-                &mut *e4,
-                &mut *e5,
-                &mut *e6,
-                &self.br[6],
-                &self.br[5],
-                &self.br[4],
-                &self.br[3],
-                &self.br[2],
-                &self.br[1],
-                &self.br[0],
+                &mut *e0, &mut *e1, &mut *e2, &mut *e3, &mut *e4, &mut *e5, &mut *e6, br0, br1,
+                br2, br3, br4, br5, br6,
             )
             .take(self.n_particles)
             {
@@ -2257,6 +2008,7 @@ impl Ias15 {
 
             if integrate_spin {
                 let [se0, se1, se2, se3, se4, se5, se6] = &mut self.se;
+                let [sbr0, sbr1, sbr2, sbr3, sbr4, sbr5, sbr6] = &self.sbr;
                 // Estimate B values for the next sequence (Eqs. 13 of Everhart).
                 for (
                     se0_i,
@@ -2266,28 +2018,16 @@ impl Ias15 {
                     se4_i,
                     se5_i,
                     se6_i,
-                    sbr6_i,
-                    sbr5_i,
-                    sbr4_i,
-                    sbr3_i,
-                    sbr2_i,
-                    sbr1_i,
                     sbr0_i,
+                    sbr1_i,
+                    sbr2_i,
+                    sbr3_i,
+                    sbr4_i,
+                    sbr5_i,
+                    sbr6_i,
                 ) in izip!(
-                    &mut *se0,
-                    &mut *se1,
-                    &mut *se2,
-                    &mut *se3,
-                    &mut *se4,
-                    &mut *se5,
-                    &mut *se6,
-                    &self.sbr[6],
-                    &self.sbr[5],
-                    &self.sbr[4],
-                    &self.sbr[3],
-                    &self.sbr[2],
-                    &self.sbr[1],
-                    &self.sbr[0],
+                    &mut *se0, &mut *se1, &mut *se2, &mut *se3, &mut *se4, &mut *se5, se6, sbr0,
+                    sbr1, sbr2, sbr3, sbr4, sbr5, sbr6,
                 )
                 .take(self.n_particles)
                 {
