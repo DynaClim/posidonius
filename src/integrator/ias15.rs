@@ -1748,153 +1748,124 @@ impl Ias15 {
                     let k0 = 3 * i;
                     let k1 = 3 * i + 1;
                     let k2 = 3 * i + 2;
-                    let (mut tmp_x0, mut tmp_csx): (f64, f64);
-                    let (mut tmp_v0, mut tmp_csv);
-                    let (mut tmp_angular_momentum0, mut tmp_css);
+                    let mut tmp = Axes::new();
+                    let mut tmp_cs = Axes::new();
 
                     // position x
-                    (tmp_x0, tmp_csx) =
+                    (tmp.x, tmp_cs.x) =
                         add_cs(self.x0[i].x, self.csx[i].x, self.b[6][k0] / 72. * dt_done2);
 
-                    for (i, j, f) in izip!((0..=5).rev(), (2..=7).rev(), (3..=8).rev()) {
-                        (tmp_x0, tmp_csx) =
-                            add_cs(tmp_x0, tmp_csx, self.b[i][k0] / (j * f) as f64 * dt_done2);
-                    }
-
-                    (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.a0[i].x / 2. * dt_done2);
-                    (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.v0[i].x * dt_done);
-                    self.csx[i].x = tmp_csx;
-                    self.x0[i].x = tmp_x0;
-
                     // position y
-                    (tmp_x0, tmp_csx) =
+                    (tmp.y, tmp_cs.y) =
                         add_cs(self.x0[i].y, self.csx[i].y, self.b[6][k1] / 72. * dt_done2);
 
-                    for (i, j, f) in izip!((0..=5).rev(), (2..=7).rev(), (3..=8).rev()) {
-                        (tmp_x0, tmp_csx) =
-                            add_cs(tmp_x0, tmp_csx, self.b[i][k1] / (j * f) as f64 * dt_done2);
-                    }
-
-                    (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.a0[i].y / 2. * dt_done2);
-                    (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.v0[i].y * dt_done);
-                    self.csx[i].y = tmp_csx;
-                    self.x0[i].y = tmp_x0;
-
                     // position z
-                    (tmp_x0, tmp_csx) =
+                    (tmp.z, tmp_cs.z) =
                         add_cs(self.x0[i].z, self.csx[i].z, self.b[6][k2] / 72. * dt_done2);
 
                     for (i, j, f) in izip!((0..=5).rev(), (2..=7).rev(), (3..=8).rev()) {
-                        (tmp_x0, tmp_csx) =
-                            add_cs(tmp_x0, tmp_csx, self.b[i][k2] / (j * f) as f64 * dt_done2);
+                        (tmp.x, tmp_cs.x) =
+                            add_cs(tmp.x, tmp_cs.x, self.b[i][k0] / (j * f) as f64 * dt_done2);
+
+                        (tmp.y, tmp_cs.y) =
+                            add_cs(tmp.y, tmp_cs.y, self.b[i][k1] / (j * f) as f64 * dt_done2);
+
+                        (tmp.z, tmp_cs.z) =
+                            add_cs(tmp.z, tmp_cs.z, self.b[i][k2] / (j * f) as f64 * dt_done2);
                     }
 
-                    (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.a0[i].z / 2. * dt_done2);
-                    (tmp_x0, tmp_csx) = add_cs(tmp_x0, tmp_csx, self.v0[i].z * dt_done);
-                    self.csx[i].z = tmp_csx;
-                    self.x0[i].z = tmp_x0;
+                    (tmp.x, tmp_cs.x) = add_cs(tmp.x, tmp_cs.x, self.a0[i].x / 2. * dt_done2);
+                    (tmp.x, tmp_cs.x) = add_cs(tmp.x, tmp_cs.x, self.v0[i].x * dt_done);
+                    self.csx[i].x = tmp_cs.x;
+                    self.x0[i].x = tmp.x;
+
+                    (tmp.y, tmp_cs.y) = add_cs(tmp.y, tmp_cs.y, self.a0[i].y / 2. * dt_done2);
+                    (tmp.y, tmp_cs.y) = add_cs(tmp.y, tmp_cs.y, self.v0[i].y * dt_done);
+                    self.csx[i].y = tmp_cs.y;
+                    self.x0[i].y = tmp.y;
+
+                    (tmp.z, tmp_cs.z) = add_cs(tmp.z, tmp_cs.z, self.a0[i].z / 2. * dt_done2);
+                    (tmp.z, tmp_cs.z) = add_cs(tmp.z, tmp_cs.z, self.v0[i].z * dt_done);
+                    self.csx[i].z = tmp_cs.z;
+                    self.x0[i].z = tmp.z;
 
                     // velocity x
-                    (tmp_v0, tmp_csv) =
+                    (tmp.x, tmp_cs.x) =
                         add_cs(self.v0[i].x, self.csv[i].x, self.b[6][k0] / 8. * dt_done);
-                    for (i, j) in izip!((0..=5).rev(), (2..=7).rev()) {
-                        (tmp_v0, tmp_csv) =
-                            add_cs(tmp_v0, tmp_csv, self.b[i][k0] / (j as f64) * dt_done);
-                    }
-                    (tmp_v0, tmp_csv) = add_cs(tmp_v0, tmp_csv, self.a0[i].x * dt_done);
-                    self.csv[i].x = tmp_csv;
-                    self.v0[i].x = tmp_v0;
-
                     // velocity y
-                    (tmp_v0, tmp_csv) =
+                    (tmp.y, tmp_cs.y) =
                         add_cs(self.v0[i].y, self.csv[i].y, self.b[6][k1] / 8. * dt_done);
-                    for (i, j) in izip!((0..=5).rev(), (2..=7).rev()) {
-                        (tmp_v0, tmp_csv) =
-                            add_cs(tmp_v0, tmp_csv, self.b[i][k1] / (j as f64) * dt_done);
-                    }
-                    (tmp_v0, tmp_csv) = add_cs(tmp_v0, tmp_csv, self.a0[i].y * dt_done);
-                    self.csv[i].y = tmp_csv;
-                    self.v0[i].y = tmp_v0;
 
                     // velocity z
-                    (tmp_v0, tmp_csv) =
+                    (tmp.z, tmp_cs.z) =
                         add_cs(self.v0[i].z, self.csv[i].z, self.b[6][k2] / 8. * dt_done);
 
                     for (i, j) in izip!((0..=5).rev(), (2..=7).rev()) {
-                        (tmp_v0, tmp_csv) =
-                            add_cs(tmp_v0, tmp_csv, self.b[i][k2] / (j as f64) * dt_done);
+                        (tmp.x, tmp_cs.x) =
+                            add_cs(tmp.x, tmp_cs.x, self.b[i][k0] / (j as f64) * dt_done);
+                        (tmp.y, tmp_cs.y) =
+                            add_cs(tmp.y, tmp_cs.y, self.b[i][k1] / (j as f64) * dt_done);
+                        (tmp.z, tmp_cs.z) =
+                            add_cs(tmp.z, tmp_cs.z, self.b[i][k2] / (j as f64) * dt_done);
                     }
-                    (tmp_v0, tmp_csv) = add_cs(tmp_v0, tmp_csv, self.a0[i].z * dt_done);
 
-                    self.csv[i].z = tmp_csv;
-                    self.v0[i].z = tmp_v0;
+                    (tmp.x, tmp_cs.x) = add_cs(tmp.x, tmp_cs.x, self.a0[i].x * dt_done);
+                    self.csv[i].x = tmp_cs.x;
+                    self.v0[i].x = tmp.x;
+
+                    (tmp.y, tmp_cs.y) = add_cs(tmp.y, tmp_cs.y, self.a0[i].y * dt_done);
+                    self.csv[i].y = tmp_cs.y;
+                    self.v0[i].y = tmp.y;
+
+                    (tmp.z, tmp_cs.z) = add_cs(tmp.z, tmp_cs.z, self.a0[i].z * dt_done);
+                    self.csv[i].z = tmp_cs.z;
+                    self.v0[i].z = tmp.z;
 
                     if integrate_spin {
                         // spin x
-                        (tmp_angular_momentum0, tmp_css) = add_cs(
+                        (tmp.x, tmp_cs.x) = add_cs(
                             self.angular_momentum0[i].x,
                             self.css[i].x,
                             self.sb[6][k0] / 8. * dt_done,
                         );
-                        for (i, j) in izip!((0..=5).rev(), (2..=7).rev()) {
-                            (tmp_angular_momentum0, tmp_css) = add_cs(
-                                tmp_angular_momentum0,
-                                tmp_css,
-                                self.sb[i][k0] / (j as f64) * dt_done,
-                            );
-                        }
-
-                        (tmp_angular_momentum0, tmp_css) = add_cs(
-                            tmp_angular_momentum0,
-                            tmp_css,
-                            self.dangular_momentum_dt0[i].x * dt_done,
-                        );
-                        self.css[i].x = tmp_css;
-                        self.angular_momentum0[i].x = tmp_angular_momentum0;
 
                         // spin y
-                        (tmp_angular_momentum0, tmp_css) = add_cs(
+                        (tmp.y, tmp_cs.y) = add_cs(
                             self.angular_momentum0[i].y,
                             self.css[i].y,
                             self.sb[6][k1] / 8. * dt_done,
                         );
 
-                        for (i, j) in izip!((0..=5).rev(), (2..=7).rev()) {
-                            (tmp_angular_momentum0, tmp_css) = add_cs(
-                                tmp_angular_momentum0,
-                                tmp_css,
-                                self.sb[i][k1] / (j as f64) * dt_done,
-                            );
-                        }
-                        (tmp_angular_momentum0, tmp_css) = add_cs(
-                            tmp_angular_momentum0,
-                            tmp_css,
-                            self.dangular_momentum_dt0[i].y * dt_done,
-                        );
-                        self.css[i].y = tmp_css;
-                        self.angular_momentum0[i].y = tmp_angular_momentum0;
-
                         // spin z
-                        (tmp_angular_momentum0, tmp_css) = add_cs(
+                        (tmp.z, tmp_cs.z) = add_cs(
                             self.angular_momentum0[i].z,
                             self.css[i].z,
                             self.sb[6][k2] / 8. * dt_done,
                         );
 
                         for (i, j) in izip!((0..=5).rev(), (2..=7).rev()) {
-                            (tmp_angular_momentum0, tmp_css) = add_cs(
-                                tmp_angular_momentum0,
-                                tmp_css,
-                                self.sb[i][k2] / (j as f64) * dt_done,
-                            );
+                            (tmp.x, tmp_cs.x) =
+                                add_cs(tmp.x, tmp_cs.x, self.sb[i][k0] / (j as f64) * dt_done);
+                            (tmp.y, tmp_cs.y) =
+                                add_cs(tmp.y, tmp_cs.y, self.sb[i][k1] / (j as f64) * dt_done);
+                            (tmp.z, tmp_cs.z) =
+                                add_cs(tmp.z, tmp_cs.z, self.sb[i][k2] / (j as f64) * dt_done);
                         }
-                        (tmp_angular_momentum0, tmp_css) = add_cs(
-                            tmp_angular_momentum0,
-                            tmp_css,
-                            self.dangular_momentum_dt0[i].z * dt_done,
-                        );
-                        self.css[i].z = tmp_css;
-                        self.angular_momentum0[i].z = tmp_angular_momentum0;
+
+                        (tmp.x, tmp_cs.x) =
+                            add_cs(tmp.x, tmp_cs.x, self.dangular_momentum_dt0[i].x * dt_done);
+                        self.css[i].x = tmp_cs.x;
+                        self.angular_momentum0[i].x = tmp.x;
+
+                        (tmp.y, tmp_cs.y) =
+                            add_cs(tmp.y, tmp_cs.y, self.dangular_momentum_dt0[i].y * dt_done);
+                        self.css[i].y = tmp_cs.y;
+                        self.angular_momentum0[i].y = tmp.y;
+
+                        (tmp.z, tmp_cs.z) =
+                            add_cs(tmp.z, tmp_cs.z, self.dangular_momentum_dt0[i].z * dt_done);
+                        self.css[i].z = tmp_cs.z;
+                        self.angular_momentum0[i].z = tmp.z;
                     }
                 }
             }
