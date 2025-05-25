@@ -428,11 +428,7 @@ impl Evolver {
     // is travelling to the past (e.g., current time step did not converge)
     fn idx(&self) -> usize {
         let security_shift = 10;
-        if self.left_index > security_shift {
-            self.left_index - security_shift
-        } else {
-            0
-        }
+        self.left_index.saturating_sub(security_shift)
     }
 
     pub fn radius(&mut self, current_time: f64, current_radius: f64) -> f64 {

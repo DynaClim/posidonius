@@ -236,16 +236,12 @@ fn cartesian_projection_of_spherical_coordinates(
     };
 
     Axes::from(
-        radial_component * sin_theta * cos_phi
-        + normal_component * cos_theta * cos_phi
-        - orthogonal_component * sin_phi,
-
+        radial_component * sin_theta * cos_phi + normal_component * cos_theta * cos_phi
+            - orthogonal_component * sin_phi,
         radial_component * sin_theta * sin_phi
-        + normal_component * cos_theta * sin_phi
-        + orthogonal_component * cos_phi,
-
-        radial_component * cos_theta
-        - normal_component * sin_theta
+            + normal_component * cos_theta * sin_phi
+            + orthogonal_component * cos_phi,
+        radial_component * cos_theta - normal_component * sin_theta,
     )
 }
 

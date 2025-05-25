@@ -204,7 +204,7 @@ impl DiskProperties {
     fn calculate_disk_surface_density(&self, time: f64, distance: f64) -> f64 {
         let initial_disk_surface_density = self.surface_density_normalization
             * distance.powi(-1)
-            * (-1.0 * distance / self.outer_edge_distance).exp()
+            * (-distance / self.outer_edge_distance).exp()
             * (1.0 - sqrt!(self.inner_edge_distance / distance)); // Unit of surface_density_normalization
 
         if distance > self.inner_edge_distance {
@@ -334,7 +334,7 @@ pub fn calculate_disk_interaction_acceleration(
                 .parameters
                 .output
                 .acceleration
-                .mul(-1.0 * factor2);
+                .mul(-factor2);
         }
     }
 }

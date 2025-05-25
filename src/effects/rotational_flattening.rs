@@ -396,7 +396,7 @@ pub fn calculate_acceleration_induced_by_rotational_flattening(
     //particle.rotational_flattening.parameters.output.acceleration.z += factor2 * sum_force_induced_by_rotation.z;
     //}
     // Instead of the previous code, keep star tidal acceleration separated:
-    sum_force_induced_by_rotation.mul(-1.0 * factor2);
+    sum_force_induced_by_rotation.mul(-factor2);
     rotational_flattening_host_particle
         .rotational_flattening
         .parameters

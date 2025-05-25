@@ -94,41 +94,39 @@ pub fn initialize(
 ) {
     if let GeneralRelativityEffect::CentralBody(general_relativity_implementation) =
         host_particle.general_relativity.effect
+        && general_relativity_implementation != GeneralRelativityImplementation::Newhall1983
+        && general_relativity_implementation != GeneralRelativityImplementation::Disabled
     {
-        if general_relativity_implementation != GeneralRelativityImplementation::Newhall1983
-            && general_relativity_implementation != GeneralRelativityImplementation::Disabled
-        {
-            host_particle.general_relativity.parameters.internal.factor = 0.;
-            host_particle
-                .general_relativity
-                .parameters
-                .output
-                .acceleration
-                .zero();
-            host_particle
-                .general_relativity
-                .parameters
-                .output
-                .dangular_momentum_dt
-                .zero();
-            for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
-                if let GeneralRelativityEffect::OrbitingBody = particle.general_relativity.effect {
-                    particle.general_relativity.parameters.internal.factor = host_particle.mass_g
-                        * particle.mass_g
-                        / (host_particle.mass_g + particle.mass_g).powi(2);
-                    particle
-                        .general_relativity
-                        .parameters
-                        .output
-                        .acceleration
-                        .zero();
-                    particle
-                        .general_relativity
-                        .parameters
-                        .output
-                        .dangular_momentum_dt
-                        .zero();
-                }
+        host_particle.general_relativity.parameters.internal.factor = 0.;
+        host_particle
+            .general_relativity
+            .parameters
+            .output
+            .acceleration
+            .zero();
+        host_particle
+            .general_relativity
+            .parameters
+            .output
+            .dangular_momentum_dt
+            .zero();
+        for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
+            if let GeneralRelativityEffect::OrbitingBody = particle.general_relativity.effect {
+                particle.general_relativity.parameters.internal.factor = host_particle.mass_g
+                    * particle.mass_g
+                    / (host_particle.mass_g + particle.mass_g).powi(2);
+                particle
+                    .general_relativity
+                    .parameters
+                    .output
+                    .acceleration
+                    .zero();
+                particle
+                    .general_relativity
+                    .parameters
+                    .output
+                    .dangular_momentum_dt
+                    .zero();
             }
         }
     }
@@ -141,58 +139,57 @@ pub fn inertial_to_heliocentric_coordinates(
 ) {
     if let GeneralRelativityEffect::CentralBody(general_relativity_implementation) =
         host_particle.general_relativity.effect
+        && general_relativity_implementation != GeneralRelativityImplementation::Disabled
     {
-        if general_relativity_implementation != GeneralRelativityImplementation::Disabled {
-            // Inertial to Heliocentric positions/velocities
-            host_particle.general_relativity.coordinates.position.zero();
-            host_particle.general_relativity.coordinates.velocity.zero();
-            // Clears all except for internal.factor
-            host_particle.general_relativity.parameters.internal.zero();
-            for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
-                if let GeneralRelativityEffect::OrbitingBody = particle.general_relativity.effect {
-                    particle.general_relativity.coordinates.position = particle.inertial_position;
-                    particle
-                        .general_relativity
-                        .coordinates
-                        .position
-                        .sub(&host_particle.inertial_position);
+        // Inertial to Heliocentric positions/velocities
+        host_particle.general_relativity.coordinates.position.zero();
+        host_particle.general_relativity.coordinates.velocity.zero();
+        // Clears all except for internal.factor
+        host_particle.general_relativity.parameters.internal.zero();
+        for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
+            if let GeneralRelativityEffect::OrbitingBody = particle.general_relativity.effect {
+                particle.general_relativity.coordinates.position = particle.inertial_position;
+                particle
+                    .general_relativity
+                    .coordinates
+                    .position
+                    .sub(&host_particle.inertial_position);
 
-                    particle.general_relativity.coordinates.velocity = particle.inertial_velocity;
-                    particle
-                        .general_relativity
-                        .coordinates
-                        .velocity
-                        .sub(&host_particle.inertial_velocity);
+                particle.general_relativity.coordinates.velocity = particle.inertial_velocity;
+                particle
+                    .general_relativity
+                    .coordinates
+                    .velocity
+                    .sub(&host_particle.inertial_velocity);
 
-                    particle.general_relativity.parameters.internal.distance =
-                        particle.general_relativity.coordinates.position.norm();
+                particle.general_relativity.parameters.internal.distance =
+                    particle.general_relativity.coordinates.position.norm();
 
-                    particle
-                        .general_relativity
-                        .parameters
-                        .internal
-                        .radial_velocity = particle
-                        .general_relativity
-                        .coordinates
-                        .position
-                        .dot(&particle.general_relativity.coordinates.velocity)
-                        / particle.general_relativity.parameters.internal.distance;
+                particle
+                    .general_relativity
+                    .parameters
+                    .internal
+                    .radial_velocity = particle
+                    .general_relativity
+                    .coordinates
+                    .position
+                    .dot(&particle.general_relativity.coordinates.velocity)
+                    / particle.general_relativity.parameters.internal.distance;
 
-                    let mut tmp = particle.general_relativity.coordinates.velocity;
-                    tmp.sub(&host_particle.general_relativity.coordinates.velocity);
-                    let norm = tmp.norm();
-                    particle
-                        .general_relativity
-                        .parameters
-                        .internal
-                        .norm_velocity_vector = norm;
+                let mut tmp = particle.general_relativity.coordinates.velocity;
+                tmp.sub(&host_particle.general_relativity.coordinates.velocity);
+                let norm = tmp.norm();
+                particle
+                    .general_relativity
+                    .parameters
+                    .internal
+                    .norm_velocity_vector = norm;
 
-                    particle
-                        .general_relativity
-                        .parameters
-                        .internal
-                        .norm_velocity_vector_2 = norm.powi(2);
-                }
+                particle
+                    .general_relativity
+                    .parameters
+                    .internal
+                    .norm_velocity_vector_2 = norm.powi(2);
             }
         }
     }
@@ -205,56 +202,51 @@ pub fn copy_heliocentric_coordinates(
 ) {
     if let GeneralRelativityEffect::CentralBody(general_relativity_implementation) =
         host_particle.general_relativity.effect
+        && general_relativity_implementation != GeneralRelativityImplementation::Disabled
     {
-        if general_relativity_implementation != GeneralRelativityImplementation::Disabled {
-            host_particle.general_relativity.coordinates.position =
-                host_particle.heliocentric_position;
-            host_particle.general_relativity.coordinates.velocity =
-                host_particle.heliocentric_velocity;
-            host_particle
-                .general_relativity
-                .parameters
-                .internal
-                .distance = host_particle.heliocentric_distance;
-            host_particle
-                .general_relativity
-                .parameters
-                .internal
-                .radial_velocity = host_particle.heliocentric_radial_velocity;
-            host_particle
-                .general_relativity
-                .parameters
-                .internal
-                .norm_velocity_vector = host_particle.heliocentric_norm_velocity_vector;
-            host_particle
-                .general_relativity
-                .parameters
-                .internal
-                .norm_velocity_vector_2 = host_particle.heliocentric_norm_velocity_vector_2;
-            for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
-                if let GeneralRelativityEffect::OrbitingBody = particle.general_relativity.effect {
-                    particle.general_relativity.coordinates.position =
-                        particle.heliocentric_position;
-                    particle.general_relativity.coordinates.velocity =
-                        particle.heliocentric_velocity;
-                    particle.general_relativity.parameters.internal.distance =
-                        particle.heliocentric_distance;
-                    particle
-                        .general_relativity
-                        .parameters
-                        .internal
-                        .radial_velocity = particle.heliocentric_radial_velocity;
-                    particle
-                        .general_relativity
-                        .parameters
-                        .internal
-                        .norm_velocity_vector = particle.heliocentric_norm_velocity_vector;
-                    particle
-                        .general_relativity
-                        .parameters
-                        .internal
-                        .norm_velocity_vector_2 = particle.heliocentric_norm_velocity_vector_2;
-                }
+        host_particle.general_relativity.coordinates.position = host_particle.heliocentric_position;
+        host_particle.general_relativity.coordinates.velocity = host_particle.heliocentric_velocity;
+        host_particle
+            .general_relativity
+            .parameters
+            .internal
+            .distance = host_particle.heliocentric_distance;
+        host_particle
+            .general_relativity
+            .parameters
+            .internal
+            .radial_velocity = host_particle.heliocentric_radial_velocity;
+        host_particle
+            .general_relativity
+            .parameters
+            .internal
+            .norm_velocity_vector = host_particle.heliocentric_norm_velocity_vector;
+        host_particle
+            .general_relativity
+            .parameters
+            .internal
+            .norm_velocity_vector_2 = host_particle.heliocentric_norm_velocity_vector_2;
+        for particle in particles.iter_mut().chain(more_particles.iter_mut()) {
+            if let GeneralRelativityEffect::OrbitingBody = particle.general_relativity.effect {
+                particle.general_relativity.coordinates.position = particle.heliocentric_position;
+                particle.general_relativity.coordinates.velocity = particle.heliocentric_velocity;
+                particle.general_relativity.parameters.internal.distance =
+                    particle.heliocentric_distance;
+                particle
+                    .general_relativity
+                    .parameters
+                    .internal
+                    .radial_velocity = particle.heliocentric_radial_velocity;
+                particle
+                    .general_relativity
+                    .parameters
+                    .internal
+                    .norm_velocity_vector = particle.heliocentric_norm_velocity_vector;
+                particle
+                    .general_relativity
+                    .parameters
+                    .internal
+                    .norm_velocity_vector_2 = particle.heliocentric_norm_velocity_vector_2;
             }
         }
     }

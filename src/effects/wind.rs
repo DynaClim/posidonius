@@ -73,38 +73,38 @@ pub fn calculate_wind_factor(particles: &mut [Particle]) {
             // Eq. 14 from Bolmont & Mathis 2016 (adapted to be able to add to the rest of dangular_momentum_dt)
             if threshold >= particle.wind.parameters.input.rotation_saturation {
                 // Fast rotator
-                particle.wind.parameters.output.dangular_momentum_dt.x = -1.
-                    * particle.wind.parameters.input.k_factor
-                    * particle.spin.x
-                    * particle.wind.parameters.internal.rotation_saturation_2
-                    * sqrt!(particle.radius / R_SUN * 1. / particle.mass);
-                particle.wind.parameters.output.dangular_momentum_dt.y = -1.
-                    * particle.wind.parameters.input.k_factor
-                    * particle.spin.y
-                    * particle.wind.parameters.internal.rotation_saturation_2
-                    * sqrt!(particle.radius / R_SUN * 1. / particle.mass);
-                particle.wind.parameters.output.dangular_momentum_dt.z = -1.
-                    * particle.wind.parameters.input.k_factor
-                    * particle.spin.z
-                    * particle.wind.parameters.internal.rotation_saturation_2
-                    * sqrt!(particle.radius / R_SUN * 1. / particle.mass);
+                particle.wind.parameters.output.dangular_momentum_dt.x =
+                    -particle.wind.parameters.input.k_factor
+                        * particle.spin.x
+                        * particle.wind.parameters.internal.rotation_saturation_2
+                        * sqrt!(particle.radius / R_SUN * 1. / particle.mass);
+                particle.wind.parameters.output.dangular_momentum_dt.y =
+                    -particle.wind.parameters.input.k_factor
+                        * particle.spin.y
+                        * particle.wind.parameters.internal.rotation_saturation_2
+                        * sqrt!(particle.radius / R_SUN * 1. / particle.mass);
+                particle.wind.parameters.output.dangular_momentum_dt.z =
+                    -particle.wind.parameters.input.k_factor
+                        * particle.spin.z
+                        * particle.wind.parameters.internal.rotation_saturation_2
+                        * sqrt!(particle.radius / R_SUN * 1. / particle.mass);
             } else {
                 // Slow rotators
-                particle.wind.parameters.output.dangular_momentum_dt.x = -1.
-                    * particle.wind.parameters.input.k_factor
-                    * particle.spin.x
-                    * particle.norm_spin_vector_2
-                    * sqrt!(particle.radius / R_SUN * 1. / particle.mass);
-                particle.wind.parameters.output.dangular_momentum_dt.y = -1.
-                    * particle.wind.parameters.input.k_factor
-                    * particle.spin.y
-                    * particle.norm_spin_vector_2
-                    * sqrt!(particle.radius / R_SUN * 1. / particle.mass);
-                particle.wind.parameters.output.dangular_momentum_dt.z = -1.
-                    * particle.wind.parameters.input.k_factor
-                    * particle.spin.z
-                    * particle.norm_spin_vector_2
-                    * sqrt!(particle.radius / R_SUN * 1. / particle.mass);
+                particle.wind.parameters.output.dangular_momentum_dt.x =
+                    -particle.wind.parameters.input.k_factor
+                        * particle.spin.x
+                        * particle.norm_spin_vector_2
+                        * sqrt!(particle.radius / R_SUN * 1. / particle.mass);
+                particle.wind.parameters.output.dangular_momentum_dt.y =
+                    -particle.wind.parameters.input.k_factor
+                        * particle.spin.y
+                        * particle.norm_spin_vector_2
+                        * sqrt!(particle.radius / R_SUN * 1. / particle.mass);
+                particle.wind.parameters.output.dangular_momentum_dt.z =
+                    -particle.wind.parameters.input.k_factor
+                        * particle.spin.z
+                        * particle.norm_spin_vector_2
+                        * sqrt!(particle.radius / R_SUN * 1. / particle.mass);
             }
         }
     }

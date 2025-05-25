@@ -171,7 +171,6 @@ pub struct AlternativeCoordinates {
     acceleration: Axes,
 }
 
-
 impl WHFast {
     pub fn new(
         time_step: f64,
@@ -933,17 +932,18 @@ impl WHFast {
 
     fn democratic_heliocentric_kepler_steps(&mut self, time_step: f64) {
         let star_mass_g = self.universe.particles[self.universe.hosts.index.most_massive].mass_g;
-        for (i, particle_alternative_coordinate) in self
-            .particles_alternative_coordinates
+        self.particles_alternative_coordinates
             .iter_mut()
             .take(self.universe.n_particles)
             .enumerate()
-        {
-            if i == self.universe.hosts.index.most_massive {
-                continue;
-            }
-            Self::kepler_individual_step(star_mass_g, time_step, particle_alternative_coordinate);
-        }
+            .filter(|&(i, _)| i != self.universe.hosts.index.most_massive)
+            .for_each(|(_, particle_alternative_coordinate)| {
+                Self::kepler_individual_step(
+                    star_mass_g,
+                    time_step,
+                    particle_alternative_coordinate,
+                )
+            });
     }
 
     fn whds_kepler_steps(&mut self, time_step: f64) {
@@ -1039,7 +1039,7 @@ impl WHFast {
                 let fpp = eta0 * gs[0] + zeta0 * gs[1];
                 let denom = fp + sqrt!(abs!(16. * fp * fp - 20. * f * fpp));
                 x = (x * denom - 5. * f) / denom;
-                if prev_x.iter().any(|&x_prev_i| x == x_prev_i) {
+                if prev_x.contains(&x) {
                     // Converged. Exit.
                     //n_lag = WHFAST_NMAX_QUART;
                     converged = 1;
