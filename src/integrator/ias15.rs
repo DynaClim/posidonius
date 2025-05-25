@@ -132,7 +132,7 @@ pub struct Ias15 {
     #[serde(skip)]
     er: [[f64; 3 * MAX_PARTICLES]; 7], // Previous g
     #[serde(skip)]
-    at: [f64; 3 * MAX_PARTICLES], // Temporary buffer for acceleration
+    at: [Axes; MAX_PARTICLES], // Temporary buffer for acceleration
 
     #[serde(skip)]
     x0: [Axes; MAX_PARTICLES], // Temporary buffer for position (used for initial values at h=0)
@@ -328,7 +328,7 @@ impl Ias15 {
                          er_5: [0.; 3 * MAX_PARTICLES],
                          er_6: [0.; 3 * MAX_PARTICLES],
             */
-            at: [0.; 3 * MAX_PARTICLES],
+            at: [Axes::new(); MAX_PARTICLES],
             x0: [Axes::new(); MAX_PARTICLES],
             v0: [Axes::new(); MAX_PARTICLES],
             a0: [Axes::new(); MAX_PARTICLES],
@@ -1075,13 +1075,13 @@ impl Ias15 {
                     );
                     self.universe.apply_acceleration_corrections();
 
-                    for (k, particle) in self.universe.particles[..self.universe.n_particles]
-                        .iter()
-                        .enumerate()
+                    for (k, (particle, inertial_acceleration)) in izip!(
+                        &self.universe.particles[..self.universe.n_particles],
+                        &mut self.at,
+                    )
+                    .enumerate()
                     {
-                        self.at[3 * k] = particle.inertial_acceleration.x;
-                        self.at[3 * k + 1] = particle.inertial_acceleration.y;
-                        self.at[3 * k + 2] = particle.inertial_acceleration.z;
+                        *inertial_acceleration = particle.inertial_acceleration;
 
                         if integrate_spin {
                             // angular_momentum_dt = dmoment_of_inertia_spin_dt
@@ -1098,7 +1098,7 @@ impl Ias15 {
                             for k in 0..3 * self.n_particles {
                                 let tmp = self.g[0][k];
                                 let (gk, gk_cs) = add_cs(
-                                    self.at[k],
+                                    self.at[k / 3].get_by_index(k % 3),
                                     always_zero,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
@@ -1132,7 +1132,7 @@ impl Ias15 {
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[1][k];
                                 let (gk, gk_cs) = add_cs(
-                                    self.at[k],
+                                    self.at[k / 3].get_by_index(k % 3),
                                     always_zero,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
@@ -1173,7 +1173,7 @@ impl Ias15 {
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[2][k];
                                 let (gk, gk_cs) = add_cs(
-                                    self.at[k],
+                                    self.at[k / 3].get_by_index(k % 3),
                                     always_zero,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
@@ -1224,7 +1224,7 @@ impl Ias15 {
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[3][k];
                                 let (gk, gk_cs) = add_cs(
-                                    self.at[k],
+                                    self.at[k / 3].get_by_index(k % 3),
                                     always_zero,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
@@ -1287,7 +1287,7 @@ impl Ias15 {
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[4][k];
                                 let (gk, gk_cs) = add_cs(
-                                    self.at[k],
+                                    self.at[k / 3].get_by_index(k % 3),
                                     always_zero,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
@@ -1363,7 +1363,7 @@ impl Ias15 {
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[5][k];
                                 let (gk, gk_cs) = add_cs(
-                                    self.at[k],
+                                    self.at[k / 3].get_by_index(k % 3),
                                     always_zero,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
@@ -1455,7 +1455,7 @@ impl Ias15 {
                             for k in 0..3 * self.n_particles {
                                 let mut tmp = self.g[6][k];
                                 let (gk, gk_cs) = add_cs(
-                                    self.at[k],
+                                    self.at[k / 3].get_by_index(k % 3),
                                     always_zero,
                                     -self.a0[k / 3].get_by_index(k % 3),
                                 );
@@ -1554,7 +1554,7 @@ impl Ias15 {
                                 // Monitor change in self.b[6][k] relative to self.at[k]. The predictor corrector scheme is converged if it is close to 0.
                                 if INTEGRATOR_EPSILON_GLOBAL {
                                     // global error estimate (equation 9)
-                                    let ak = abs!(self.at[k]);
+                                    let ak = abs!(self.at[k / 3].get_by_index(k % 3));
                                     if ak.is_normal() && ak > maxak {
                                         maxak = ak;
                                     }
@@ -1579,7 +1579,7 @@ impl Ias15 {
                                     // local error estimate (equation 9)
                                     let mut predictor_corrector_error_a = 0.;
                                     let mut predictor_corrector_error_s = 0.;
-                                    let ak = self.at[k];
+                                    let ak = self.at[k / 3].get_by_index(k % 3);
                                     let b6ktmp = tmp;
                                     let errork = abs!(b6ktmp / ak);
                                     if errork.is_normal() && errork > predictor_corrector_error {
@@ -1677,7 +1677,7 @@ impl Ias15 {
                         }
 
                         for k in 3 * i..3 * (i + 1) {
-                            let ak = abs!(self.at[k]);
+                            let ak = abs!(self.at[k / 3].get_by_index(k % 3));
                             if ak.is_normal() && ak > maxak {
                                 maxak = ak;
                             }
@@ -1706,7 +1706,7 @@ impl Ias15 {
                     for k in 0..3 * self.n_particles {
                         let mut integrator_error_a = 0.;
                         let mut integrator_error_s = 0.;
-                        let ak = self.at[k];
+                        let ak = self.at[k / 3].get_by_index(k % 3);
                         let b6k = self.b[6][k];
                         let errork = abs!(b6k / ak);
                         if errork.is_normal() && errork > integrator_error {
