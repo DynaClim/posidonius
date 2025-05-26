@@ -22,6 +22,19 @@ const DANGULAR_MOMENTUM_DT_ENABLED: bool = true;
 const ACCELERATION_ENABLED: bool = true;
 const IGNORED_GRAVITY_TERMS: IgnoreGravityTerms = IgnoreGravityTerms::None;
 
+// Gauss-Radau spacings for substeps within a sequence, for the 15th order
+// integrator. The sum of the h values should be 3.733333333333333
+const h: [f64; 8] = [
+    0.0,
+    0.056_262_560_536_922_15,
+    0.180_240_691_736_892_36,
+    0.352_624_717_113_169_6,
+    0.547_153_626_330_555_4,
+    0.734_210_177_215_410_5,
+    0.885_320_946_839_095_8,
+    0.977_520_613_561_287_5,
+];
+
 ////// Constants to compute g values
 //
 //let mut n = 0;
@@ -107,6 +120,30 @@ const c: [f64; 21] = [
     -1.466_884_208_400_427,
     2.906_136_259_308_429_4,
     -2.755_812_719_772_045_7,
+];
+
+const d: [f64; 21] = [
+    0.056_262_560_536_922_15,
+    0.003_165_475_718_170_829_3,
+    0.236_503_252_273_814_52,
+    0.000_178_097_769_221_743_38,
+    0.045_792_985_506_027_92,
+    0.589_127_969_386_984_2,
+    0.000_010_020_236_522_329_128,
+    0.008_431_857_153_525_702,
+    0.253_534_069_054_569_27,
+    1.136_281_595_717_539_6,
+    0.000_000_563_764_163_931_820_8,
+    0.001_529_784_002_500_465_7,
+    0.097_834_236_532_444_01,
+    0.875_254_664_684_091_1,
+    1.870_491_772_932_95,
+    0.000_000_031_718_815_401_761_364,
+    0.000_276_293_090_982_647_7,
+    0.036_028_553_983_736_46,
+    0.576_733_000_277_078_7,
+    2.248_588_760_769_16,
+    2.755_812_719_772_045_7,
 ];
 
 ///<https://arxiv.org/abs/1409.4779>
@@ -449,43 +486,6 @@ impl Integrator for Ias15 {
 impl Ias15 {
     #[allow(dead_code)]
     fn integrator(&mut self) {
-        // Gauss-Radau spacings for substeps within a sequence, for the 15th order
-        // integrator. The sum of the h values should be 3.733333333333333
-        let h: [f64; 8] = [
-            0.0,
-            0.056_262_560_536_922_15,
-            0.180_240_691_736_892_36,
-            0.352_624_717_113_169_6,
-            0.547_153_626_330_555_4,
-            0.734_210_177_215_410_5,
-            0.885_320_946_839_095_8,
-            0.977_520_613_561_287_5,
-        ];
-
-        let d: [f64; 21] = [
-            0.056_262_560_536_922_15,
-            0.003_165_475_718_170_829_3,
-            0.236_503_252_273_814_52,
-            0.000_178_097_769_221_743_38,
-            0.045_792_985_506_027_92,
-            0.589_127_969_386_984_2,
-            0.000_010_020_236_522_329_128,
-            0.008_431_857_153_525_702,
-            0.253_534_069_054_569_27,
-            1.136_281_595_717_539_6,
-            0.000_000_563_764_163_931_820_8,
-            0.001_529_784_002_500_465_7,
-            0.097_834_236_532_444_01,
-            0.875_254_664_684_091_1,
-            1.870_491_772_932_95,
-            0.000_000_031_718_815_401_761_364,
-            0.000_276_293_090_982_647_7,
-            0.036_028_553_983_736_46,
-            0.576_733_000_277_078_7,
-            2.248_588_760_769_16,
-            2.755_812_719_772_045_7,
-        ];
-
         let mut consider_dangular_momentum_dt_from_general_relativity = false;
         if self.universe.consider_effects.general_relativity
             && self.universe.general_relativity_implementation
@@ -498,367 +498,21 @@ impl Ias15 {
             || self.universe.consider_effects.evolution
             || consider_dangular_momentum_dt_from_general_relativity;
 
+        // fill the particle buffers from the initial particle values
+        self.update_particle_buffers();
         loop {
-            for (
-                particle,
-                position,
-                velocity,
-                angular_momentum,
-                inertial_acceleration,
-                dangular_momentum_dt0,
-            ) in izip!(
-                &self.universe.particles,
-                &mut self.positions0,
-                &mut self.velocities0,
-                &mut self.angular_momentum0,
-                &mut self.inertial_accelerations0,
-                &mut self.dangular_momentum_dt0,
-            )
-            .take(self.universe.n_particles)
-            {
-                *position = particle.inertial_position;
-                *velocity = particle.inertial_velocity;
-                *inertial_acceleration = particle.inertial_acceleration;
-
-                if self.integrate_spin {
-                    *dangular_momentum_dt0 = particle.dangular_momentum_dt;
-                    *angular_momentum = particle.angular_momentum;
-                }
-            }
-
             // Find g values from b values predicted at the last call (Eqs. 7 of Everhart)
-            let [g0, g1, g2, g3, g4, g5, g6] = &mut self.g;
-            let [b0, b1, b2, b3, b4, b5, b6] = &self.b;
-            for (
-                g0_i,
-                g1_i,
-                g2_i,
-                g3_i,
-                g4_i,
-                g5_i,
-                g6_i,
-                b0_i,
-                b1_i,
-                b2_i,
-                b3_i,
-                b4_i,
-                b5_i,
-                b6_i,
-            ) in izip!(
-                &mut *g0, &mut *g1, &mut *g2, &mut *g3, &mut *g4, &mut *g5, &mut *g6, b0, b1, b2,
-                b3, b4, b5, b6,
-            )
-            .take(self.n_particles)
-            {
-                *g0_i = b6_i * d[15]
-                    + b5_i * d[10]
-                    + b4_i * d[6]
-                    + b3_i * d[3]
-                    + b2_i * d[1]
-                    + b1_i * d[0]
-                    + b0_i;
-                *g1_i =
-                    b6_i * d[16] + b5_i * d[11] + b4_i * d[7] + b3_i * d[4] + b2_i * d[2] + b1_i;
-                *g2_i = b6_i * d[17] + b5_i * d[12] + b4_i * d[8] + b3_i * d[5] + b2_i;
-                *g3_i = b6_i * d[18] + b5_i * d[13] + b4_i * d[9] + b3_i;
-                *g4_i = b6_i * d[19] + b5_i * d[14] + b4_i;
-                *g5_i = b6_i * d[20] + b5_i;
-                *g6_i = *b6_i;
-            }
-            if self.integrate_spin {
-                let [sg0, sg1, sg2, sg3, sg4, sg5, sg6] = &mut self.sg;
-                let [sb0, sb1, sb2, sb3, sb4, sb5, sb6] = &self.sb;
-                for (
-                    sg0_i,
-                    sg1_i,
-                    sg2_i,
-                    sg3_i,
-                    sg4_i,
-                    sg5_i,
-                    sg6_i,
-                    sb0_i,
-                    sb1_i,
-                    sb2_i,
-                    sb3_i,
-                    sb4_i,
-                    sb5_i,
-                    sb6_i,
-                ) in izip!(
-                    &mut *sg0, &mut *sg1, &mut *sg2, &mut *sg3, &mut *sg4, &mut *sg5, &mut *sg6,
-                    sb0, sb1, sb2, sb3, sb4, sb5, sb6,
-                )
-                .take(self.n_particles)
-                {
-                    *sg0_i = sb6_i * d[15]
-                        + sb5_i * d[10]
-                        + sb4_i * d[6]
-                        + sb3_i * d[3]
-                        + sb2_i * d[1]
-                        + sb1_i * d[0]
-                        + sb0_i;
-                    *sg1_i = sb6_i * d[16]
-                        + sb5_i * d[11]
-                        + sb4_i * d[7]
-                        + sb3_i * d[4]
-                        + sb2_i * d[2]
-                        + sb1_i;
-                    *sg2_i = sb6_i * d[17] + sb5_i * d[12] + sb4_i * d[8] + sb3_i * d[5] + sb2_i;
-                    *sg3_i = sb6_i * d[18] + sb5_i * d[13] + sb4_i * d[9] + sb3_i;
-                    *sg4_i = sb6_i * d[19] + sb5_i * d[14] + sb4_i;
-                    *sg5_i = sb6_i * d[20] + sb5_i;
-                    *sg6_i = *sb6_i;
-                }
-            }
+            self.find_b_and_g();
 
+            // Perform predictor/corrector sequence
             let t_beginning = self.current_time;
-            //let mut predictor_corrector_error = 1e10;
-            let mut predictor_corrector_error = 1e300;
-            let mut predictor_corrector_error_last = 2.;
-            let mut iterations: i32 = 0;
-
-            // Predictor corrector loop
-            // Stops if one of the following conditions is satisfied:
-            //   1) predictor_corrector_error better than 1e-16
-            //   2) predictor_corrector_error starts to oscillate
-            //   3) more than 12 iterations
-            //
-            //  NOTE:
-            //  In the original Everhart algorithm, there were six iterations
-            //  for first call to the subroutine and two for the rest of calls
-            'predictor_corrector: loop {
-                if predictor_corrector_error < 1e-16 {
-                    break 'predictor_corrector;
-                }
-                if iterations > 2 && predictor_corrector_error_last <= predictor_corrector_error {
-                    break 'predictor_corrector;
-                }
-                if iterations >= 12 {
-                    self.integrator_iterations_max_exceeded += 1;
-                    let integrator_iterations_warning = 10;
-                    if self.integrator_iterations_max_exceeded == integrator_iterations_warning {
-                        println!(
-                            "[WARNING {} UTC] At least {} predictor corrector loops in integrator IAS15 did not converge. This is typically an indication of the timestep being too large.",
-                            OffsetDateTime::now_utc()
-                                .format(
-                                    &format_description::parse(
-                                        "[year].[month].[day] [hour]:[minute]:[second]"
-                                    )
-                                    .unwrap()
-                                )
-                                .unwrap(),
-                            integrator_iterations_warning
-                        );
-                    }
-                    break 'predictor_corrector;
-                }
-                predictor_corrector_error_last = predictor_corrector_error;
-                predictor_corrector_error = 0.;
-                iterations += 1;
-
-                for (n, h_n) in h.iter().enumerate().skip(1) {
-                    // Loop over interval using Gauss-Radau spacings
-
-                    // Calculate position predictors using Eqn. 9 of Everhart
-                    self.s[0] = self.time_step * h_n;
-                    self.s[1] = self.s[0].powi(2) / 2.;
-                    self.s[2] = self.s[1] * h_n / 3.;
-                    self.s[3] = self.s[2] * h_n / 2.;
-                    self.s[4] = 3. * self.s[3] * h_n / 5.;
-                    self.s[5] = 2. * self.s[4] * h_n / 3.;
-                    self.s[6] = 5. * self.s[5] * h_n / 7.;
-                    self.s[7] = 3. * self.s[6] * h_n / 4.;
-                    self.s[8] = 7. * self.s[7] * h_n / 9.;
-
-                    self.current_time = t_beginning + self.s[0];
-
-                    //// Prepare particles arrays for force calculation
-                    // Predict positions at interval n using self.b values
-                    self.universe.particles[..self.universe.n_particles]
-                        .iter_mut()
-                        .enumerate()
-                        .for_each(|(i, particle)| {
-                            let k0: usize = 3 * i;
-                            let k1: usize = 3 * i + 1;
-                            let k2: usize = 3 * i + 2;
-                            let inertial_acceleration = &self.inertial_accelerations0[i];
-                            // Equation 7 in paper 2015MNRAS.446.1424R
-                            particle.inertial_position = Axes::from(
-                                -self.cs_positions[i].x
-                                    + (self.s[8] * self.b[6][k0]
-                                        + self.s[7] * self.b[5][k0]
-                                        + self.s[6] * self.b[4][k0]
-                                        + self.s[5] * self.b[3][k0]
-                                        + self.s[4] * self.b[2][k0]
-                                        + self.s[3] * self.b[1][k0]
-                                        + self.s[2] * self.b[0][k0]
-                                        + self.s[1] * inertial_acceleration.x
-                                        + self.s[0] * self.velocities0[i].x)
-                                    + self.positions0[i].x,
-                                -self.cs_positions[i].y
-                                    + (self.s[8] * self.b[6][k1]
-                                        + self.s[7] * self.b[5][k1]
-                                        + self.s[6] * self.b[4][k1]
-                                        + self.s[5] * self.b[3][k1]
-                                        + self.s[4] * self.b[2][k1]
-                                        + self.s[3] * self.b[1][k1]
-                                        + self.s[2] * self.b[0][k1]
-                                        + self.s[1] * inertial_acceleration.y
-                                        + self.s[0] * self.velocities0[i].y)
-                                    + self.positions0[i].y,
-                                -self.cs_positions[i].z
-                                    + (self.s[8] * self.b[6][k2]
-                                        + self.s[7] * self.b[5][k2]
-                                        + self.s[6] * self.b[4][k2]
-                                        + self.s[5] * self.b[3][k2]
-                                        + self.s[4] * self.b[2][k2]
-                                        + self.s[3] * self.b[1][k2]
-                                        + self.s[2] * self.b[0][k2]
-                                        + self.s[1] * inertial_acceleration.z
-                                        + self.s[0] * self.velocities0[i].z)
-                                    + self.positions0[i].z,
-                            );
-                        });
-
-                    if INTEGRATOR_FORCE_IS_VELOCITYDEPENDENT {
-                        // If necessary, calculate velocity predictors too, from Eqn. 10 of Everhart
-                        self.s[0] = self.time_step * h_n;
-                        self.s[1] = self.s[0] * h_n / 2.;
-                        self.s[2] = 2. * self.s[1] * h_n / 3.;
-                        self.s[3] = 3. * self.s[2] * h_n / 4.;
-                        self.s[4] = 4. * self.s[3] * h_n / 5.;
-                        self.s[5] = 5. * self.s[4] * h_n / 6.;
-                        self.s[6] = 6. * self.s[5] * h_n / 7.;
-                        self.s[7] = 7. * self.s[6] * h_n / 8.;
-
-                        // Predict velocities at interval n using self.b values
-                        self.universe.particles[..self.universe.n_particles]
-                            .iter_mut()
-                            .enumerate()
-                            .for_each(|(i, particle)| {
-                                let k0 = 3 * i;
-                                let k1 = 3 * i + 1;
-                                let k2 = 3 * i + 2;
-                                let inertial_acceleration = &self.inertial_accelerations0[i];
-
-                                // Equation 6 in paper 2015MNRAS.446.1424R
-                                particle.inertial_velocity = Axes::from(
-                                    -self.cs_velocities[i].x
-                                        + self.s[7] * self.b[6][k0]
-                                        + self.s[6] * self.b[5][k0]
-                                        + self.s[5] * self.b[4][k0]
-                                        + self.s[4] * self.b[3][k0]
-                                        + self.s[3] * self.b[2][k0]
-                                        + self.s[2] * self.b[1][k0]
-                                        + self.s[1] * self.b[0][k0]
-                                        + self.s[0] * inertial_acceleration.x
-                                        + self.velocities0[i].x,
-                                    -self.cs_velocities[i].y
-                                        + self.s[7] * self.b[6][k1]
-                                        + self.s[6] * self.b[5][k1]
-                                        + self.s[5] * self.b[4][k1]
-                                        + self.s[4] * self.b[3][k1]
-                                        + self.s[3] * self.b[2][k1]
-                                        + self.s[2] * self.b[1][k1]
-                                        + self.s[1] * self.b[0][k1]
-                                        + self.s[0] * inertial_acceleration.y
-                                        + self.velocities0[i].y,
-                                    -self.cs_velocities[i].z
-                                        + self.s[7] * self.b[6][k2]
-                                        + self.s[6] * self.b[5][k2]
-                                        + self.s[5] * self.b[4][k2]
-                                        + self.s[4] * self.b[3][k2]
-                                        + self.s[3] * self.b[2][k2]
-                                        + self.s[2] * self.b[1][k2]
-                                        + self.s[1] * self.b[0][k2]
-                                        + self.s[0] * inertial_acceleration.z
-                                        + self.velocities0[i].z,
-                                );
-                            });
-
-                        if self.integrate_spin {
-                            // Spin integration
-                            // Predict velocities at interval n using self.b values
-                            self.universe.particles[..self.universe.n_particles]
-                                .iter_mut()
-                                .enumerate()
-                                .for_each(|(i, particle)| {
-                                    let k0 = 3 * i;
-                                    let k1 = 3 * i + 1;
-                                    let k2 = 3 * i + 2;
-                                    // Equation 6 in paper 2015MNRAS.446.1424R
-                                    particle.angular_momentum = Axes::from(
-                                        -self.css[i].x
-                                            + self.s[7] * self.sb[6][k0]
-                                            + self.s[6] * self.sb[5][k0]
-                                            + self.s[5] * self.sb[4][k0]
-                                            + self.s[4] * self.sb[3][k0]
-                                            + self.s[3] * self.sb[2][k0]
-                                            + self.s[2] * self.sb[1][k0]
-                                            + self.s[1] * self.sb[0][k0]
-                                            + self.s[0] * self.dangular_momentum_dt0[i].x
-                                            + self.angular_momentum0[i].x,
-                                        -self.css[i].y
-                                            + self.s[7] * self.sb[6][k1]
-                                            + self.s[6] * self.sb[5][k1]
-                                            + self.s[5] * self.sb[4][k1]
-                                            + self.s[4] * self.sb[3][k1]
-                                            + self.s[3] * self.sb[2][k1]
-                                            + self.s[2] * self.sb[1][k1]
-                                            + self.s[1] * self.sb[0][k1]
-                                            + self.s[0] * self.dangular_momentum_dt0[i].y
-                                            + self.angular_momentum0[i].y,
-                                        -self.css[i].z
-                                            + self.s[7] * self.sb[6][k2]
-                                            + self.s[6] * self.sb[5][k2]
-                                            + self.s[5] * self.sb[4][k2]
-                                            + self.s[4] * self.sb[3][k2]
-                                            + self.s[3] * self.sb[2][k2]
-                                            + self.s[2] * self.sb[1][k2]
-                                            + self.s[1] * self.sb[0][k2]
-                                            + self.s[0] * self.dangular_momentum_dt0[i].z
-                                            + self.angular_momentum0[i].z,
-                                    );
-                                });
-                        }
-                    }
-                    // Calculate accelerations.
-                    self.universe
-                        .gravity_calculate_acceleration(IGNORED_GRAVITY_TERMS);
-                    self.universe.inertial_to_heliocentric();
-                    // Calculate non-gravity accelerations.
-                    self.universe.calculate_additional_effects(
-                        self.current_time,
-                        EVOLUTION_ENABLED,
-                        DANGULAR_MOMENTUM_DT_ENABLED,
-                        ACCELERATION_ENABLED,
-                        IGNORED_GRAVITY_TERMS,
-                    );
-                    self.universe.apply_acceleration_corrections();
-
-                    for (particle, inertial_acceleration, dangular_momentum_dtt) in izip!(
-                        &self.universe.particles[..self.universe.n_particles],
-                        &mut self.accelerations,
-                        &mut self.dangular_momentum_dtt
-                    ) {
-                        *inertial_acceleration = particle.inertial_acceleration;
-
-                        if self.integrate_spin {
-                            // angular_momentum_dt = dmoment_of_inertia_spin_dt
-                            *dangular_momentum_dtt = particle.dangular_momentum_dt;
-                        }
-                    }
-
-                    // Update G values using Eqs. 4 of Everhart, and update B values using Eqs. 5
-                    predictor_corrector_error = self.update_b_and_g(n, predictor_corrector_error);
-                } // end loop over interval using Gauss-Radau spacings
-            } // end predictor corrector loop
-
+            self.predictor_corrector(t_beginning);
             // Set time back to initial value (will be updated below)
             self.current_time = t_beginning;
 
             // Find new timestep
             let dt_done = match self.calculate_new_timestep() {
-                Some(d) => d,
+                Some(dt) => dt,
                 None => continue, // Step rejected
             };
 
@@ -869,18 +523,7 @@ impl Ias15 {
             self.time_step_last_success = dt_done;
 
             // Swap particle buffers
-            for (particle, position, velocity, angular_momentum) in izip!(
-                &mut self.universe.particles[..self.universe.n_particles],
-                &self.positions0,
-                &self.velocities0,
-                &self.angular_momentum0,
-            ) {
-                particle.inertial_position = *position; // Set final position
-                particle.inertial_velocity = *velocity; // Set final velocity
-                if self.integrate_spin {
-                    particle.angular_momentum = *angular_momentum; // Set final angular momentum
-                }
-            }
+            self.update_particles();
 
             // TODO check if a mem::swap is possible here
             self.er.clone_from(&self.e);
@@ -891,6 +534,363 @@ impl Ias15 {
             self.predict_next_step(ratio);
             break; // Success.
         } // end main loop
+    }
+
+    fn update_particles(&mut self) {
+        for (particle, position, velocity, angular_momentum) in izip!(
+            &mut self.universe.particles[..self.universe.n_particles],
+            &self.positions0,
+            &self.velocities0,
+            &self.angular_momentum0,
+        ) {
+            particle.inertial_position = *position; // Set final position
+            particle.inertial_velocity = *velocity; // Set final velocity
+            if self.integrate_spin {
+                particle.angular_momentum = *angular_momentum; // Set final angular momentum
+            }
+        }
+    }
+
+    fn update_particle_buffers(&mut self) {
+        for (
+            particle,
+            position,
+            velocity,
+            angular_momentum,
+            inertial_acceleration,
+            dangular_momentum_dt0,
+        ) in izip!(
+            &self.universe.particles,
+            &mut self.positions0,
+            &mut self.velocities0,
+            &mut self.angular_momentum0,
+            &mut self.inertial_accelerations0,
+            &mut self.dangular_momentum_dt0,
+        )
+        .take(self.universe.n_particles)
+        {
+            *position = particle.inertial_position;
+            *velocity = particle.inertial_velocity;
+            *inertial_acceleration = particle.inertial_acceleration;
+
+            if self.integrate_spin {
+                *dangular_momentum_dt0 = particle.dangular_momentum_dt;
+                *angular_momentum = particle.angular_momentum;
+            }
+        }
+    }
+
+    // Find g values from b values predicted at the last call (Eqs. 7 of Everhart)
+    fn find_b_and_g(&mut self) {
+        let [g0, g1, g2, g3, g4, g5, g6] = &mut self.g;
+        let [b0, b1, b2, b3, b4, b5, b6] = &self.b;
+        for (g0_i, g1_i, g2_i, g3_i, g4_i, g5_i, g6_i, b0_i, b1_i, b2_i, b3_i, b4_i, b5_i, b6_i) in
+            izip!(
+                &mut *g0, &mut *g1, &mut *g2, &mut *g3, &mut *g4, &mut *g5, &mut *g6, b0, b1, b2,
+                b3, b4, b5, b6,
+            )
+            .take(self.n_particles)
+        {
+            *g0_i = b6_i * d[15]
+                + b5_i * d[10]
+                + b4_i * d[6]
+                + b3_i * d[3]
+                + b2_i * d[1]
+                + b1_i * d[0]
+                + b0_i;
+            *g1_i = b6_i * d[16] + b5_i * d[11] + b4_i * d[7] + b3_i * d[4] + b2_i * d[2] + b1_i;
+            *g2_i = b6_i * d[17] + b5_i * d[12] + b4_i * d[8] + b3_i * d[5] + b2_i;
+            *g3_i = b6_i * d[18] + b5_i * d[13] + b4_i * d[9] + b3_i;
+            *g4_i = b6_i * d[19] + b5_i * d[14] + b4_i;
+            *g5_i = b6_i * d[20] + b5_i;
+            *g6_i = *b6_i;
+        }
+        if self.integrate_spin {
+            let [sg0, sg1, sg2, sg3, sg4, sg5, sg6] = &mut self.sg;
+            let [sb0, sb1, sb2, sb3, sb4, sb5, sb6] = &self.sb;
+            for (
+                sg0_i,
+                sg1_i,
+                sg2_i,
+                sg3_i,
+                sg4_i,
+                sg5_i,
+                sg6_i,
+                sb0_i,
+                sb1_i,
+                sb2_i,
+                sb3_i,
+                sb4_i,
+                sb5_i,
+                sb6_i,
+            ) in izip!(
+                &mut *sg0, &mut *sg1, &mut *sg2, &mut *sg3, &mut *sg4, &mut *sg5, &mut *sg6, sb0,
+                sb1, sb2, sb3, sb4, sb5, sb6,
+            )
+            .take(self.n_particles)
+            {
+                *sg0_i = sb6_i * d[15]
+                    + sb5_i * d[10]
+                    + sb4_i * d[6]
+                    + sb3_i * d[3]
+                    + sb2_i * d[1]
+                    + sb1_i * d[0]
+                    + sb0_i;
+                *sg1_i = sb6_i * d[16]
+                    + sb5_i * d[11]
+                    + sb4_i * d[7]
+                    + sb3_i * d[4]
+                    + sb2_i * d[2]
+                    + sb1_i;
+                *sg2_i = sb6_i * d[17] + sb5_i * d[12] + sb4_i * d[8] + sb3_i * d[5] + sb2_i;
+                *sg3_i = sb6_i * d[18] + sb5_i * d[13] + sb4_i * d[9] + sb3_i;
+                *sg4_i = sb6_i * d[19] + sb5_i * d[14] + sb4_i;
+                *sg5_i = sb6_i * d[20] + sb5_i;
+                *sg6_i = *sb6_i;
+            }
+        }
+    }
+
+    fn predictor_corrector(&mut self, t_beginning: f64) {
+        // Predictor corrector loop
+        // Stops if one of the following conditions is satisfied:
+        //   1) predictor_corrector_error better than 1e-16
+        //   2) predictor_corrector_error starts to oscillate
+        //   3) more than 12 iterations
+        //
+        //  NOTE:
+        //  In the original Everhart algorithm, there were six iterations
+        //  for first call to the subroutine and two for the rest of calls
+        let mut predictor_corrector_error = 1e300;
+        let mut predictor_corrector_error_last = 2.;
+        let mut iterations: i32 = 0;
+        'predictor_corrector: loop {
+            if predictor_corrector_error < 1e-16 {
+                break 'predictor_corrector;
+            }
+            if iterations > 2 && predictor_corrector_error_last <= predictor_corrector_error {
+                break 'predictor_corrector;
+            }
+            if iterations >= 12 {
+                self.integrator_iterations_max_exceeded += 1;
+                let integrator_iterations_warning = 10;
+                if self.integrator_iterations_max_exceeded == integrator_iterations_warning {
+                    println!(
+                        "[WARNING {} UTC] At least {} predictor corrector loops in integrator IAS15 did not converge. This is typically an indication of the timestep being too large.",
+                        OffsetDateTime::now_utc()
+                            .format(
+                                &format_description::parse(
+                                    "[year].[month].[day] [hour]:[minute]:[second]"
+                                )
+                                .unwrap()
+                            )
+                            .unwrap(),
+                        integrator_iterations_warning
+                    );
+                }
+                break 'predictor_corrector;
+            }
+            predictor_corrector_error_last = predictor_corrector_error;
+            predictor_corrector_error = 0.;
+            iterations += 1;
+
+            for (n, h_n) in h.iter().enumerate().skip(1) {
+                // Loop over interval using Gauss-Radau spacings
+
+                // Calculate position predictors using Eqn. 9 of Everhart
+                self.s[0] = self.time_step * h_n;
+                self.s[1] = self.s[0].powi(2) / 2.;
+                self.s[2] = self.s[1] * h_n / 3.;
+                self.s[3] = self.s[2] * h_n / 2.;
+                self.s[4] = 3. * self.s[3] * h_n / 5.;
+                self.s[5] = 2. * self.s[4] * h_n / 3.;
+                self.s[6] = 5. * self.s[5] * h_n / 7.;
+                self.s[7] = 3. * self.s[6] * h_n / 4.;
+                self.s[8] = 7. * self.s[7] * h_n / 9.;
+
+                self.current_time = t_beginning + self.s[0];
+
+                //// Prepare particles arrays for force calculation
+                // Predict positions at interval n using self.b values
+                self.universe.particles[..self.universe.n_particles]
+                    .iter_mut()
+                    .enumerate()
+                    .for_each(|(i, particle)| {
+                        let k0: usize = 3 * i;
+                        let k1: usize = 3 * i + 1;
+                        let k2: usize = 3 * i + 2;
+                        let inertial_acceleration = &self.inertial_accelerations0[i];
+                        // Equation 7 in paper 2015MNRAS.446.1424R
+                        particle.inertial_position = Axes::from(
+                            -self.cs_positions[i].x
+                                + (self.s[8] * self.b[6][k0]
+                                    + self.s[7] * self.b[5][k0]
+                                    + self.s[6] * self.b[4][k0]
+                                    + self.s[5] * self.b[3][k0]
+                                    + self.s[4] * self.b[2][k0]
+                                    + self.s[3] * self.b[1][k0]
+                                    + self.s[2] * self.b[0][k0]
+                                    + self.s[1] * inertial_acceleration.x
+                                    + self.s[0] * self.velocities0[i].x)
+                                + self.positions0[i].x,
+                            -self.cs_positions[i].y
+                                + (self.s[8] * self.b[6][k1]
+                                    + self.s[7] * self.b[5][k1]
+                                    + self.s[6] * self.b[4][k1]
+                                    + self.s[5] * self.b[3][k1]
+                                    + self.s[4] * self.b[2][k1]
+                                    + self.s[3] * self.b[1][k1]
+                                    + self.s[2] * self.b[0][k1]
+                                    + self.s[1] * inertial_acceleration.y
+                                    + self.s[0] * self.velocities0[i].y)
+                                + self.positions0[i].y,
+                            -self.cs_positions[i].z
+                                + (self.s[8] * self.b[6][k2]
+                                    + self.s[7] * self.b[5][k2]
+                                    + self.s[6] * self.b[4][k2]
+                                    + self.s[5] * self.b[3][k2]
+                                    + self.s[4] * self.b[2][k2]
+                                    + self.s[3] * self.b[1][k2]
+                                    + self.s[2] * self.b[0][k2]
+                                    + self.s[1] * inertial_acceleration.z
+                                    + self.s[0] * self.velocities0[i].z)
+                                + self.positions0[i].z,
+                        );
+                    });
+
+                if INTEGRATOR_FORCE_IS_VELOCITYDEPENDENT {
+                    // If necessary, calculate velocity predictors too, from Eqn. 10 of Everhart
+                    self.s[0] = self.time_step * h_n;
+                    self.s[1] = self.s[0] * h_n / 2.;
+                    self.s[2] = 2. * self.s[1] * h_n / 3.;
+                    self.s[3] = 3. * self.s[2] * h_n / 4.;
+                    self.s[4] = 4. * self.s[3] * h_n / 5.;
+                    self.s[5] = 5. * self.s[4] * h_n / 6.;
+                    self.s[6] = 6. * self.s[5] * h_n / 7.;
+                    self.s[7] = 7. * self.s[6] * h_n / 8.;
+
+                    // Predict velocities at interval n using self.b values
+                    self.universe.particles[..self.universe.n_particles]
+                        .iter_mut()
+                        .enumerate()
+                        .for_each(|(i, particle)| {
+                            let k0 = 3 * i;
+                            let k1 = 3 * i + 1;
+                            let k2 = 3 * i + 2;
+                            let inertial_acceleration = &self.inertial_accelerations0[i];
+
+                            // Equation 6 in paper 2015MNRAS.446.1424R
+                            particle.inertial_velocity = Axes::from(
+                                -self.cs_velocities[i].x
+                                    + self.s[7] * self.b[6][k0]
+                                    + self.s[6] * self.b[5][k0]
+                                    + self.s[5] * self.b[4][k0]
+                                    + self.s[4] * self.b[3][k0]
+                                    + self.s[3] * self.b[2][k0]
+                                    + self.s[2] * self.b[1][k0]
+                                    + self.s[1] * self.b[0][k0]
+                                    + self.s[0] * inertial_acceleration.x
+                                    + self.velocities0[i].x,
+                                -self.cs_velocities[i].y
+                                    + self.s[7] * self.b[6][k1]
+                                    + self.s[6] * self.b[5][k1]
+                                    + self.s[5] * self.b[4][k1]
+                                    + self.s[4] * self.b[3][k1]
+                                    + self.s[3] * self.b[2][k1]
+                                    + self.s[2] * self.b[1][k1]
+                                    + self.s[1] * self.b[0][k1]
+                                    + self.s[0] * inertial_acceleration.y
+                                    + self.velocities0[i].y,
+                                -self.cs_velocities[i].z
+                                    + self.s[7] * self.b[6][k2]
+                                    + self.s[6] * self.b[5][k2]
+                                    + self.s[5] * self.b[4][k2]
+                                    + self.s[4] * self.b[3][k2]
+                                    + self.s[3] * self.b[2][k2]
+                                    + self.s[2] * self.b[1][k2]
+                                    + self.s[1] * self.b[0][k2]
+                                    + self.s[0] * inertial_acceleration.z
+                                    + self.velocities0[i].z,
+                            );
+                        });
+
+                    if self.integrate_spin {
+                        // Spin integration
+                        // Predict velocities at interval n using self.b values
+                        self.universe.particles[..self.universe.n_particles]
+                            .iter_mut()
+                            .enumerate()
+                            .for_each(|(i, particle)| {
+                                let k0 = 3 * i;
+                                let k1 = 3 * i + 1;
+                                let k2 = 3 * i + 2;
+                                // Equation 6 in paper 2015MNRAS.446.1424R
+                                particle.angular_momentum = Axes::from(
+                                    -self.css[i].x
+                                        + self.s[7] * self.sb[6][k0]
+                                        + self.s[6] * self.sb[5][k0]
+                                        + self.s[5] * self.sb[4][k0]
+                                        + self.s[4] * self.sb[3][k0]
+                                        + self.s[3] * self.sb[2][k0]
+                                        + self.s[2] * self.sb[1][k0]
+                                        + self.s[1] * self.sb[0][k0]
+                                        + self.s[0] * self.dangular_momentum_dt0[i].x
+                                        + self.angular_momentum0[i].x,
+                                    -self.css[i].y
+                                        + self.s[7] * self.sb[6][k1]
+                                        + self.s[6] * self.sb[5][k1]
+                                        + self.s[5] * self.sb[4][k1]
+                                        + self.s[4] * self.sb[3][k1]
+                                        + self.s[3] * self.sb[2][k1]
+                                        + self.s[2] * self.sb[1][k1]
+                                        + self.s[1] * self.sb[0][k1]
+                                        + self.s[0] * self.dangular_momentum_dt0[i].y
+                                        + self.angular_momentum0[i].y,
+                                    -self.css[i].z
+                                        + self.s[7] * self.sb[6][k2]
+                                        + self.s[6] * self.sb[5][k2]
+                                        + self.s[5] * self.sb[4][k2]
+                                        + self.s[4] * self.sb[3][k2]
+                                        + self.s[3] * self.sb[2][k2]
+                                        + self.s[2] * self.sb[1][k2]
+                                        + self.s[1] * self.sb[0][k2]
+                                        + self.s[0] * self.dangular_momentum_dt0[i].z
+                                        + self.angular_momentum0[i].z,
+                                );
+                            });
+                    }
+                }
+                // Calculate accelerations.
+                self.universe
+                    .gravity_calculate_acceleration(IGNORED_GRAVITY_TERMS);
+                self.universe.inertial_to_heliocentric();
+                // Calculate non-gravity accelerations.
+                self.universe.calculate_additional_effects(
+                    self.current_time,
+                    EVOLUTION_ENABLED,
+                    DANGULAR_MOMENTUM_DT_ENABLED,
+                    ACCELERATION_ENABLED,
+                    IGNORED_GRAVITY_TERMS,
+                );
+                self.universe.apply_acceleration_corrections();
+
+                for (particle, inertial_acceleration, dangular_momentum_dtt) in izip!(
+                    &self.universe.particles[..self.universe.n_particles],
+                    &mut self.accelerations,
+                    &mut self.dangular_momentum_dtt
+                ) {
+                    *inertial_acceleration = particle.inertial_acceleration;
+
+                    if self.integrate_spin {
+                        // angular_momentum_dt = dmoment_of_inertia_spin_dt
+                        *dangular_momentum_dtt = particle.dangular_momentum_dt;
+                    }
+                }
+
+                // Update G values using Eqs. 4 of Everhart, and update B values using Eqs. 5
+                predictor_corrector_error = self.update_b_and_g(n, predictor_corrector_error);
+            } // end loop over interval using Gauss-Radau spacings
+        } // end predictor corrector loop
     }
 
     fn update_b_and_g(&mut self, n: usize, mut predictor_corrector_error: f64) -> f64 {
