@@ -138,7 +138,18 @@ fn calculate_tidal_force_component(
         radial_component_secular,
     );
 
-    particle.tides.get_kaula_mut().tidal_force = secular_projection;
+    if central_body {
+        // Stellar tide: `particle` is the star, whose single KaulaParameters::tidal_force is
+        // shared by all planets and would only keep the last planet's force. Store the secular
+        // force of this star-planet pair on the planet (`tidal_host_particle`) instead.
+        tidal_host_particle
+            .tides
+            .parameters
+            .internal
+            .kaula_stellar_tide_secular_force = secular_projection;
+    } else {
+        particle.tides.get_kaula_mut().tidal_force = secular_projection;
+    }
 
     components
 }
@@ -265,8 +276,13 @@ pub fn calculate_torque_due_to_tides(
             // additive inversion of positions if the host particle is the central body
             position.negate();
         }
-        // If this is the central body, take the kaula tidal force from the tidal host particle
-        tidal_host_particle.tides.get_kaula().tidal_force
+        // If this is the central body, take the secular kaula force of this star-planet pair,
+        // which calculate_tidal_force_component stored on the planet (`particle`)
+        particle
+            .tides
+            .parameters
+            .internal
+            .kaula_stellar_tide_secular_force
     } else {
         // If it is not the central body, take the kaula tidal froce from the other particle
         particle.tides.get_kaula().tidal_force
@@ -313,30 +329,39 @@ fn alpha_pqkj(
     f64!(2 * p - 2 * k + j - q) * mean_anomaly + f64!(2 * (p - k)) * argument_perihelion
 }
 
+/// Prefactor of the kaula tidal force: G m_perturber^2 R_deformed^5 / (a^6 r).
+/// `tidal_deformed_body` is the body raising the tidal bulge (its radius enters), and
+/// `tidal_perturber` is the body raising the tide (its mass enters):
+/// - planetary tide: deformed body = planet, perturber = star;
+/// - stellar tide:   deformed body = star,   perturber = planet.
 fn calculate_base_constant(
-    particle: &Particle,
-    other_particle: &Particle,
+    tidal_deformed_body: &Particle,
+    tidal_perturber: &Particle,
     heliocentric_radius: f64,
     semi_major_axis: f64,
 ) -> f64 {
-    (G * other_particle.mass.powi(2) * particle.radius.powi(5))
+    (G * tidal_perturber.mass.powi(2) * tidal_deformed_body.radius.powi(5))
         / (semi_major_axis.powi(6) * heliocentric_radius)
 }
 
+/// 2D prefactor: `calculate_base_constant` divided by sin(theta) of the planet on its orbit.
+/// `orbit_position` must be the planet's position (tides coordinates) for both the planetary
+/// and the stellar tide, since the angles always describe the planet's orbit.
 fn calculate_2d_constant(
-    particle: &Particle,
-    other_particle: &Particle,
+    tidal_deformed_body: &Particle,
+    tidal_perturber: &Particle,
+    orbit_position: Axes,
     heliocentric_radius: f64,
     semi_major_axis: f64,
 ) -> f64 {
-    let distance = particle.tides.coordinates.position.norm();
-    let (x, y, _z) = particle.tides.coordinates.position.unpack();
+    let distance = orbit_position.norm();
+    let (x, y, _z) = orbit_position.unpack();
     let coplanar_distance = sqrt!(x.powi(2) + y.powi(2));
     let sin_theta = coplanar_distance / distance;
 
     -(calculate_base_constant(
-        particle,
-        other_particle,
+        tidal_deformed_body,
+        tidal_perturber,
         heliocentric_radius,
         semi_major_axis,
     ) / sin_theta)
